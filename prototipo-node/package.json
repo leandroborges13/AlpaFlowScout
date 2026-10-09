@@ -1,0 +1,15 @@
+{
+  "name": "alpaflow-scout",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Protótipo privado de análise de atletas do futebol brasileiro (uso interno)",
+  "type": "module",
+  "engines": { "node": ">=20.6" },
+  "scripts": {
+    "status": "node --env-file=.env src/coletar.js status",
+    "ligas": "node --env-file=.env src/coletar.js ligas",
+    "jogadores": "node --env-file=.env src/coletar.js jogadores",
+    "relatorio": "node src/relatorio.js",
+    "test": "node --test test/*.test.js"
+  }
+}

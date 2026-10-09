@@ -1,0 +1,103 @@
+/* Tokens de cor: claro por padrão, escuro pelo sistema */
+:root {
+  --bg: #f4f6f5;
+  --surface: #ffffff;
+  --surface-2: #eef2f0;
+  --ink: #111a16;
+  --ink-2: #4b5852;
+  --muted: #7b8781;
+  --line: #dde4e0;
+  --accent: #0f9d58;
+  --accent-ink: #ffffff;
+  --accent-soft: #dff3e8;
+  --meter: #0f9d58;
+  --meter-track: #e3e9e6;
+  --aviso: #b25e09;
+  --radius: 14px;
+  color-scheme: light;
+  font-family: Inter, system-ui, 'Segoe UI', sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1311;
+    --surface: #151d1a;
+    --surface-2: #1c2622;
+    --ink: #eef3f0;
+    --ink-2: #b9c4be;
+    --muted: #84918a;
+    --line: #26322d;
+    --accent: #2fc27b;
+    --accent-ink: #06130c;
+    --accent-soft: #163428;
+    --meter: #2fc27b;
+    --meter-track: #26322d;
+    --aviso: #f0a24b;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-size: 15px; line-height: 1.5; }
+button { font: inherit; cursor: pointer; }
+button:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app { display: grid; grid-template-rows: auto 1fr auto; height: 100%; max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+.topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 0 12px; }
+.marca { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 19px; letter-spacing: -0.01em; }
+.marca i { width: 30px; height: 30px; border-radius: 9px; background: var(--accent); display: grid; place-items: center; color: var(--accent-ink); font-style: normal; font-size: 16px; }
+.marca small { font-weight: 500; color: var(--muted); font-size: 13px; }
+.selo { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; }
+
+.conversa { overflow-y: auto; display: flex; flex-direction: column; gap: 18px; padding: 8px 0 24px; min-height: 0; }
+.vazio { margin: auto 0; text-align: center; padding: 24px 0; }
+.vazio h1 { font-size: clamp(24px, 4vw, 34px); letter-spacing: -0.02em; margin: 0 0 6px; text-wrap: balance; }
+.vazio p { color: var(--ink-2); margin: 0 auto 20px; max-width: 560px; }
+.sugestoes { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.sugestoes button { background: var(--surface); border: 1px solid var(--line); color: var(--ink); border-radius: 999px; padding: 8px 14px; font-size: 14px; text-align: left; }
+.sugestoes button:hover { border-color: var(--accent); }
+
+.msg { display: flex; flex-direction: column; gap: 12px; }
+.msg.user { align-items: flex-end; }
+.balao { max-width: min(720px, 92%); padding: 12px 16px; border-radius: var(--radius); white-space: pre-wrap; }
+.user .balao { background: var(--accent); color: var(--accent-ink); border-bottom-right-radius: 4px; }
+.assistant .balao { background: var(--surface); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+.pensando { color: var(--muted); font-style: italic; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; display: grid; gap: 10px; text-align: left; color: inherit; }
+.card:hover { border-color: var(--accent); }
+.card-topo { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.card-nome { font-weight: 700; font-size: 16px; line-height: 1.25; }
+.card-sub { color: var(--muted); font-size: 13px; }
+.nota { min-width: 52px; text-align: center; border-radius: 10px; background: var(--accent-soft); padding: 4px 8px; }
+.nota b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; line-height: 1.1; color: var(--ink); }
+.nota span { font-size: 10.5px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.04em; }
+.fatos { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.funcao { display: inline-block; font-size: 12px; font-weight: 600; background: var(--surface-2); border-radius: 6px; padding: 2px 8px; color: var(--ink-2); }
+
+.medidor { display: grid; grid-template-columns: minmax(0, 1fr) 34px; gap: 2px 8px; align-items: center; font-size: 12.5px; }
+.medidor span { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.medidor b { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink); }
+.medidor .trilho { grid-column: 1 / -1; height: 6px; background: var(--meter-track); border-radius: 3px; overflow: hidden; }
+.medidor .trilho i { display: block; height: 100%; background: var(--meter); border-radius: 0 3px 3px 0; }
+
+.entrada { padding: 12px 0 18px; }
+.caixa { display: flex; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px; }
+.caixa textarea { flex: 1; border: 0; resize: none; background: transparent; color: var(--ink); font: inherit; padding: 6px 8px; min-height: 44px; max-height: 160px; outline: none; }
+.caixa button { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 10px; padding: 0 18px; font-weight: 600; }
+.caixa button:disabled { opacity: 0.5; cursor: default; }
+.rodape { font-size: 12px; color: var(--muted); text-align: center; margin-top: 8px; }
+
+.fundo { position: fixed; inset: 0; background: rgb(0 0 0 / 0.45); display: grid; place-items: center; padding: 16px; z-index: 10; }
+.painel { background: var(--surface); border-radius: 18px; width: min(720px, 100%); max-height: 90vh; overflow-y: auto; padding: 20px; display: grid; gap: 18px; }
+.painel h2 { margin: 0; font-size: 22px; letter-spacing: -0.01em; }
+.painel h3 { margin: 0 0 8px; font-size: 13px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.05em; }
+.grade2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px 24px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips span { background: var(--surface-2); border-radius: 6px; padding: 3px 9px; font-size: 13px; }
+.obs { font-size: 12px; color: var(--aviso); }
+.acoes { display: flex; gap: 8px; justify-content: flex-end; }
+.btn { background: var(--surface-2); border: 1px solid var(--line); color: var(--ink); border-radius: 10px; padding: 8px 14px; }
+.btn.prim { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.erro { color: var(--aviso); }

@@ -1,0 +1,214 @@
+using Microsoft.EntityFrameworkCore;
+using Scout.Application.Analise;
+using Scout.Domain;
+
+namespace Scout.Application.Consultas;
+
+// ---------- Competições disponíveis ----------
+
+public record CompeticaoDisponivel(int Id, string Nome, int Temporada, int Atletas);
+
+public record ListarCompeticoes : IQuery<IReadOnlyList<CompeticaoDisponivel>>;
+
+public class ListarCompeticoesHandler(IScoutDb db) : IQueryHandler<ListarCompeticoes, IReadOnlyList<CompeticaoDisponivel>>
+{
+    public async Task<IReadOnlyList<CompeticaoDisponivel>> Handle(ListarCompeticoes q, CancellationToken ct)
+    {
+        var grupos = await db.Estatisticas.AsNoTracking()
+            .Where(e => e.Minutos > 0)
+            .GroupBy(e => new { e.CompeticaoId, e.Temporada })
+            .Select(g => new { g.Key.CompeticaoId, g.Key.Temporada, Atletas = g.Select(e => e.AtletaId).Distinct().Count() })
+            .ToListAsync(ct);
+        var nomes = await db.Competicoes.AsNoTracking().ToDictionaryAsync(c => c.Id, c => c.Nome, ct);
+        return grupos
+            .Select(g => new CompeticaoDisponivel(g.CompeticaoId, nomes.GetValueOrDefault(g.CompeticaoId, $"Liga {g.CompeticaoId}"), g.Temporada, g.Atletas))
+            .OrderByDescending(c => c.Temporada).ThenBy(c => c.Id)
+            .ToList();
+    }
+}
+
+// ---------- Busca por perfil ----------
+
+/// <summary>
+/// "Zagueiro pela esquerda, bom no jogo aéreo e na saída de bola, até 23 anos".
+/// `Atributos` = chave do atributo → peso (1 = importante, 2 = muito importante).
+/// </summary>
+public record BuscarPorPerfil(
+    int? Temporada = null,
+    int[]? Competicoes = null,
+    Setor? Setor = null,
+    string? Funcao = null,
+    Lado? Lado = null,
+    string? Esquema = null,
+    int? IdadeMin = null,
+    int? IdadeMax = null,
+    int? ParticipacaoMinimaPercentual = null,
+    Dictionary<string, double>? Atributos = null,
+    int Limite = 10) : IQuery<ResultadoBusca>;
+
+public record ResultadoBusca(int Encontrados, IReadOnlyList<ResumoAtleta> Atletas, IReadOnlyList<string> Observacoes);
+
+public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor) : IQueryHandler<BuscarPorPerfil, ResultadoBusca>
+{
+    public async Task<ResultadoBusca> Handle(BuscarPorPerfil q, CancellationToken ct)
+    {
+        var linhas = await CarregarLinhas(db, motor, q.Temporada, q.Competicoes, ct);
+        var atributos = (q.Atributos ?? [])
+            .Where(a => Catalogo.AtributoPorChave.ContainsKey(a.Key) && a.Value > 0)
+            .Select(a => (atributo: Catalogo.AtributoPorChave[a.Key], peso: a.Value))
+            .ToList();
+
+        var candidatos = linhas.Where(l =>
+            (q.Setor is null || l.Setor == q.Setor) &&
+            (q.Funcao is null || JogaNaFuncao(l, q.Funcao)) &&
+            (q.Lado is null || l.Lado == q.Lado || l.Funcoes.Keys.Any(f => f.Contains(NomeLado(q.Lado.Value), StringComparison.OrdinalIgnoreCase))) &&
+            (q.IdadeMin is null || l.Idade >= q.IdadeMin) &&
+            (q.IdadeMax is null || l.Idade <= q.IdadeMax) &&
+            (q.ParticipacaoMinimaPercentual is null || l.ParticipacaoMinutos * 100 >= q.ParticipacaoMinimaPercentual));
+
+        var pontuados = candidatos
+            .Select(l => (linha: l, nota: atributos.Count == 0 ? l.Nota : NotaPonderada(l, atributos)))
+            .Where(x => x.nota is not null)
+            .OrderByDescending(x => x.nota)
+            .ToList();
+
+        var observacoes = atributos.Select(a => a.atributo.Observacao).OfType<string>().Distinct().ToList();
+        if (q.Esquema is not null)
+            observacoes.Add($"Esquema {q.Esquema}: a busca considera a função em campo; cada atleta traz quantos jogos fez com a mesma linha de defesa.");
+
+        var resultado = pontuados.Take(Math.Clamp(q.Limite, 1, 30))
+            .Select(x => Resumir.De(x.linha, x.nota, atributos.Count == 0 ? null : atributos.Select(a => a.atributo), q.Esquema))
+            .ToList();
+        return new ResultadoBusca(pontuados.Count, resultado, observacoes);
+    }
+
+    static double? NotaPonderada(LinhaAnalise l, List<(Atributo atributo, double peso)> atributos)
+    {
+        double soma = 0, pesos = 0;
+        foreach (var (a, peso) in atributos)
+        {
+            if (Resumir.NotaDoAtributo(l, a) is not { } nota) continue;
+            soma += nota * peso;
+            pesos += peso;
+        }
+        return pesos == 0 ? null : soma / pesos;
+    }
+
+    static bool JogaNaFuncao(LinhaAnalise l, string funcao) =>
+        (l.Funcao?.Contains(funcao, StringComparison.OrdinalIgnoreCase) ?? false) ||
+        // Também vale quem fez pelo menos 3 jogos na função pedida, mesmo não sendo a principal
+        l.Funcoes.Any(f => f.Key.Contains(funcao, StringComparison.OrdinalIgnoreCase) && f.Value >= 3);
+
+    static string NomeLado(Lado lado) => lado == Lado.Esquerda ? "esquerd" : lado == Lado.Direita ? "direit" : "central";
+
+    /// <summary>
+    /// Linhas das competições pedidas (ou de todas). Sem temporada, usa em cada competição a mais recente
+    /// que tem estatística: assim a Série C 2025 entra junto com as Séries A e B de 2026.
+    /// </summary>
+    public static async Task<List<LinhaAnalise>> CarregarLinhas(IScoutDb db, MotorDeAnalise motor, int? temporada, int[]? competicoes, CancellationToken ct)
+    {
+        var consulta = db.Estatisticas.AsNoTracking().Where(e => e.Minutos > 0);
+        if (competicoes is { Length: > 0 }) consulta = consulta.Where(e => competicoes.Contains(e.CompeticaoId));
+        if (temporada is not null) consulta = consulta.Where(e => e.Temporada == temporada);
+        var alvos = await consulta.GroupBy(e => e.CompeticaoId)
+            .Select(g => new { Competicao = g.Key, Temporada = g.Max(e => e.Temporada) })
+            .ToListAsync(ct);
+
+        var linhas = new List<LinhaAnalise>();
+        foreach (var a in alvos)
+            if (await motor.Analisar(a.Competicao, a.Temporada, ct) is { } analise) linhas.AddRange(analise.Linhas);
+        return linhas;
+    }
+}
+
+// ---------- Detalhe do atleta ----------
+
+public record PercentilIndicador(string Nome, double Percentil);
+
+public record DetalheAtleta(ResumoAtleta Resumo, IReadOnlyDictionary<string, int> Funcoes, IReadOnlyDictionary<string, int> Esquemas,
+    IReadOnlyList<Destaque> Atributos, IReadOnlyList<PercentilIndicador> Indicadores);
+
+public record ObterAtleta(int AtletaId, int? Temporada = null, int? CompeticaoId = null) : IQuery<DetalheAtleta?>;
+
+public class ObterAtletaHandler(IScoutDb db, MotorDeAnalise motor) : IQueryHandler<ObterAtleta, DetalheAtleta?>
+{
+    public async Task<DetalheAtleta?> Handle(ObterAtleta q, CancellationToken ct)
+    {
+        var linhas = await BuscarPorPerfilHandler.CarregarLinhas(db, motor, q.Temporada, q.CompeticaoId is { } c ? [c] : null, ct);
+        // Se jogou mais de uma competição na temporada, fica a de mais minutos
+        var l = linhas.Where(x => x.AtletaId == q.AtletaId).OrderByDescending(x => x.Minutos).FirstOrDefault();
+        if (l is null) return null;
+
+        var atributos = Catalogo.Atributos
+            .Where(a => a.Chave != "goleiro" || l.Setor == Setor.Goleiro)
+            .Select(a => (a, nota: Resumir.NotaDoAtributo(l, a)))
+            .Where(x => x.nota is not null)
+            .Select(x => new Destaque(x.a.Nome, Math.Round(x.nota!.Value), x.a.Observacao))
+            .ToList();
+        var indicadores = Catalogo.IndicadoresDoSetor(l.Setor)
+            .Where(k => l.Percentis.GetValueOrDefault(k) is not null)
+            .Select(k => new PercentilIndicador(Catalogo.PorChave[k].Nome, Math.Round(l.Percentis[k]!.Value)))
+            .ToList();
+        return new DetalheAtleta(Resumir.De(l), l.Funcoes, l.Esquemas, atributos, indicadores);
+    }
+}
+
+// ---------- Parecidos com ----------
+
+public record AtletasParecidos(int AtletaId, int? Temporada = null, int? IdadeMax = null, int Limite = 5) : IQuery<ResultadoParecidos?>;
+
+public record AtletaParecido(ResumoAtleta Atleta, double Semelhanca);
+
+public record ResultadoParecidos(ResumoAtleta Referencia, IReadOnlyList<AtletaParecido> Parecidos);
+
+public class AtletasParecidosHandler(IScoutDb db, MotorDeAnalise motor) : IQueryHandler<AtletasParecidos, ResultadoParecidos?>
+{
+    public async Task<ResultadoParecidos?> Handle(AtletasParecidos q, CancellationToken ct)
+    {
+        var linhas = await BuscarPorPerfilHandler.CarregarLinhas(db, motor, q.Temporada, null, ct);
+        var referencia = linhas.Where(l => l.AtletaId == q.AtletaId).OrderByDescending(l => l.Minutos).FirstOrDefault();
+        if (referencia is null) return null;
+
+        // Semelhança = 100 − diferença média dos percentis nos indicadores do setor
+        var chaves = Catalogo.IndicadoresDoSetor(referencia.Setor);
+        var parecidos = linhas
+            .Where(l => l.AtletaId != referencia.AtletaId && l.Setor == referencia.Setor && (q.IdadeMax is null || l.Idade <= q.IdadeMax))
+            .Select(l => (linha: l, semelhanca: Semelhanca(referencia, l, chaves)))
+            .Where(x => x.semelhanca is not null)
+            .OrderByDescending(x => x.semelhanca)
+            .Take(Math.Clamp(q.Limite, 1, 20))
+            .Select(x => new AtletaParecido(Resumir.De(x.linha), Math.Round(x.semelhanca!.Value, 1)))
+            .ToList();
+        return new ResultadoParecidos(Resumir.De(referencia), parecidos);
+    }
+
+    public static double? Semelhanca(LinhaAnalise a, LinhaAnalise b, string[] chaves)
+    {
+        var diferencas = chaves
+            .Select(k => (a.Percentis.GetValueOrDefault(k), b.Percentis.GetValueOrDefault(k)))
+            .Where(p => p.Item1 is not null && p.Item2 is not null)
+            .Select(p => Math.Abs(p.Item1!.Value - p.Item2!.Value))
+            .ToList();
+        return diferencas.Count < 3 ? null : 100 - diferencas.Average();
+    }
+}
+
+// ---------- Oportunidades ----------
+
+/// <summary>Jovens que já são peça importante no clube e estão entre os melhores da posição.</summary>
+public record BuscarOportunidades(int? Temporada = null, int[]? Competicoes = null, int IdadeMax = 23,
+    int ParticipacaoMinimaPercentual = 40, double NotaMinima = 65, int Limite = 15) : IQuery<IReadOnlyList<ResumoAtleta>>;
+
+public class BuscarOportunidadesHandler(IScoutDb db, MotorDeAnalise motor) : IQueryHandler<BuscarOportunidades, IReadOnlyList<ResumoAtleta>>
+{
+    public async Task<IReadOnlyList<ResumoAtleta>> Handle(BuscarOportunidades q, CancellationToken ct)
+    {
+        var linhas = await BuscarPorPerfilHandler.CarregarLinhas(db, motor, q.Temporada, q.Competicoes, ct);
+        return linhas
+            .Where(l => l.Idade <= q.IdadeMax && l.ParticipacaoMinutos * 100 >= q.ParticipacaoMinimaPercentual && l.Nota >= q.NotaMinima)
+            .OrderByDescending(l => l.Nota)
+            .Take(Math.Clamp(q.Limite, 1, 50))
+            .Select(l => Resumir.De(l))
+            .ToList();
+    }
+}

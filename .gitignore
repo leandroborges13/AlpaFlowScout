@@ -1,0 +1,10 @@
+.env
+cache/
+dados/
+saida/
+node_modules/
+bin/
+obj/
+dist/
+*.user
+.vs/
