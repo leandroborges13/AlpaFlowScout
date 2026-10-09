@@ -1,11 +1,16 @@
+# Segredos
 .env
-cache/
-dados/
-saida/
+
+# Dados locais (só na raiz: não confundir com a pasta src/.../Dados do código)
+/cache/
+/dados/
+/saida/
+/.teste/
+
+# Build
 node_modules/
 bin/
 obj/
 dist/
 *.user
 .vs/
-.teste/
