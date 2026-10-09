@@ -23,7 +23,8 @@ ENV ASPNETCORE_URLS=http://+:8080 \
     TZ=America/Sao_Paulo
 EXPOSE 8080
 # libgssapi: o driver do PostgreSQL tenta carregar e, sem ela, enche o log de avisos
-RUN apt-get update && apt-get install -y --no-install-recommends libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/* \n && mkdir -p /app/chaves && chown app /app/chaves
+RUN apt-get update && apt-get install -y --no-install-recommends libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/* \
+ && mkdir -p /app/chaves && chown app /app/chaves
 USER app
 WORKDIR /app/api
 ENTRYPOINT ["dotnet", "Scout.Api.dll"]
