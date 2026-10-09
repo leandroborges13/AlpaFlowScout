@@ -171,3 +171,32 @@ button.lt-quad:hover, button.lt-quad:focus-visible { outline: 2px solid var(--in
 .estilo-trilho i.def { background: var(--estilo-def); }
 .estilo-trilho em { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; background: var(--ink-2); }
 .estilo-eixo { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); }
+
+/* Tela de entrada */
+.login { min-height: 100%; display: grid; place-items: center; padding: 16px; }
+.login-caixa { width: min(380px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 24px; display: grid; gap: 14px; }
+.login-caixa label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.login-caixa input { font: inherit; font-size: 16px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.login-caixa input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.login-caixa .btn { padding: 11px; font-weight: 600; }
+
+/* Celular */
+@media (max-width: 640px) {
+  .app { padding: 0 12px; }
+  .topo { flex-direction: column; align-items: stretch; gap: 8px; padding: 12px 0 8px; }
+  .topo-acoes { justify-content: space-between; }
+  .topo-acoes .selo { display: none; }
+  .marca small { display: block; }
+  .vazio h1 { font-size: 24px; }
+  .sugestoes button { font-size: 13.5px; }
+  .balao { max-width: 100%; }
+  .cards { grid-template-columns: 1fr; }
+  .caixa textarea { font-size: 16px; } /* 16px evita o zoom automático do iPhone */
+  .fundo { padding: 0; place-items: stretch; }
+  .painel { width: 100%; max-height: 100%; height: 100%; border-radius: 0; padding: 16px 14px calc(16px + env(safe-area-inset-bottom)); }
+  .perfil-topo { flex-wrap: wrap; }
+  .campo-bloco { grid-template-columns: 120px minmax(0, 1fr); }
+  .campo { width: 120px; }
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .entrada { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+}

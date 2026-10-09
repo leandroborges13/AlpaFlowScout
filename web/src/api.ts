@@ -60,13 +60,32 @@ export type Parecidos = { referencia: ResumoAtleta; parecidos: { atleta: ResumoA
 
 export type Mensagem = { papel: 'user' | 'assistant'; texto: string; atletas?: ResumoAtleta[] }
 
+/** Avisa a tela quando o login expira, para voltar à tela de entrada. */
+export const EVENTO_SESSAO_EXPIRADA = 'scout:sessao-expirada'
+
+export class ErroDeAcesso extends Error {}
+
 async function pedir<T>(url: string, init?: RequestInit): Promise<T> {
-  const r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...init })
-  if (!r.ok) throw new Error((await r.text()) || `Erro ${r.status}`)
+  const r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', ...init })
+  if (r.status === 401 && !url.endsWith('/login')) {
+    window.dispatchEvent(new Event(EVENTO_SESSAO_EXPIRADA))
+    throw new ErroDeAcesso('Sua sessão expirou. Entre de novo.')
+  }
+  if (r.status === 429) throw new Error('Muitas tentativas. Aguarde um minuto e tente de novo.')
+  if (!r.ok) {
+    const corpo = await r.text()
+    let mensagem = corpo
+    try { mensagem = JSON.parse(corpo).detail ?? corpo } catch { /* texto simples */ }
+    throw new Error(mensagem || `Erro ${r.status}`)
+  }
   return r.json() as Promise<T>
 }
 
 export const api = {
+  sessao: () => pedir<{ nome: string }>('/api/sessao'),
+  login: (email: string, senha: string) =>
+    pedir<{ nome: string }>('/api/login', { method: 'POST', body: JSON.stringify({ email, senha }) }),
+  logout: () => pedir<unknown>('/api/logout', { method: 'POST' }),
   chat: (mensagens: Mensagem[]) =>
     pedir<{ texto: string; atletas: ResumoAtleta[] }>('/api/chat', {
       method: 'POST',

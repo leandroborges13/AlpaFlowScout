@@ -61,3 +61,14 @@ Abra http://localhost:5173.
 ```bash
 dotnet test
 ```
+
+4. Crie o seu login (a senha é pedida no terminal):
+
+```bash
+dotnet run --project src/Scout.Coleta -- criar-usuario voce@email.com "Seu Nome"
+```
+
+## Publicação e app no celular
+
+O site é um app instalável (PWA): no celular, "Instalar app" no Chrome ou "Adicionar à Tela de Início" no Safari.
+Todo o acesso exige login. O passo a passo do servidor está em [docs/DEPLOY.md](docs/DEPLOY.md).

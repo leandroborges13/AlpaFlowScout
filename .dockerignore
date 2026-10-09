@@ -1,0 +1,14 @@
+.env
+.git
+.github
+.vs
+.teste
+**/bin
+**/obj
+**/node_modules
+web/dist
+cache
+dados
+saida
+prototipo-node
+deploy

@@ -1,7 +1,9 @@
-// Coleta de dados da API-Football para o banco do Scout.
+// Coleta de dados da API-Football para o banco do Scout e administração.
 //   dotnet run --project src/Scout.Coleta -- importar <liga> <temporada> [--sem-escalacoes]
 //   dotnet run --project src/Scout.Coleta -- cota
 //   dotnet run --project src/Scout.Coleta -- migrar
+//   dotnet run --project src/Scout.Coleta -- criar-usuario <email> <nome>   (pede a senha no terminal)
+//   dotnet run --project src/Scout.Coleta -- remover-usuario <email>
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -46,8 +48,24 @@ try
             await Diagnostico.ConsistenciaDosLados(dbD, ligaD, temporadaD, cts.Token);
             break;
 
+        case "criar-usuario" when args.Length >= 3:
+            await sp.GetRequiredService<ScoutDbContext>().Database.MigrateAsync(cts.Token);
+            // A senha é digitada aqui, sem aparecer na tela e sem passar por argumento (não fica no histórico)
+            Console.Write("Senha: ");
+            var senha = LerSenha();
+            Console.Write("Repita a senha: ");
+            if (LerSenha() != senha) { Console.Error.WriteLine("As senhas não conferem."); return 1; }
+            var u = await sp.GetRequiredService<Scout.Infrastructure.Acesso.Usuarios>().Criar(args[1], string.Join(' ', args[2..]), senha, cts.Token);
+            Console.WriteLine($"Usuário pronto: {u.Email}");
+            break;
+
+        case "remover-usuario" when args.Length >= 2:
+            var removido = await sp.GetRequiredService<Scout.Infrastructure.Acesso.Usuarios>().Remover(args[1], cts.Token);
+            Console.WriteLine(removido ? $"Usuário removido: {args[1]}" : "Usuário não encontrado.");
+            break;
+
         default:
-            Console.WriteLine("Comandos: migrar | cota | importar <liga> <temporada> [--sem-escalacoes]");
+            Console.WriteLine("Comandos: migrar | cota | importar <liga> <temporada> [--sem-escalacoes] | criar-usuario <email> <nome> | remover-usuario <email>");
             Console.WriteLine("Ligas: 71 Série A · 72 Série B · 75 Série C · 76 Série D");
             return 1;
     }
@@ -57,4 +75,24 @@ catch (CotaEsgotadaException e)
 {
     Console.Error.WriteLine(e.Message);
     return 2;
+}
+catch (ArgumentException e)
+{
+    Console.Error.WriteLine(e.Message);
+    return 1;
+}
+
+static string LerSenha()
+{
+    if (Console.IsInputRedirected) return Console.ReadLine() ?? "";
+    var senha = new System.Text.StringBuilder();
+    while (true)
+    {
+        var tecla = Console.ReadKey(intercept: true);
+        if (tecla.Key == ConsoleKey.Enter) break;
+        if (tecla.Key == ConsoleKey.Backspace) { if (senha.Length > 0) senha.Length--; continue; }
+        if (!char.IsControl(tecla.KeyChar)) senha.Append(tecla.KeyChar);
+    }
+    Console.WriteLine();
+    return senha.ToString();
 }

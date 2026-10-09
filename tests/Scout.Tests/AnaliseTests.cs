@@ -114,3 +114,15 @@ public class TrajetoriaTests
         Assert.Equal("Clube Fictício A", r[0].Clube);
     }
 }
+
+public class AtualizacaoDiariaTests
+{
+    [Fact]
+    public void Le_a_lista_de_competicoes_e_ignora_itens_invalidos() =>
+        Assert.Equal([(71, 2026), (72, 2026), (75, 2025)],
+            Scout.Infrastructure.Provedor.AtualizacaoDiaria.Competicoes(" 71:2026, 72:2026,abc, 75:2025 ,9"));
+
+    [Fact]
+    public void Sem_configuracao_nao_atualiza_nada() =>
+        Assert.Empty(Scout.Infrastructure.Provedor.AtualizacaoDiaria.Competicoes(null));
+}

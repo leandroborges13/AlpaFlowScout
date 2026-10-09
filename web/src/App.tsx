@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { api, lerModoGravacao, salvarModoGravacao, type Mensagem, type ResumoAtleta } from './api'
+import { api, EVENTO_SESSAO_EXPIRADA, lerModoGravacao, salvarModoGravacao, type Mensagem, type ResumoAtleta } from './api'
 import { CartaoAtleta } from './Componentes'
+import { Login } from './Login'
 import { PainelAtleta } from './PainelAtleta'
 
 const SUGESTOES = [
@@ -10,7 +11,23 @@ const SUGESTOES = [
   'Pontas esquerdas com drible e criação, até 24 anos',
 ]
 
+/** Confere a sessão: sem login, mostra a tela de entrada. */
 export default function App() {
+  const [usuario, setUsuario] = useState<string | null | undefined>(undefined)
+
+  useEffect(() => {
+    api.sessao().then((s) => setUsuario(s.nome)).catch(() => setUsuario(null))
+    const expirou = () => setUsuario(null)
+    window.addEventListener(EVENTO_SESSAO_EXPIRADA, expirou)
+    return () => window.removeEventListener(EVENTO_SESSAO_EXPIRADA, expirou)
+  }, [])
+
+  if (usuario === undefined) return null
+  if (usuario === null) return <Login onEntrar={setUsuario} />
+  return <Plataforma usuario={usuario} onSair={() => { api.logout().finally(() => setUsuario(null)) }} />
+}
+
+function Plataforma({ usuario, onSair }: { usuario: string; onSair: () => void }) {
   const [mensagens, setMensagens] = useState<Mensagem[]>([])
   const [texto, setTexto] = useState('')
   const [carregando, setCarregando] = useState(false)
@@ -59,6 +76,7 @@ export default function App() {
             <input type="checkbox" checked={gravacao} onChange={(e) => { setGravacao(e.target.checked); salvarModoGravacao(e.target.checked) }} />
             Modo gravação
           </label>
+          <button className="btn" onClick={onSair} title={`Conectado como ${usuario}`}>Sair</button>
         </div>
       </header>
 

@@ -1,0 +1,45 @@
+# Servidor: /opt/alpaflowscout (copie este arquivo e o .env.exemplo como .env)
+services:
+  alpaflowscout-db:
+    image: postgres:16-alpine
+    container_name: alpaflowscout-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: alpaflow_scout
+      POSTGRES_USER: alpaflowscout
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - alpaflowscout-db-data:/var/lib/postgresql/data
+    networks:
+      - alpaflowscout-net
+
+  alpaflowscout:
+    image: ghcr.io/leandroborges13/alpaflowscout:latest
+    container_name: alpaflowscout
+    restart: unless-stopped
+    depends_on:
+      - alpaflowscout-db
+    environment:
+      SCOUT_DB: Host=alpaflowscout-db;Port=5432;Database=alpaflow_scout;Username=alpaflowscout;Password=${DB_PASSWORD}
+      SCOUT_CHAVES_DIR: /app/chaves
+      APIFOOTBALL_KEY: ${APIFOOTBALL_KEY}
+      APIFOOTBALL_LIMITE_DIA: ${APIFOOTBALL_LIMITE_DIA}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL}
+      SCOUT_ATUALIZAR: ${SCOUT_ATUALIZAR}
+      SCOUT_ATUALIZAR_HORA: ${SCOUT_ATUALIZAR_HORA}
+    volumes:
+      - alpaflowscout-chaves:/app/chaves
+    networks:
+      - alpaflowscout-net
+      - n8n_default   # mesma rede do Nginx Proxy Manager
+
+volumes:
+  alpaflowscout-db-data:
+  alpaflowscout-chaves:
+
+networks:
+  alpaflowscout-net:
+    driver: bridge
+  n8n_default:
+    external: true
