@@ -50,6 +50,11 @@ export default function App() {
         </div>
         <div className="topo-acoes">
           <span className="selo">Séries A, B e C · só maiores de 18 anos</span>
+          {mensagens.length > 0 && (
+            <button className="btn" onClick={() => { setMensagens([]); setAberto(null); setTexto('') }} disabled={carregando}>
+              Limpar conversa
+            </button>
+          )}
           <label className="alternar" title="Esconde fotos e escudos para gravar vídeos públicos">
             <input type="checkbox" checked={gravacao} onChange={(e) => { setGravacao(e.target.checked); salvarModoGravacao(e.target.checked) }} />
             Modo gravação

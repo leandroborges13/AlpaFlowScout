@@ -129,7 +129,7 @@ public record DetalheAtleta(ResumoAtleta Resumo, string? EscudoClube,
     IReadOnlyDictionary<string, int> Funcoes, IReadOnlyDictionary<string, int> Esquemas,
     IReadOnlyList<Destaque> Atributos, IReadOnlyList<PercentilIndicador> Indicadores,
     Cartoes Cartoes, Presenca Presenca, IReadOnlyList<JogoNaLinhaDoTempo> LinhaDoTempo,
-    TrajetoriaAtleta? Trajetoria);
+    TrajetoriaAtleta? Trajetoria, IReadOnlyList<PontoNoCampo> Posicoes, EstiloDeJogo? Estilo);
 
 public record ObterAtleta(int AtletaId, int? Temporada = null, int? CompeticaoId = null, bool ComTrajetoria = true) : IQuery<DetalheAtleta?>;
 
@@ -159,7 +159,39 @@ public class ObterAtletaHandler(IScoutDb db, MotorDeAnalise motor, IHistoricoDoA
         var trajetoria = q.ComTrajetoria ? await historico.Obter(l.AtletaId, ct) : null;
 
         return new DetalheAtleta(Resumir.De(l), l.Escudo, l.Funcoes, l.Esquemas, atributos, indicadores,
-            cartoes, CalcularPresenca(linhaDoTempo), linhaDoTempo, trajetoria);
+            cartoes, CalcularPresenca(linhaDoTempo), linhaDoTempo, trajetoria, await Posicoes(l, ct), Estilo(l));
+    }
+
+    async Task<List<PontoNoCampo>> Posicoes(LinhaAnalise l, CancellationToken ct)
+    {
+        var escalacoes = await (from e in db.Escalacoes.AsNoTracking()
+                                join p in db.Partidas.AsNoTracking() on e.PartidaId equals p.Id
+                                where e.AtletaId == l.AtletaId && p.CompeticaoId == l.CompeticaoId && p.Temporada == l.Temporada
+                                select new { e.Esquema, e.Grade, e.Funcao })
+            .ToListAsync(ct);
+        return escalacoes
+            .Select(e => (ponto: FuncaoTatica.Coordenadas(e.Esquema, e.Grade), e.Funcao))
+            .Where(x => x.ponto is not null)
+            .GroupBy(x => x.ponto!.Value)
+            .Select(g => new PontoNoCampo(g.Key.X, g.Key.Y, g.Count(),
+                g.GroupBy(x => x.Funcao).OrderByDescending(f => f.Count()).First().Key))
+            .OrderByDescending(p => p.Jogos)
+            .ToList();
+    }
+
+    public static EstiloDeJogo? Estilo(LinhaAnalise l)
+    {
+        if (l.Setor == Setor.Goleiro) return null;
+        double? Nota(string chave) => Resumir.NotaDoAtributo(l, Catalogo.AtributoPorChave[chave]);
+        var ofensivo = MotorDeAnalise.Media([Nota("criacao"), Nota("drible"), Nota("finalizacao")]);
+        // Só a marcação: jogo aéreo também é arma de ataque (centroavante de área), então fica fora
+        var defensivo = Nota("marcacao");
+        if (ofensivo is null || defensivo is null) return null;
+        var indice = (int)Math.Round(ofensivo.Value - defensivo.Value);
+        var rotulo = indice switch { >= 25 => "Bem ofensivo", >= 10 => "Mais ofensivo", <= -25 => "Muito marcador", <= -10 => "Mais marcador", _ => "Equilibrado" };
+        var setor = Resumir.NomeSetor(l.Setor).ToLowerInvariant();
+        return new EstiloDeJogo(indice, rotulo, Math.Round(ofensivo.Value), Math.Round(defensivo.Value),
+            $"Compara criação, drible e finalização com a marcação (desarmes, interceptações e bloqueios), em relação a outros atletas de {setor}.");
     }
 
     /// <summary>Jogos encerrados dos clubes do atleta na competição, marcando onde ele foi titular.</summary>

@@ -73,7 +73,7 @@ public class AssistenteScout(
                     if (d is null) return (object)"Atleta não encontrado ou fora da análise (menor de idade ou poucos minutos).";
                     Citar([d.Resumo]);
                     // Sem a linha do tempo jogo a jogo: o resumo da presença basta para a conversa
-                    return (object)new { d.Resumo, d.Funcoes, d.Esquemas, d.Atributos, d.Cartoes, d.Presenca };
+                    return (object)new { d.Resumo, d.Funcoes, d.Esquemas, d.Atributos, d.Cartoes, d.Presenca, d.Estilo };
                 },
                 "detalhar_atleta",
                 "Perfil completo de um atleta: funções que já fez, esquemas, nota de cada atributo e percentis."),
@@ -120,14 +120,14 @@ public class AssistenteScout(
             e.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(6);
             var dados = JsonSerializer.Serialize(new
             {
-                d.Resumo, d.Funcoes, d.Esquemas, d.Atributos, d.Cartoes, d.Presenca,
+                d.Resumo, d.Funcoes, d.Esquemas, d.Atributos, d.Cartoes, d.Presenca, d.Estilo,
                 Clubes = d.Trajetoria?.Clubes.Take(6).Select(c => new { c.Clube, c.Temporadas }),
             });
             var resposta = await chat.GetResponseAsync(
             [
                 new(ChatRole.System, """
                     Você é analista de desempenho. Escreva um resumo de 4 a 5 frases, em português do Brasil, sobre o atleta, só com os dados recebidos.
-                    Cubra: perfil e função em campo; regularidade (presença como titular); 2 ou 3 pontos fortes e 1 ou 2 pontos a desenvolver, em percentis;
+                    Cubra: perfil e função em campo, incluindo o estilo (mais ofensivo, equilibrado ou mais marcador, sempre em relação ao próprio setor); regularidade (presença como titular); 2 ou 3 pontos fortes e 1 ou 2 pontos a desenvolver, em percentis;
                     disciplina (cartões); e, se houver, a trajetória recente de clubes.
                     Não cite estatísticas brutas (desarmes, duelos, passes). Não fale de saúde nem de lesões.
                     Jogo aéreo, saída de bola e intensidade são estimativas: sempre que citar um deles, escreva "(estimativa)" logo depois. Tom profissional, sem exageros.

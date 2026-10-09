@@ -80,6 +80,24 @@ public static class FuncaoTatica
         return lado == Lado.Centro ? "Meio-campista" : $"Meio-campista pela {NomeFeminino(lado)}";
     }
 
+    /// <summary>
+    /// Ponto no campo (0–100) para desenhar: X vai da esquerda (0) para a direita (100) do time;
+    /// Y vai do próprio gol (0) ao gol adversário (100). É a posição no desenho tático, não o deslocamento em jogo.
+    /// </summary>
+    public static (double X, double Y)? Coordenadas(string? esquema, string? grade)
+    {
+        if (Identificar(esquema, grade) is null) return null;
+        var partes = grade!.Split(':');
+        int linha = int.Parse(partes[0]), coluna = int.Parse(partes[1]);
+        if (linha == 1) return (50, 5);
+
+        var linhas = esquema!.Split('-').Select(int.Parse).ToArray();
+        var naLinha = linhas[linha - 2];
+        var x = 100.0 * (ColunaUmEhEsquerda ? coluna : naLinha - coluna + 1) / (naLinha + 1);
+        var y = linhas.Length == 1 ? 50 : 18 + (linha - 2) * (66.0 / (linhas.Length - 1));
+        return (Math.Round(x, 1), Math.Round(y, 1));
+    }
+
     static string Nome(Lado lado) => lado == Lado.Esquerda ? "esquerdo" : lado == Lado.Direita ? "direito" : "central";
     static string NomeFeminino(Lado lado) => lado == Lado.Esquerda ? "esquerda" : lado == Lado.Direita ? "direita" : "central";
 }

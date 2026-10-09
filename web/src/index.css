@@ -149,3 +149,25 @@ button.lt-quad:hover, button.lt-quad:focus-visible { outline: 2px solid var(--in
 .transferencias { margin-top: 10px; font-size: 13.5px; }
 .transferencias summary { cursor: pointer; color: var(--ink-2); }
 .transferencias ul { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 4px; }
+
+/* Posições no campo e forma de jogo */
+:root { --gramado: #e6f2ec; --linha-campo: #9bbfae; --estilo-def: #2f6fd6; }
+@media (prefers-color-scheme: dark) { :root { --gramado: #16271f; --linha-campo: #3f5d50; --estilo-def: #6ea2ff; } }
+.posicoes { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
+.posicoes .estilo { max-width: 520px; }
+.campo-bloco { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 12px; align-items: start; }
+.campo { width: 150px; height: auto; display: block; }
+.campo .gramado { fill: var(--gramado); }
+.campo .linhas { fill: none; stroke: var(--linha-campo); stroke-width: 0.35; }
+.ponto-campo { fill: var(--accent); fill-opacity: 0.85; stroke: var(--surface); stroke-width: 0.6; cursor: default; }
+.ponto-campo.foco { fill-opacity: 1; stroke: var(--ink); }
+.campo-info { display: grid; gap: 6px; }
+.campo-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13.5px; }
+.estilo { display: grid; gap: 6px; }
+.estilo-topo { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+.estilo-trilho { position: relative; height: 10px; background: var(--meter-track); border-radius: 5px; }
+.estilo-trilho i { position: absolute; top: 0; bottom: 0; border-radius: 5px; }
+.estilo-trilho i.of { background: var(--accent); }
+.estilo-trilho i.def { background: var(--estilo-def); }
+.estilo-trilho em { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; background: var(--ink-2); }
+.estilo-eixo { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); }

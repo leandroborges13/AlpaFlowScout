@@ -48,6 +48,8 @@ export type DetalheAtleta = {
   cartoes: { amarelos: number; vermelhos: number; porNoventaMinutos?: number | null }
   presenca: { jogosDoClube: number; comoTitular: number; sequenciaAtual: number; maiorSequencia: number }
   linhaDoTempo: JogoNaLinhaDoTempo[]
+  posicoes: { x: number; y: number; jogos: number; funcao: string }[]
+  estilo?: { indice: number; rotulo: string; ofensivo: number; defensivo: number; explicacao: string } | null
   trajetoria?: {
     clubes: { clube: string; escudo?: string | null; temporadas: number[] }[]
     transferencias: { data?: string | null; de?: string | null; para?: string | null; tipo?: string | null }[]

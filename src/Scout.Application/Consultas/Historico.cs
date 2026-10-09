@@ -19,3 +19,11 @@ public record JogoNaLinhaDoTempo(DateTime Data, string? Rodada, string Adversari
 public record Presenca(int JogosDoClube, int ComoTitular, int SequenciaAtual, int MaiorSequencia);
 
 public record Cartoes(int Amarelos, int Vermelhos, double? PorNoventaMinutos);
+
+/// <summary>Um ponto do desenho tático onde o atleta começou jogos (0–100; Y = 100 é o gol adversário).</summary>
+public record PontoNoCampo(double X, double Y, int Jogos, string Funcao);
+
+/// <summary>
+/// Estilo pelos atributos, comparado ao próprio setor: de −100 (muito marcador) a +100 (bem ofensivo).
+/// </summary>
+public record EstiloDeJogo(int Indice, string Rotulo, double Ofensivo, double Defensivo, string Explicacao);

@@ -58,3 +58,29 @@ public class FuncaoTaticaTests
     public void Dados_invalidos_nao_geram_funcao(string? esquema, string? grade) =>
         Assert.Null(FuncaoTatica.Identificar(esquema, grade));
 }
+
+public class CoordenadasTests
+{
+    [Fact]
+    public void Lateral_esquerdo_fica_na_esquerda_e_na_defesa()
+    {
+        var (x, y) = FuncaoTatica.Coordenadas("4-3-3", "2:1")!.Value;
+        Assert.Equal(20, x);
+        Assert.Equal(18, y);
+    }
+
+    [Fact]
+    public void Centroavante_fica_no_meio_e_no_ataque()
+    {
+        var (x, y) = FuncaoTatica.Coordenadas("4-2-3-1", "5:1")!.Value;
+        Assert.Equal(50, x);
+        Assert.Equal(84, y);
+    }
+
+    [Fact]
+    public void Goleiro_e_grade_invalida()
+    {
+        Assert.Equal((50, 5), FuncaoTatica.Coordenadas("3-4-3", "1:1"));
+        Assert.Null(FuncaoTatica.Coordenadas("3-4-3", "9:1"));
+    }
+}

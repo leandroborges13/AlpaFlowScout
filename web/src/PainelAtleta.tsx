@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type DetalheAtleta, type JogoNaLinhaDoTempo, type Parecidos, type ResumoAtleta } from './api'
+import { BarraDeEstilo, CampoDePosicoes } from './Campo'
 import { CartaoAtleta, Medidor, Retrato } from './Componentes'
 
 type Props = { atleta: ResumoAtleta; gravacao: boolean; onFechar: () => void; onAbrir: (a: ResumoAtleta) => void }
@@ -58,6 +59,14 @@ export function PainelAtleta({ atleta, gravacao, onFechar, onAbrir }: Props) {
 
         {detalhe && (
           <>
+            <section>
+              <h3>Posições e forma de jogo</h3>
+              <div className="posicoes">
+                <CampoDePosicoes posicoes={detalhe.posicoes ?? []} />
+                {detalhe.estilo && <BarraDeEstilo estilo={detalhe.estilo} />}
+              </div>
+            </section>
+
             <section>
               <h3>Perfil de atributos</h3>
               <p className="legenda">Percentil entre atletas do mesmo setor na competição. A linha marca 50, o atleta mediano.</p>
