@@ -45,7 +45,7 @@ export function CartaoAtleta({ atleta: a, onAbrir, semelhanca, gravacao }: Carta
       {a.experienciaNoEsquema && <span className="card-sub">{a.experienciaNoEsquema}</span>}
       <div className="fatos">
         <span>{a.jogos} jogos</span><span>{a.minutos.toLocaleString('pt-BR')} min</span>
-        <span>{a.participacaoMinutos}% dos minutos</span>{a.gols > 0 && <span>{a.gols} gols</span>}
+        <span>{a.participacaoMinutos}% dos minutos</span>{a.gols > 0 && <span>{a.gols} {a.gols === 1 ? 'gol' : 'gols'}</span>}
       </div>
       {a.destaques.map((d) => <Medidor key={d.nome} nome={d.nome} valor={d.percentil} />)}
     </button>

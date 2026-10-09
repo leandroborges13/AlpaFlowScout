@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root { --verde: #0f9d58; --verde-escuro: #0b7a44; --tinta: #0f1a15; --tinta-2: #46534d; --fundo: #f3f6f4; --linha: #dbe3df; }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: Inter, system-ui, sans-serif; background: #ccc; }
+  .slide { width: 1200px; height: 1500px; position: relative; overflow: hidden; display: none; background: var(--fundo); color: var(--tinta); padding: 90px 90px 0; }
+  .slide.ativo { display: block; }
+  .escuro { background: radial-gradient(1200px 900px at 85% 10%, #13623f 0%, #0b2a1d 55%, #07170f 100%); color: #fff; }
+  .marca { display: flex; align-items: center; gap: 16px; font-weight: 800; font-size: 30px; }
+  .marca i { width: 54px; height: 54px; border-radius: 15px; background: var(--verde); display: grid; place-items: center; }
+  .marca svg { width: 34px; }
+  .pagina { position: absolute; top: 100px; right: 90px; font-size: 24px; font-weight: 600; opacity: .55; }
+  h1 { font-size: 84px; line-height: 1.06; letter-spacing: -0.022em; word-spacing: 0.06em; font-weight: 900; margin-top: 70px; }
+  h1 em { font-style: normal; color: #4fe3a0; }
+  h2 { font-size: 66px; line-height: 1.08; letter-spacing: -0.02em; word-spacing: 0.05em; font-weight: 900; margin-top: 54px; }
+  h2 em { font-style: normal; color: var(--verde); }
+  .sub { font-size: 32px; line-height: 1.4; margin-top: 26px; color: var(--tinta-2); max-width: 980px; }
+  .escuro .sub { color: #cfe3d9; }
+  .chips { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 40px; }
+  .chips span { font-size: 24px; font-weight: 600; padding: 10px 20px; border-radius: 999px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.25); }
+  .rodape { position: absolute; left: 90px; right: 90px; bottom: 56px; display: flex; justify-content: space-between; font-size: 24px; font-weight: 600; color: var(--tinta-2); }
+  .escuro .rodape { color: #a9c7b8; }
+
+  /* Celular */
+  .celular { position: absolute; width: 470px; border-radius: 64px; background: #0d0f0e; padding: 16px; box-shadow: 0 40px 90px rgba(0,0,0,.35); }
+  .celular img { width: 100%; border-radius: 50px; display: block; }
+  .capa .celular { right: 70px; bottom: -330px; transform: rotate(-6deg); }
+  .lado .celular { left: 90px; top: 410px; width: 440px; }
+  .lado .pontos { position: absolute; left: 600px; right: 90px; top: 470px; display: grid; gap: 34px; }
+  .ponto b { display: block; font-size: 34px; letter-spacing: -0.01em; margin-bottom: 8px; }
+  .ponto span { font-size: 27px; line-height: 1.4; color: var(--tinta-2); }
+  .ponto { border-left: 6px solid var(--verde); padding-left: 24px; }
+
+  /* Arquitetura */
+  .fluxo { display: grid; gap: 14px; margin-top: 50px; }
+  .etapa { display: grid; grid-template-columns: 70px 1fr; gap: 22px; align-items: center; background: #fff; border: 2px solid var(--linha); border-radius: 22px; padding: 20px 26px; }
+  .etapa .n { width: 70px; height: 70px; border-radius: 18px; background: var(--verde); color: #fff; display: grid; place-items: center; font-size: 32px; font-weight: 800; }
+  .etapa b { font-size: 31px; display: block; }
+  .etapa span { font-size: 24px; color: var(--tinta-2); line-height: 1.35; }
+  .etapa.ia { border-color: var(--verde); background: #e6f6ee; }
+  .regra { margin-top: 40px; border-radius: 26px; background: var(--tinta); color: #fff; padding: 40px 44px; }
+  .regra b { display: block; font-size: 46px; letter-spacing: -0.02em; line-height: 1.1; }
+  .regra b em { font-style: normal; color: #4fe3a0; }
+  .regra span { display: block; margin-top: 14px; font-size: 27px; line-height: 1.4; color: #c9d8d0; }
+</style>
+</head>
+<body>
+
+<!-- 1. Capa -->
+<section class="slide escuro capa">
+  <div class="marca"><i><svg viewBox="0 0 64 64"><g fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round"><rect x="18" y="8" width="28" height="48" rx="2"/><path d="M18 32h28"/><circle cx="32" cy="32" r="6"/></g></svg></i>AlpaFlow Scout</div>
+  <div class="pagina">1/4</div>
+  <h1>Construí um agente de IA que faz <em>scouting</em> no futebol brasileiro.</h1>
+  <p class="sub">Em .NET 10. Você descreve o atleta que procura e ele explica quem se encaixa.</p>
+  <div class="chips"><span>.NET 10</span><span>Clean Architecture</span><span>CQRS</span><span>PostgreSQL</span><span>Microsoft.Extensions.AI</span><span>React · PWA</span></div>
+  <div class="celular"><img src="tela-inicial.png" alt=""></div>
+  <div class="rodape"><span>Leandro Borges · Tech Lead .NET</span></div>
+</section>
+
+<!-- 2. Pergunta e resposta -->
+<section class="slide lado">
+  <div class="pagina">2/4</div>
+  <h2>Pergunte como um <em>analista</em>.</h2>
+  <p class="sub">A IA traduz o pedido em filtros e pesos, consulta a base e devolve uma nota de encaixe de 0 a 100.</p>
+  <div class="celular"><img src="resposta.png" alt=""></div>
+  <div class="pontos">
+    <div class="ponto"><b>A IA não calcula nada</b><span>Ela chama consultas como ferramentas. Os números vêm do banco, então ela não inventa estatística.</span></div>
+    <div class="ponto"><b>Posição tática real</b><span>Esquema e grade de cada escalação: quem joga de zagueiro esquerdo numa linha de 3.</span></div>
+    <div class="ponto"><b>Só o que é comparável</b><span>Métricas por 90 minutos, em percentil dentro do mesmo setor.</span></div>
+  </div>
+  <div class="rodape"><span>Nomes desfocados de propósito</span><span>github.com/leandroborges13/AlpaFlowScout</span></div>
+</section>
+
+<!-- 3. Perfil -->
+<section class="slide lado">
+  <div class="pagina">3/4</div>
+  <h2>Cada atleta, <em>explicado</em>.</h2>
+  <p class="sub">Onde atua no esquema, estilo de jogo e o perfil de atributos. Com um resumo escrito pela IA.</p>
+  <div class="celular"><img src="perfil.png" alt=""></div>
+  <div class="pontos">
+    <div class="ponto"><b>Mapa de posições</b><span>Onde ele começa os jogos, a partir das escalações.</span></div>
+    <div class="ponto"><b>Estilo de jogo</b><span>Ataque × marcação, comparado a quem joga no mesmo setor.</span></div>
+    <div class="ponto"><b>Honesto com o dado</b><span>Quando é estimativa, a tela avisa. Sem dado de saúde e sem menores de 18 anos.</span></div>
+  </div>
+  <div class="rodape"><span>Nomes desfocados de propósito</span><span>github.com/leandroborges13/AlpaFlowScout</span></div>
+</section>
+
+<!-- 4. Arquitetura -->
+<section class="slide">
+  <div class="pagina">4/4</div>
+  <h2>Por dentro.</h2>
+  <div class="fluxo">
+    <div class="etapa"><div class="n">1</div><div><b>Coleta</b><span>Worker com cache no banco e controle de cota da API de dados</span></div></div>
+    <div class="etapa"><div class="n">2</div><div><b>Domínio</b><span>Função tática pela grade do esquema · regra dos 18 anos (LGPD)</span></div></div>
+    <div class="etapa"><div class="n">3</div><div><b>Motor de análise</b><span>Por 90 minutos → percentil por setor → atributos com pesos</span></div></div>
+    <div class="etapa"><div class="n">4</div><div><b>Consultas (CQRS)</b><span>Busca por perfil · parecidos · oportunidades · perfil completo</span></div></div>
+    <div class="etapa ia"><div class="n">5</div><div><b>Agente de IA</b><span>IChatClient + function calling: entende, consulta e explica</span></div></div>
+    <div class="etapa"><div class="n">6</div><div><b>App</b><span>React instalável no celular, login, Docker e GitHub Actions</span></div></div>
+  </div>
+  <div class="regra"><b>A IA <em>explica</em>. O banco <em>calcula</em>.</b><span>Por isso o agente não inventa números, e qualquer resposta pode ser conferida na base.</span></div>
+  <div class="rodape"><span>Leandro Borges · Tech Lead .NET</span><span>github.com/leandroborges13/AlpaFlowScout</span></div>
+</section>
+
+<script>
+  const n = parseInt(location.hash.replace('#', ''), 10) || 1
+  document.querySelectorAll('.slide').forEach((s, i) => s.classList.toggle('ativo', i === n - 1))
+</script>
+</body>
+</html>
