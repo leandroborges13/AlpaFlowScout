@@ -22,7 +22,8 @@ COPY --from=web /web/dist ./api/wwwroot
 ENV ASPNETCORE_URLS=http://+:8080 \
     TZ=America/Sao_Paulo
 EXPOSE 8080
-RUN mkdir -p /app/chaves && chown app /app/chaves
+# libgssapi: o driver do PostgreSQL tenta carregar e, sem ela, enche o log de avisos
+RUN apt-get update && apt-get install -y --no-install-recommends libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/* \n && mkdir -p /app/chaves && chown app /app/chaves
 USER app
 WORKDIR /app/api
 ENTRYPOINT ["dotnet", "Scout.Api.dll"]
