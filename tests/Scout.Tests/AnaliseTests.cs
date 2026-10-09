@@ -76,3 +76,20 @@ public class AnaliseTests
         Assert.Equal(new DateOnly(2026, 10, 9), MotorDeAnalise.ReferenciaDa(2026, new DateOnly(2026, 10, 9)));
     }
 }
+
+public class PresencaTests
+{
+    static JogoNaLinhaDoTempo Jogo(bool titular) => new(DateTime.Today, null, "Clube Fictício", true, null, titular, titular ? "Volante" : null);
+
+    [Fact]
+    public void Calcula_titularidade_e_sequencias()
+    {
+        var jogos = new[] { true, true, true, false, true, true }.Select(Jogo).ToList();
+        var p = ObterAtletaHandler.CalcularPresenca(jogos);
+        Assert.Equal(new Presenca(JogosDoClube: 6, ComoTitular: 5, SequenciaAtual: 2, MaiorSequencia: 3), p);
+    }
+
+    [Fact]
+    public void Sem_jogos_tudo_zero() =>
+        Assert.Equal(new Presenca(0, 0, 0, 0), ObterAtletaHandler.CalcularPresenca([]));
+}

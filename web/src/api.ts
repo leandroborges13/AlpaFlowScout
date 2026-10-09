@@ -28,12 +28,30 @@ export type ResumoAtleta = {
   experienciaNoEsquema?: string | null
 }
 
+export type JogoNaLinhaDoTempo = {
+  data: string
+  rodada?: string | null
+  adversario: string
+  emCasa: boolean
+  placar?: string | null
+  titular: boolean
+  funcao?: string | null
+}
+
 export type DetalheAtleta = {
   resumo: ResumoAtleta
+  escudoClube?: string | null
   funcoes: Record<string, number>
   esquemas: Record<string, number>
   atributos: Destaque[]
   indicadores: { nome: string; percentil: number }[]
+  cartoes: { amarelos: number; vermelhos: number; porNoventaMinutos?: number | null }
+  presenca: { jogosDoClube: number; comoTitular: number; sequenciaAtual: number; maiorSequencia: number }
+  linhaDoTempo: JogoNaLinhaDoTempo[]
+  trajetoria?: {
+    clubes: { clube: string; escudo?: string | null; temporadas: number[] }[]
+    transferencias: { data?: string | null; de?: string | null; para?: string | null; tipo?: string | null }[]
+  } | null
 }
 
 export type Parecidos = { referencia: ResumoAtleta; parecidos: { atleta: ResumoAtleta; semelhanca: number }[] }
@@ -54,4 +72,14 @@ export const api = {
     }),
   atleta: (id: number, temporada: number) => pedir<DetalheAtleta>(`/api/atletas/${id}?temporada=${temporada}`),
   parecidos: (id: number, temporada: number) => pedir<Parecidos>(`/api/atletas/${id}/parecidos?temporada=${temporada}`),
+  resumoIa: (id: number, temporada: number) => pedir<{ texto: string }>(`/api/atletas/${id}/resumo-ia?temporada=${temporada}`),
+}
+
+// Modo gravação: esconde fotos e escudos (direito de imagem e de marca) para vídeos públicos.
+const CHAVE_GRAVACAO = 'scout:modo-gravacao'
+export function lerModoGravacao(): boolean {
+  try { return localStorage.getItem(CHAVE_GRAVACAO) === '1' } catch { return false }
+}
+export function salvarModoGravacao(ativo: boolean) {
+  try { localStorage.setItem(CHAVE_GRAVACAO, ativo ? '1' : '0') } catch { /* sem armazenamento: vale só nesta sessão */ }
 }

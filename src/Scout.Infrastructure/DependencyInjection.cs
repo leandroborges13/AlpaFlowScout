@@ -30,6 +30,7 @@ public static class DependencyInjection
         services.AddHttpClient<ApiFootballClient>(c => c.BaseAddress = new Uri("https://v3.football.api-sports.io"))
             .AddStandardResilienceHandler(); // novas tentativas e circuit breaker (Polly)
         services.AddScoped<Importador>();
+        services.AddScoped<Scout.Application.Consultas.IHistoricoDoAtleta, HistoricoDoAtleta>();
         return services;
     }
 }

@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Scout.Application.Analise;
 using Scout.Application.Consultas;
@@ -25,6 +26,7 @@ public class AssistenteScout(
     IQueryHandler<AtletasParecidos, ResultadoParecidos?> parecidos,
     IQueryHandler<BuscarOportunidades, IReadOnlyList<ResumoAtleta>> oportunidades,
     IQueryHandler<ListarCompeticoes, IReadOnlyList<CompeticaoDisponivel>> competicoes,
+    IMemoryCache cache,
     ILogger<AssistenteScout> log)
 {
     public async Task<RespostaChat> Responder(IReadOnlyList<MensagemChat> conversa, CancellationToken ct)
@@ -67,9 +69,11 @@ public class AssistenteScout(
             AIFunctionFactory.Create(
                 async (int atletaId, int? temporada = null) =>
                 {
-                    var d = await detalhar.Handle(new ObterAtleta(atletaId, temporada), ct);
-                    if (d is not null) Citar([d.Resumo]);
-                    return (object?)d ?? "Atleta não encontrado ou fora da análise (menor de idade ou poucos minutos).";
+                    var d = await detalhar.Handle(new ObterAtleta(atletaId, temporada, ComTrajetoria: false), ct);
+                    if (d is null) return (object)"Atleta não encontrado ou fora da análise (menor de idade ou poucos minutos).";
+                    Citar([d.Resumo]);
+                    // Sem a linha do tempo jogo a jogo: o resumo da presença basta para a conversa
+                    return (object)new { d.Resumo, d.Funcoes, d.Esquemas, d.Atributos, d.Cartoes, d.Presenca };
                 },
                 "detalhar_atleta",
                 "Perfil completo de um atleta: funções que já fez, esquemas, nota de cada atributo e percentis."),
@@ -108,6 +112,30 @@ public class AssistenteScout(
         var resposta = await chat.GetResponseAsync(mensagens, new ChatOptions { Tools = ferramentas, Temperature = 0.2f }, ct);
         return new RespostaChat(resposta.Text, citados.Values.ToList());
     }
+
+    /// <summary>Parágrafo de analista sobre o atleta, só com as nossas métricas. Guardado por 6 horas.</summary>
+    public Task<string> ResumirAtleta(DetalheAtleta d, CancellationToken ct) =>
+        cache.GetOrCreateAsync($"resumo-ia:{d.Resumo.Id}:{d.Resumo.Temporada}", async e =>
+        {
+            e.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(6);
+            var dados = JsonSerializer.Serialize(new
+            {
+                d.Resumo, d.Funcoes, d.Esquemas, d.Atributos, d.Cartoes, d.Presenca,
+                Clubes = d.Trajetoria?.Clubes.Take(6).Select(c => new { c.Clube, c.Temporadas }),
+            });
+            var resposta = await chat.GetResponseAsync(
+            [
+                new(ChatRole.System, """
+                    Você é analista de desempenho. Escreva um resumo de 4 a 5 frases, em português do Brasil, sobre o atleta, só com os dados recebidos.
+                    Cubra: perfil e função em campo; regularidade (presença como titular); 2 ou 3 pontos fortes e 1 ou 2 pontos a desenvolver, em percentis;
+                    disciplina (cartões); e, se houver, a trajetória recente de clubes.
+                    Não cite estatísticas brutas (desarmes, duelos, passes). Não fale de saúde nem de lesões.
+                    Jogo aéreo, saída de bola e intensidade são estimativas: sempre que citar um deles, escreva "(estimativa)" logo depois. Tom profissional, sem exageros.
+                    """),
+                new(ChatRole.User, dados),
+            ], new ChatOptions { Temperature = 0.3f }, ct);
+            return resposta.Text;
+        })!;
 
     static string ChavesAtributos => string.Join(", ", Catalogo.Atributos.Select(a => $"{a.Chave} ({a.Nome})"));
 

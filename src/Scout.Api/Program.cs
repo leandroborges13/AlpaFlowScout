@@ -37,6 +37,11 @@ api.MapPost("/busca", (BuscarPorPerfil q, IQueryHandler<BuscarPorPerfil, Resulta
 api.MapGet("/atletas/{id:int}", async (int id, int? temporada, int? competicao, IQueryHandler<ObterAtleta, DetalheAtleta?> h, CancellationToken ct) =>
     await h.Handle(new ObterAtleta(id, temporada, competicao), ct) is { } d ? Results.Ok(d) : Results.NotFound());
 
+api.MapGet("/atletas/{id:int}/resumo-ia", async (int id, int? temporada, IQueryHandler<ObterAtleta, DetalheAtleta?> h, AssistenteScout assistente, CancellationToken ct) =>
+    await h.Handle(new ObterAtleta(id, temporada), ct) is { } d
+        ? Results.Ok(new { texto = await assistente.ResumirAtleta(d, ct) })
+        : Results.NotFound());
+
 api.MapGet("/atletas/{id:int}/parecidos", async (int id, int? temporada, int? idadeMax, IQueryHandler<AtletasParecidos, ResultadoParecidos?> h, CancellationToken ct) =>
     await h.Handle(new AtletasParecidos(id, temporada, idadeMax), ct) is { } r ? Results.Ok(r) : Results.NotFound());
 

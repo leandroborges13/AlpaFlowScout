@@ -125,12 +125,15 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor) : IQueryH
 
 public record PercentilIndicador(string Nome, double Percentil);
 
-public record DetalheAtleta(ResumoAtleta Resumo, IReadOnlyDictionary<string, int> Funcoes, IReadOnlyDictionary<string, int> Esquemas,
-    IReadOnlyList<Destaque> Atributos, IReadOnlyList<PercentilIndicador> Indicadores);
+public record DetalheAtleta(ResumoAtleta Resumo, string? EscudoClube,
+    IReadOnlyDictionary<string, int> Funcoes, IReadOnlyDictionary<string, int> Esquemas,
+    IReadOnlyList<Destaque> Atributos, IReadOnlyList<PercentilIndicador> Indicadores,
+    Cartoes Cartoes, Presenca Presenca, IReadOnlyList<JogoNaLinhaDoTempo> LinhaDoTempo,
+    TrajetoriaAtleta? Trajetoria);
 
-public record ObterAtleta(int AtletaId, int? Temporada = null, int? CompeticaoId = null) : IQuery<DetalheAtleta?>;
+public record ObterAtleta(int AtletaId, int? Temporada = null, int? CompeticaoId = null, bool ComTrajetoria = true) : IQuery<DetalheAtleta?>;
 
-public class ObterAtletaHandler(IScoutDb db, MotorDeAnalise motor) : IQueryHandler<ObterAtleta, DetalheAtleta?>
+public class ObterAtletaHandler(IScoutDb db, MotorDeAnalise motor, IHistoricoDoAtleta historico) : IQueryHandler<ObterAtleta, DetalheAtleta?>
 {
     public async Task<DetalheAtleta?> Handle(ObterAtleta q, CancellationToken ct)
     {
@@ -149,7 +152,52 @@ public class ObterAtletaHandler(IScoutDb db, MotorDeAnalise motor) : IQueryHandl
             .Where(k => l.Percentis.GetValueOrDefault(k) is not null)
             .Select(k => new PercentilIndicador(Catalogo.PorChave[k].Nome, Math.Round(l.Percentis[k]!.Value)))
             .ToList();
-        return new DetalheAtleta(Resumir.De(l), l.Funcoes, l.Esquemas, atributos, indicadores);
+
+        var linhaDoTempo = await LinhaDoTempo(l, ct);
+        var cartoes = new Cartoes(l.Amarelos, l.Vermelhos,
+            l.Minutos > 0 ? Math.Round((l.Amarelos + l.Vermelhos) * 90.0 / l.Minutos, 2) : null);
+        var trajetoria = q.ComTrajetoria ? await historico.Obter(l.AtletaId, ct) : null;
+
+        return new DetalheAtleta(Resumir.De(l), l.Escudo, l.Funcoes, l.Esquemas, atributos, indicadores,
+            cartoes, CalcularPresenca(linhaDoTempo), linhaDoTempo, trajetoria);
+    }
+
+    /// <summary>Jogos encerrados dos clubes do atleta na competição, marcando onde ele foi titular.</summary>
+    async Task<List<JogoNaLinhaDoTempo>> LinhaDoTempo(LinhaAnalise l, CancellationToken ct)
+    {
+        var clubes = l.ClubeIds;
+        var partidas = await db.Partidas.AsNoTracking()
+            .Where(p => p.CompeticaoId == l.CompeticaoId && p.Temporada == l.Temporada
+                        && (p.Status == "FT" || p.Status == "AET" || p.Status == "PEN")
+                        && (clubes.Contains(p.MandanteId) || clubes.Contains(p.VisitanteId)))
+            .OrderBy(p => p.Data)
+            .ToListAsync(ct);
+        var ids = partidas.Select(p => p.Id).ToList();
+        var titularidades = await db.Escalacoes.AsNoTracking()
+            .Where(e => e.AtletaId == l.AtletaId && ids.Contains(e.PartidaId))
+            .ToDictionaryAsync(e => e.PartidaId, e => e.Funcao, ct);
+        var nomes = await db.Clubes.AsNoTracking().ToDictionaryAsync(c => c.Id, c => c.Nome, ct);
+
+        return partidas.Select(p =>
+        {
+            var emCasa = clubes.Contains(p.MandanteId);
+            var adversario = emCasa ? p.VisitanteId : p.MandanteId;
+            var placar = p.GolsMandante is null ? null : $"{p.GolsMandante} x {p.GolsVisitante}";
+            var titular = titularidades.TryGetValue(p.Id, out var funcao);
+            return new JogoNaLinhaDoTempo(p.Data, p.Rodada, nomes.GetValueOrDefault(adversario, "?"), emCasa, placar, titular, funcao);
+        }).ToList();
+    }
+
+    public static Presenca CalcularPresenca(IReadOnlyList<JogoNaLinhaDoTempo> jogos)
+    {
+        int atual = 0, maior = 0, corrida = 0;
+        foreach (var j in jogos)
+        {
+            corrida = j.Titular ? corrida + 1 : 0;
+            maior = Math.Max(maior, corrida);
+        }
+        for (var i = jogos.Count - 1; i >= 0 && jogos[i].Titular; i--) atual++;
+        return new Presenca(jogos.Count, jogos.Count(j => j.Titular), atual, maior);
     }
 }
 

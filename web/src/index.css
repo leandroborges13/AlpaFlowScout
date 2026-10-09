@@ -101,3 +101,51 @@ button:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent);
 .btn { background: var(--surface-2); border: 1px solid var(--line); color: var(--ink); border-radius: 10px; padding: 8px 14px; }
 .btn.prim { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .erro { color: var(--aviso); }
+
+/* Cabeçalho: alternância do modo gravação */
+.topo-acoes { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.alternar { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); cursor: pointer; }
+.alternar input { accent-color: var(--accent); }
+
+/* Retrato do atleta (foto ou iniciais) */
+.retrato { width: 40px; height: 40px; border-radius: 50%; overflow: hidden; flex: none; background: var(--surface-2); display: grid; place-items: center; color: var(--ink-2); font-weight: 700; font-size: 14px; }
+.retrato.grande { width: 72px; height: 72px; font-size: 22px; }
+.retrato img { width: 100%; height: 100%; object-fit: cover; }
+.card-topo .card-id { flex: 1; min-width: 0; }
+
+/* Mediana (50) como referência nas barras */
+.medidor .trilho { position: relative; }
+.medidor .mediana { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 2px; background: var(--ink-2); opacity: 0.55; border-radius: 1px; }
+.legenda { margin: -2px 0 10px; font-size: 12.5px; color: var(--muted); }
+
+/* Painel do atleta */
+.perfil-topo { display: flex; gap: 14px; align-items: flex-start; }
+.perfil-id { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.clube-linha { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--ink-2); }
+.clube-linha img { object-fit: contain; }
+.resumo-ia { background: var(--accent-soft); border-radius: 12px; padding: 12px 14px; }
+.resumo-ia p { margin: 0 0 6px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.tile { background: var(--surface-2); border-radius: 10px; padding: 10px 12px; display: grid; gap: 2px; }
+.tile b { font-size: 22px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.tile span { font-size: 12px; color: var(--ink-2); }
+
+/* Linha do tempo de titularidade */
+.linha-tempo { display: grid; gap: 8px; }
+.lt-legenda { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--ink-2); align-items: center; }
+.lt-legenda span { display: inline-flex; align-items: center; gap: 6px; }
+.lt-faixa { display: flex; flex-wrap: wrap; gap: 3px; }
+.lt-quad { width: 14px; height: 14px; border-radius: 3px; border: 0; padding: 0; background: var(--meter-track); display: inline-block; }
+.lt-quad.titular { background: var(--meter); }
+button.lt-quad:hover, button.lt-quad:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.lt-dica { font-size: 12.5px; color: var(--ink-2); min-height: 1.5em; }
+
+/* Trajetória */
+.trajetoria { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.trajetoria li { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; }
+.trajetoria img { object-fit: contain; }
+.trajetoria .ponto { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); justify-self: center; }
+.t-clube { font-weight: 600; }
+.transferencias { margin-top: 10px; font-size: 13.5px; }
+.transferencias summary { cursor: pointer; color: var(--ink-2); }
+.transferencias ul { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 4px; }

@@ -20,6 +20,8 @@ public class LinhaAnalise
     public int Temporada { get; init; }
     public string Clube { get; init; } = "";
     public string[] Clubes { get; init; } = [];
+    public int[] ClubeIds { get; init; } = [];
+    public string? Escudo { get; init; }
     public Setor Setor { get; init; }
     /// <summary>Função mais frequente nas escalações (ex.: "Zagueiro esquerdo"), quando houver escalações.</summary>
     public string? Funcao { get; init; }
@@ -138,6 +140,7 @@ public class MotorDeAnalise(IScoutDb db, IMemoryCache cache)
                 Idade = atleta.IdadeEm(referencia)!.Value, AlturaCm = atleta.AlturaCm, Nacionalidade = atleta.Nacionalidade, Foto = atleta.Foto,
                 CompeticaoId = competicaoId, Competicao = competicao.Nome, Temporada = temporada,
                 Clube = principal.Clube.Nome, Clubes = g.Select(e => e.Clube.Nome).Distinct().ToArray(),
+                ClubeIds = g.Select(e => e.ClubeId).Distinct().ToArray(), Escudo = principal.Clube.Escudo,
                 Setor = setor.Value, Funcao = funcaoPrincipal, Lado = ladoPrincipal, Funcoes = funcoes,
                 Esquemas = (esc ?? []).GroupBy(e => e.Esquema).ToDictionary(x => x.Key, x => x.Count()),
                 EsquemaMaisComum = esc?.GroupBy(e => e.Esquema).OrderByDescending(x => x.Count()).Select(x => x.Key).FirstOrDefault(),
