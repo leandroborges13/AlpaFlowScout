@@ -33,7 +33,7 @@ public class HistoricoDoAtleta(ApiFootballClient api, ILogger<HistoricoDoAtleta>
                         DateOnly.TryParse(Texto(t, "date"), CultureInfo.InvariantCulture, out var d) ? d : null,
                         Texto(t, "teams", "out", "name"), Texto(t, "teams", "in", "name"), Texto(t, "type")));
 
-            return new TrajetoriaAtleta(times, transferencias.OrderByDescending(t => t.Data).ToList());
+            return new TrajetoriaAtleta(CompletarAnos(times, transferencias), transferencias.OrderByDescending(t => t.Data).ToList());
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
@@ -42,6 +42,25 @@ public class HistoricoDoAtleta(ApiFootballClient api, ILogger<HistoricoDoAtleta>
             return null;
         }
     }
+
+    /// <summary>
+    /// O provedor às vezes não informa as temporadas de um clube (comum em times B e de base).
+    /// Nesses casos, usa os anos das transferências de entrada e saída do clube.
+    /// </summary>
+    public static List<ClubeNaCarreira> CompletarAnos(List<ClubeNaCarreira> clubes, List<Transferencia> transferencias) =>
+        clubes.Select(c =>
+            {
+                if (c.Temporadas.Count > 0) return c;
+                var anos = transferencias
+                    .Where(t => t.Data is not null && (Mesmo(t.Para, c.Clube) || Mesmo(t.De, c.Clube)))
+                    .Select(t => t.Data!.Value.Year)
+                    .Distinct().OrderDescending().ToList();
+                return c with { Temporadas = anos };
+            })
+            .OrderByDescending(c => c.Temporadas.DefaultIfEmpty(0).Max())
+            .ToList();
+
+    static bool Mesmo(string? a, string b) => string.Equals(a?.Trim(), b.Trim(), StringComparison.OrdinalIgnoreCase);
 
     static string? Texto(JsonElement e, params string[] caminho)
     {

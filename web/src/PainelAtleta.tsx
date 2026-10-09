@@ -169,7 +169,7 @@ function Tile({ valor, rotulo }: { valor: string; rotulo: string }) {
 /** "2022–2026" para temporadas seguidas; "2019, 2021" quando há buracos. */
 function Faixa(temporadas: number[]) {
   const t = [...temporadas].sort((a, b) => a - b)
-  if (t.length === 0) return ''
+  if (t.length === 0) return 'ano não informado'
   const seguidas = t.every((v, i) => i === 0 || v === t[i - 1] + 1)
   return seguidas && t.length > 1 ? `${t[0]}–${t[t.length - 1]}` : t.join(', ')
 }

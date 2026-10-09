@@ -93,3 +93,24 @@ public class PresencaTests
     public void Sem_jogos_tudo_zero() =>
         Assert.Equal(new Presenca(0, 0, 0, 0), ObterAtletaHandler.CalcularPresenca([]));
 }
+
+public class TrajetoriaTests
+{
+    [Fact]
+    public void Clube_sem_temporada_usa_o_ano_das_transferencias()
+    {
+        var clubes = new List<ClubeNaCarreira>
+        {
+            new("Clube Fictício A", null, [2025, 2026]),
+            new("Clube Fictício B", null, []),
+        };
+        var transferencias = new List<Transferencia>
+        {
+            new(new DateOnly(2021, 1, 10), "Clube Fictício B", "Clube Fictício C", "Free"),
+            new(new DateOnly(2019, 7, 1), "Clube Fictício D", "Clube Fictício B", "N/A"),
+        };
+        var r = Scout.Infrastructure.Provedor.HistoricoDoAtleta.CompletarAnos(clubes, transferencias);
+        Assert.Equal([2021, 2019], r.Single(c => c.Clube == "Clube Fictício B").Temporadas);
+        Assert.Equal("Clube Fictício A", r[0].Clube);
+    }
+}
