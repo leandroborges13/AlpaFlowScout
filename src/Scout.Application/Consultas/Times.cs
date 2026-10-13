@@ -82,9 +82,10 @@ public class ListarTimesHandler(IScoutDb db, AnaliseDeTimes analise) : IQueryHan
     public async Task<IReadOnlyList<ResumoTime>> Handle(ListarTimes q, CancellationToken ct)
     {
         var times = await CarregarTimes(db, analise, q.Temporada, q.CompeticaoId is { } c ? [c] : null, ct);
-        return times
-            .Where(t => q.Nome is null || t.Nome.Contains(q.Nome, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(t => t.CompeticaoId).ThenBy(t => t.Posicao)
+        var ordenados = q.Nome is null
+            ? times.OrderBy(t => t.CompeticaoId).ThenBy(t => t.Posicao)
+            : BuscaPorNome.Filtrar(times, q.Nome, t => t.Nome); // "Atlético MG" acha "Atletico-MG"
+        return ordenados
             .Select(ResumirTime.De)
             .ToList();
     }

@@ -106,12 +106,12 @@ public class AssistenteScout(
                 "oportunidades",
                 "Jovens que já jogam bastante no clube e estão entre os melhores da posição."),
             AIFunctionFactory.Create(
-                async ([Description("Parte do nome do atleta")] string nome) =>
-                    await db.Atletas.AsNoTracking()
-                        .Where(a => a.Nome.ToLower().Contains(nome.ToLower()) || (a.NomeCompleto ?? "").ToLower().Contains(nome.ToLower()))
-                        .OrderBy(a => a.Nome).Take(8)
-                        .Select(a => new { a.Id, a.Nome, a.NomeCompleto })
-                        .ToListAsync(ct),
+                async ([Description("Nome ou parte do nome do atleta")] string nome) =>
+                {
+                    // Poucos milhares de nomes: a busca tolerante (sem acento, com erro de digitação) roda em memória
+                    var atletas = await db.Atletas.AsNoTracking().Select(a => new { a.Id, a.Nome, a.NomeCompleto }).ToListAsync(ct);
+                    return BuscaPorNome.Filtrar(atletas, nome, a => $"{a.Nome} {a.NomeCompleto}").Take(8).ToList();
+                },
                 "procurar_atleta_por_nome",
                 "Encontra o ID de um atleta pelo nome, para usar nas outras ferramentas."),
             AIFunctionFactory.Create(
@@ -120,8 +120,7 @@ public class AssistenteScout(
                        int? temporada = null) =>
                 {
                     var r = await listarTimes.Handle(new ListarTimes(competicao, temporada, nome), ct);
-                    // A lista inteira só vira cartão quando é uma busca por nome (poucos times)
-                    if (nome is not null) CitarTimes(r.Take(4));
+                    if (nome is not null) CitarTimes(r.Take(1)); // busca por nome: só o mais parecido vira cartão
                     return r.Select(t => new { t.Id, t.Nome, t.Competicao, t.Temporada, t.Posicao, t.Pontos, t.Jogos, t.EsquemaMaisUsado, t.Estilo, t.Carencias });
                 },
                 "listar_times",
@@ -134,9 +133,10 @@ public class AssistenteScout(
                     CitarTimes([d.Resumo]);
                     return (object)new
                     {
-                        d.Resumo, d.Esquemas, d.Dimensoes, d.Indicadores, d.Estilo, d.Elenco,
+                        d.Resumo, Esquemas = Esquemas(d.Esquemas), d.Dimensoes, d.Indicadores, d.Estilo, d.Elenco,
                         Funcoes = d.Funcoes.Select(f => new { f.Funcao, f.Jogos, f.NotaTitulares, f.Percentil, f.Carencia, Titulares = f.Titulares.Select(a => $"{a.Nome} ({a.Jogos} jogos)") }),
                         Principais = d.Principais.Select(a => new { a.Id, a.Nome, a.Idade, a.Funcao, a.Nota }),
+                        Treinadores = d.Treinadores.Select(t => new { t.Id, t.Nome, t.NoCargo, t.Jogos, AproveitamentoPercentual = t.Aproveitamento }),
                         d.Observacoes,
                     };
                 },
@@ -181,7 +181,7 @@ public class AssistenteScout(
                     var lista = (jovens
                         ? r.Where(t => t.TitularesAte23 is not null).OrderByDescending(t => t.TitularesAte23)
                         : r.OrderByDescending(t => t.Aproveitamento)).ToList();
-                    if (nome is not null) CitarTreinadores(lista.Take(3));
+                    if (nome is not null) CitarTreinadores(lista.Take(1));
                     else if (ordenarPor is not null) CitarTreinadores(lista.Take(5));
                     return lista.Select(t => new
                     {
@@ -203,7 +203,7 @@ public class AssistenteScout(
                         {
                             p.Passagem.Clube, p.Passagem.Competicao, p.Passagem.Temporada, p.Passagem.NoCargo, p.Passagem.Inicio, p.Passagem.Fim,
                             p.Passagem.Jogos, p.Passagem.Vitorias, p.Passagem.Empates, p.Passagem.Derrotas, p.Passagem.Aproveitamento,
-                            p.Esquemas, p.Estilo, p.Passagem.Dimensoes, p.IdadeMediaTitulares, p.Passagem.TitularesAte23, p.PercentilJovens,
+                            Esquemas = Esquemas(p.Esquemas), p.Estilo, p.Passagem.Dimensoes, p.IdadeMediaTitulares, p.Passagem.TitularesAte23, p.PercentilJovens,
                             p.Comparacao, OutrosNoClube = p.NoMesmoClube,
                         }),
                         Carreira = d.Carreira?.Passagens.Take(8),
@@ -245,6 +245,10 @@ public class AssistenteScout(
             return resposta.Text;
         })!;
 
+    /// <summary>Nomes de campo sem ambiguidade: o aproveitamento é do esquema, não dos jogos em casa.</summary>
+    static IEnumerable<object> Esquemas(IEnumerable<EsquemaDoTime> esquemas) =>
+        esquemas.Select(e => new { e.Esquema, Jogos = e.Jogos, JogosEmCasa = e.EmCasa, JogosFora = e.Fora, AproveitamentoPercentualComEsseEsquema = e.Aproveitamento });
+
     static string ChavesAtributos => string.Join(", ", Catalogo.Atributos.Select(a => $"{a.Chave} ({a.Nome})"));
 
     static string Instrucoes(IReadOnlyList<CompeticaoDisponivel> disponiveis, int temporadaPadrao) => $"""
@@ -282,6 +286,9 @@ public class AssistenteScout(
           e, se houver, a comparação com o antecessor no clube.
         - Os percentis comparam só os jogos em que cada treinador comandou, com os outros treinadores da mesma competição.
           Passagens com menos de 5 jogos não têm percentil: diga que a amostra é pequena.
+        - Nomes de times e treinadores no provedor vêm sem acento e às vezes com sobrenome primeiro ("Atletico-MG", "Dominguez Eduardo").
+          A busca por nome já tolera isso: passe só o nome principal ("Atletico MG", "Dominguez"), sem apelidos. Se não achar,
+          tente o sobrenome sozinho ou procure pelo time (analisar_time traz os treinadores) antes de dizer que não existe.
         - Para rankings, use ordenarPor ("jovens" ou "aproveitamento") e mantenha a ordem recebida. Uso de jovens é porcentagem:
           "55% das titularidades para atletas até 23 anos", nunca "55 jovens".
         - Não opine sobre a pessoa nem sobre a vida pessoal: fale do trabalho em campo, com dados.

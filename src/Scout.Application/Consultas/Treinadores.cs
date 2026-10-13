@@ -52,10 +52,12 @@ public class ListarTreinadoresHandler(IScoutDb db, AnaliseDeTimes analise) : IQu
     public async Task<IReadOnlyList<ResumoTreinador>> Handle(ListarTreinadores q, CancellationToken ct)
     {
         var analises = await ListarTimesHandler.CarregarAnalises(db, analise, q.Temporada, q.CompeticaoId is { } c ? [c] : null, ct);
-        return analises.SelectMany(a => a.Treinadores)
-            // Buscando pelo nome, vale qualquer passagem; sem nome, só quem está no cargo
-            .Where(p => q.Nome is not null ? p.Nome.Contains(q.Nome, StringComparison.OrdinalIgnoreCase) : !q.SoNoCargo || p.NoCargo)
-            .OrderBy(p => p.Linha.CompeticaoId).ThenByDescending(p => p.Linha.Aproveitamento)
+        var passagens = analises.SelectMany(a => a.Treinadores);
+        // Buscando pelo nome, vale qualquer passagem, da mais parecida para a menos; sem nome, só quem está no cargo
+        var ordenadas = q.Nome is not null
+            ? BuscaPorNome.Filtrar(passagens, q.Nome, p => p.Nome)
+            : passagens.Where(p => !q.SoNoCargo || p.NoCargo).OrderBy(p => p.Linha.CompeticaoId).ThenByDescending(p => p.Linha.Aproveitamento);
+        return ordenadas
             .Select(ResumirTreinador.De)
             .ToList();
     }
