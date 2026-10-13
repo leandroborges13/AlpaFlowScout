@@ -9,8 +9,8 @@ namespace Scout.Application.Consultas;
 /// </summary>
 public record ResumoTime(
     int Id, string Nome, string? Escudo, int CompeticaoId, string Competicao, int Temporada,
-    int Posicao, int Jogos, int Vitorias, int Empates, int Derrotas, int GolsPro, int GolsContra, int Pontos, int? Aproveitamento,
-    string? EsquemaMaisUsado, string? Estilo, IReadOnlyList<Destaque> Dimensoes, IReadOnlyList<string> Carencias);
+    int? Posicao, int Jogos, int Vitorias, int Empates, int Derrotas, int GolsPro, int GolsContra, int Pontos, int? Aproveitamento,
+    string? EsquemaMaisUsado, string? Estilo, IReadOnlyList<Destaque> Dimensoes, IReadOnlyList<string> Carencias, bool Copa = false);
 
 public record EsquemaDoTime(string Esquema, int Jogos, int EmCasa, int Fora, int? Aproveitamento);
 
@@ -36,11 +36,12 @@ public static class ResumirTime
 
     public static ResumoTime De(LinhaTime t) => new(
         t.ClubeId, t.Nome, t.Escudo, t.CompeticaoId, t.Competicao, t.Temporada,
-        t.Posicao, t.Jogos, t.Vitorias, t.Empates, t.Derrotas, t.GolsPro, t.GolsContra, t.Pontos,
+        t.Copa ? null : t.Posicao, // copa não tem classificação geral (grupos e mata-mata)
+        t.Jogos, t.Vitorias, t.Empates, t.Derrotas, t.GolsPro, t.GolsContra, t.Pontos,
         t.Aproveitamento is { } a ? (int)Math.Round(a) : null,
         t.EsquemasPorJogo.GroupBy(e => e.Esquema).OrderByDescending(g => g.Count()).Select(g => g.Key).FirstOrDefault(),
         Estilo(t)?.Rotulo, Dimensoes(t),
-        Necessidades(t).Where(n => n.Carencia).OrderBy(n => n.Percentil).Take(2).Select(n => n.Funcao).ToList());
+        Necessidades(t).Where(n => n.Carencia).OrderBy(n => n.Percentil).Take(2).Select(n => n.Funcao).ToList(), t.Copa);
 
     public static List<Destaque> Dimensoes(LinhaTime t) => CatalogoTimes.Dimensoes
         .Select(d => (d, nota: CatalogoTimes.NotaDaDimensao(t, d)))
@@ -82,9 +83,13 @@ public class ListarTimesHandler(IScoutDb db, AnaliseDeTimes analise) : IQueryHan
     public async Task<IReadOnlyList<ResumoTime>> Handle(ListarTimes q, CancellationToken ct)
     {
         var times = await CarregarTimes(db, analise, q.Temporada, q.CompeticaoId is { } c ? [c] : null, ct);
-        var ordenados = q.Nome is null
-            ? times.OrderBy(t => t.CompeticaoId).ThenBy(t => t.Posicao)
-            : BuscaPorNome.Filtrar(times, BuscaPorNome.TraduzirApelido(q.Nome), t => t.Nome); // "Atlético MG" acha "Atletico-MG"
+        var busca = q.Nome is null ? null : BuscaPorNome.TraduzirApelido(q.Nome); // "Atlético MG" acha "Atletico-MG"
+        var ordenados = busca is null
+            // Sem competição pedida, a lista geral fica nas ligas (o mesmo time apareceria de novo em cada copa)
+            ? times.Where(t => !t.Copa || q.CompeticaoId is not null).OrderBy(t => t.CompeticaoId).ThenBy(t => t.Posicao)
+            // Pelo nome: o mais parecido primeiro e, no mesmo time, a liga antes das copas
+            : times.Select(t => (t, pontos: BuscaPorNome.Pontuar(busca, t.Nome))).Where(x => x.pontos > 0)
+                .OrderByDescending(x => x.pontos).ThenBy(x => x.t.Copa).Select(x => x.t);
         return ordenados
             .Select(ResumirTime.De)
             .ToList();
@@ -112,7 +117,8 @@ public class ObterTimeHandler(IScoutDb db, AnaliseDeTimes analise, MotorDeAnalis
     public async Task<DetalheTime?> Handle(ObterTime q, CancellationToken ct)
     {
         var times = await ListarTimesHandler.CarregarTimes(db, analise, q.Temporada, q.CompeticaoId is { } c ? [c] : null, ct);
-        var t = times.Where(x => x.ClubeId == q.ClubeId).OrderByDescending(x => x.Temporada).ThenByDescending(x => x.Jogos).FirstOrDefault();
+        // Sem competição pedida, vale a liga do time (as copas têm poucos jogos)
+        var t = times.Where(x => x.ClubeId == q.ClubeId).OrderBy(x => x.Copa).ThenByDescending(x => x.Temporada).ThenByDescending(x => x.Jogos).FirstOrDefault();
         if (t is null) return null;
         var daCompeticao = times.Where(x => x.CompeticaoId == t.CompeticaoId && x.Temporada == t.Temporada).ToList();
         var treinadores = (await analise.Analisar(t.CompeticaoId, t.Temporada, ct))?.Treinadores
@@ -174,6 +180,7 @@ public class BuscarTimesComCarenciaHandler(IScoutDb db, AnaliseDeTimes analise) 
     {
         var times = await ListarTimesHandler.CarregarTimes(db, analise, q.Temporada, q.Competicoes, ct);
         return times
+            .Where(t => !t.Copa || q.Competicoes is { Length: > 0 }) // carência se mede na liga
             .SelectMany(t => ResumirTime.Necessidades(t)
                 .Where(n => n.Percentil is not null && CatalogoTimes.FuncoesEquivalentes(n.Funcao).Any(f => f.Contains(q.Funcao, StringComparison.OrdinalIgnoreCase)))
                 .Select(n => (t, n)))

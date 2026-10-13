@@ -89,7 +89,7 @@ public class AssistenteScout(
                     if (d is null) return (object)"Atleta não encontrado ou fora da análise (menor de idade ou poucos minutos).";
                     Citar([d.Resumo]);
                     // Sem a linha do tempo jogo a jogo: o resumo da presença basta para a conversa
-                    return (object)new { d.Resumo, d.Funcoes, d.Esquemas, d.Atributos, d.Cartoes, d.Presenca, d.Estilo };
+                    return (object)new { d.Resumo, d.Funcoes, d.Esquemas, d.Atributos, d.Cartoes, d.Presenca, d.Estilo, DesempenhoEmCopas = d.Copas };
                 },
                 "detalhar_atleta",
                 "Perfil completo de um atleta: funções que já fez, esquemas, nota de cada atributo e percentis."),
@@ -126,7 +126,9 @@ public class AssistenteScout(
                        int? temporada = null) =>
                 {
                     // Buscando pelo nome, procura em todas as competições: a IA às vezes chuta a série errada ("Cruzeiro na Série B")
-                    var r = await listarTimes.Handle(nome is null ? new ListarTimes(competicao, temporada) : new ListarTimes(Nome: nome), ct);
+                    var r = await listarTimes.Handle(new ListarTimes(competicao, nome is null ? temporada : null, nome), ct);
+                    // Nome com competição: procura nela; se não achar (a IA chutou a série errada), procura em todas
+                    if (nome is not null && competicao is not null && r.Count == 0) r = await listarTimes.Handle(new ListarTimes(Nome: nome), ct);
                     if (nome is not null && temporada is not null && r.Any(t => t.Temporada == temporada)) r = r.Where(t => t.Temporada == temporada).ToList();
                     if (nome is not null) CitarTimes(r.Take(1)); // busca por nome: só o mais parecido vira cartão
                     return r.Select(t => new { t.Id, t.Nome, t.Competicao, t.Temporada, t.Posicao, t.Pontos, t.Jogos, t.EsquemaMaisUsado, t.Estilo, t.Carencias });
@@ -185,7 +187,8 @@ public class AssistenteScout(
                        [Description("'aproveitamento' (padrão) ou 'jovens' (quem mais escala atletas até 23 anos)")] string? ordenarPor = null,
                        int? temporada = null) =>
                 {
-                    var r = await listarTreinadores.Handle(nome is null ? new ListarTreinadores(competicao, null, temporada) : new ListarTreinadores(Nome: nome), ct);
+                    var r = await listarTreinadores.Handle(new ListarTreinadores(competicao, nome, nome is null ? temporada : null), ct);
+                    if (nome is not null && competicao is not null && r.Count == 0) r = await listarTreinadores.Handle(new ListarTreinadores(Nome: nome), ct);
                     if (nome is not null && temporada is not null && r.Any(t => t.Temporada == temporada)) r = r.Where(t => t.Temporada == temporada).ToList();
                     var jovens = string.Equals(ordenarPor, "jovens", StringComparison.OrdinalIgnoreCase);
                     var lista = (jovens
@@ -256,10 +259,11 @@ public class AssistenteScout(
                 async ([Description("Nome do time (oficial ou apelido, ex.: 'Galo')")] string time,
                        [Description("Nome do adversário, se citado")] string? adversario = null,
                        [Description("Data inicial (aaaa-mm-dd)")] string? de = null,
-                       [Description("Data final (aaaa-mm-dd)")] string? ate = null) =>
+                       [Description("Data final (aaaa-mm-dd)")] string? ate = null,
+                       [Description("ID da competição, se citada (ex.: Libertadores)")] int? competicao = null) =>
                 {
                     DateOnly? Data(string? s) => DateOnly.TryParse(s, System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : null;
-                    var r = await procurarPartidas.Handle(new ProcurarPartidas(time, adversario, Data(de), Data(ate)), ct);
+                    var r = await procurarPartidas.Handle(new ProcurarPartidas(time, adversario, Data(de), Data(ate), CompeticaoId: competicao), ct);
                     return r.Select(p => new { p.Id, Data = p.Data.ToString("yyyy-MM-dd"), DiaDaSemana = p.Data.DayOfWeek.ToString(), p.Competicao, p.Rodada, p.Mandante, p.Visitante, p.GolsMandante, p.GolsVisitante, p.Status });
                 },
                 "procurar_partidas",
@@ -285,7 +289,7 @@ public class AssistenteScout(
                             Time = e.ClubeId == a.Partida.MandanteId ? a.Partida.Mandante : a.Partida.Visitante,
                             e.Tipo, e.Jogador, AssistenciaOuQuemEntrou = e.Outro, e.Detalhe,
                         }),
-                        a.Aspectos, a.Observacoes,
+                        a.Desfecho, a.Aspectos, a.Observacoes,
                     };
                 },
                 "analisar_partida",
@@ -342,6 +346,10 @@ public class AssistenteScout(
 
         Dados disponíveis (competição, temporada, atletas analisáveis): {JsonSerializer.Serialize(disponiveis)}
         Sem temporada informada, cada competição usa a temporada mais recente com dados (a Série C, por exemplo, é a de 2025). Diga sempre a temporada ao citar um atleta.
+        Competições com "Copa": true (Copa do Brasil, Libertadores, Sul-Americana) entram em jogos, times e treinadores, mas NÃO na nota
+        dos atletas: a nota e os percentis de atleta vêm da liga (Séries A, B e C). O desempenho do atleta nas copas aparece em
+        "DesempenhoEmCopas" do detalhar_atleta (jogos, minutos, gols e, com minutos suficientes, nota na própria copa). Para analisar um
+        time ou treinador numa copa, passe o ID da copa em "competicao"; sem isso, vale a liga.
 
         Regras:
         - Use SEMPRE as ferramentas para qualquer afirmação sobre atletas. Nunca invente nomes, notas ou números.
@@ -361,7 +369,7 @@ public class AssistenteScout(
         - Dimensões e indicadores de times e treinadores são PERCENTIS (posição de 0 a 100 entre os outros times), não porcentagens:
           "percentil 95 em titularidades para jovens" = escala mais jovens que 95% dos times, e não "95% das titularidades".
           Porcentagem real só nos campos com "Percentual" no nome.
-        - Ao procurar um time ou treinador pelo nome, NÃO passe competição: a busca já procura em todas (não suponha a série do time).
+        - Ao procurar um time ou treinador pelo nome, só passe competição se o usuário citou uma (ex.: "na Libertadores"): não suponha a série do time.
         - Para falar de um time, encontre o ID com listar_times (nome) e use analisar_time. Descreva: esquema mais usado (e se muda em casa e fora),
           estilo, pontos fortes e fracos em percentis entre os times da competição, perfil do elenco e as carências por função.
         - Nunca cite médias brutas de time (posse em %, finalizações ou passes por jogo). Fale em percentis ("fica com a bola mais que 80% dos times da Série B")
@@ -391,7 +399,8 @@ public class AssistenteScout(
         - Hoje é {Hoje()}. Converta datas relativas ("último sábado", "domingo passado") em datas e use procurar_partidas
           com o time, o adversário e um período de 3 dias antes a 3 dias depois da data (as pessoas erram o dia: "sábado" pode ter sido domingo);
           depois analisar_partida com o ID do jogo mais próximo. Se a data real for outra, diga ("o jogo foi no domingo, 11/10").
-          Sem jogo no período, procure sem datas e ofereça o mais recente.
+          Sem data na pergunta ("o último jogo", "o jogo contra o Santos"), procure SEM datas e analise o mais recente da lista.
+          Com data e sem jogo no período, procure de novo sem datas e analise o mais recente, sem perguntar antes.
         - Na análise: placar e contexto (competição, rodada), esquemas e treinadores, gols e lances (minuto, autor, assistência), cartões,
           substituições e quem levou vantagem em cada aspecto. Compare com o normal de cada time pelos percentis ("finalizou mais que em
           85% dos próprios jogos"). Não cite números brutos do provedor (posse em %, total de finalizações ou de passes).

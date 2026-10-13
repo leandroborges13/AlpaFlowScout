@@ -6,7 +6,8 @@ namespace Scout.Application.Consultas;
 
 // ---------- Competições disponíveis ----------
 
-public record CompeticaoDisponivel(int Id, string Nome, int Temporada, int Atletas);
+/// <summary>`Copa` = mata-mata ou copa continental: entra em jogos, times e treinadores, mas não na nota dos atletas.</summary>
+public record CompeticaoDisponivel(int Id, string Nome, int Temporada, int Atletas, bool Copa);
 
 public record ListarCompeticoes : IQuery<IReadOnlyList<CompeticaoDisponivel>>;
 
@@ -19,10 +20,11 @@ public class ListarCompeticoesHandler(IScoutDb db) : IQueryHandler<ListarCompeti
             .GroupBy(e => new { e.CompeticaoId, e.Temporada })
             .Select(g => new { g.Key.CompeticaoId, g.Key.Temporada, Atletas = g.Select(e => e.AtletaId).Distinct().Count() })
             .ToListAsync(ct);
-        var nomes = await db.Competicoes.AsNoTracking().ToDictionaryAsync(c => c.Id, c => c.Nome, ct);
+        var competicoes = await db.Competicoes.AsNoTracking().ToDictionaryAsync(c => c.Id, ct);
         return grupos
-            .Select(g => new CompeticaoDisponivel(g.CompeticaoId, nomes.GetValueOrDefault(g.CompeticaoId, $"Liga {g.CompeticaoId}"), g.Temporada, g.Atletas))
-            .OrderByDescending(c => c.Temporada).ThenBy(c => c.Id)
+            .Select(g => new CompeticaoDisponivel(g.CompeticaoId, competicoes.GetValueOrDefault(g.CompeticaoId)?.Nome ?? $"Liga {g.CompeticaoId}",
+                g.Temporada, g.Atletas, competicoes.GetValueOrDefault(g.CompeticaoId)?.EhCopa ?? false))
+            .OrderBy(c => c.Copa).ThenByDescending(c => c.Temporada).ThenBy(c => c.Id)
             .ToList();
     }
 }
@@ -102,22 +104,28 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor) : IQueryH
     static string NomeLado(Lado lado) => lado == Lado.Esquerda ? "esquerd" : lado == Lado.Direita ? "direit" : "central";
 
     /// <summary>
-    /// Linhas das competições pedidas (ou de todas). Sem temporada, usa em cada competição a mais recente
+    /// Linhas das competições pedidas (ou de todas as ligas). Sem temporada, usa em cada competição a mais recente
     /// que tem estatística: assim a Série C 2025 entra junto com as Séries A e B de 2026.
+    /// Copas só entram quando pedidas: poucos jogos e times de divisões diferentes não dão uma nota justa.
     /// </summary>
     public static async Task<List<LinhaAnalise>> CarregarLinhas(IScoutDb db, MotorDeAnalise motor, int? temporada, int[]? competicoes, CancellationToken ct)
     {
         var linhas = new List<LinhaAnalise>();
-        foreach (var (competicao, ano) in await CompeticoesAlvo(db, temporada, competicoes, ct))
+        foreach (var (competicao, ano) in await CompeticoesAlvo(db, temporada, competicoes, ct, incluirCopas: false))
             if (await motor.Analisar(competicao, ano, ct) is { } analise) linhas.AddRange(analise.Linhas);
         return linhas;
     }
 
-    /// <summary>Competição e temporada a analisar: a pedida, ou a mais recente com estatística de cada competição.</summary>
-    public static async Task<List<(int Competicao, int Temporada)>> CompeticoesAlvo(IScoutDb db, int? temporada, int[]? competicoes, CancellationToken ct)
+    /// <summary>
+    /// Competição e temporada a analisar: as pedidas, ou a mais recente com estatística de cada competição.
+    /// `incluirCopas: false` deixa as copas de fora quando nenhuma competição foi pedida.
+    /// </summary>
+    public static async Task<List<(int Competicao, int Temporada)>> CompeticoesAlvo(IScoutDb db, int? temporada, int[]? competicoes, CancellationToken ct,
+        bool incluirCopas = true)
     {
         var consulta = db.Estatisticas.AsNoTracking().Where(e => e.Minutos > 0);
         if (competicoes is { Length: > 0 }) consulta = consulta.Where(e => competicoes.Contains(e.CompeticaoId));
+        else if (!incluirCopas) consulta = consulta.Where(e => e.Competicao.Tipo != Competicao.TipoCopa);
         if (temporada is not null) consulta = consulta.Where(e => e.Temporada == temporada);
         var alvos = await consulta.GroupBy(e => e.CompeticaoId)
             .Select(g => new { Competicao = g.Key, Temporada = g.Max(e => e.Temporada) })
@@ -134,7 +142,15 @@ public record DetalheAtleta(ResumoAtleta Resumo, string? EscudoClube,
     IReadOnlyDictionary<string, int> Funcoes, IReadOnlyDictionary<string, int> Esquemas,
     IReadOnlyList<Destaque> Atributos, IReadOnlyList<PercentilIndicador> Indicadores,
     Cartoes Cartoes, Presenca Presenca, IReadOnlyList<JogoNaLinhaDoTempo> LinhaDoTempo,
-    TrajetoriaAtleta? Trajetoria, IReadOnlyList<PontoNoCampo> Posicoes, EstiloDeJogo? Estilo);
+    TrajetoriaAtleta? Trajetoria, IReadOnlyList<PontoNoCampo> Posicoes, EstiloDeJogo? Estilo,
+    IReadOnlyList<DesempenhoEmCopa> Copas);
+
+/// <summary>
+/// O atleta numa copa: fatos (jogos, minutos, gols) e, se jogou o bastante (450 minutos), a nota e os destaques
+/// em percentil entre os atletas do mesmo setor naquela copa. Fica separado da nota da liga.
+/// </summary>
+public record DesempenhoEmCopa(int CompeticaoId, string Competicao, int Temporada, int Jogos, int Minutos, int Gols, int Assistencias,
+    double? Nota, IReadOnlyList<Destaque> Destaques);
 
 public record ObterAtleta(int AtletaId, int? Temporada = null, int? CompeticaoId = null, bool ComTrajetoria = true) : IQuery<DetalheAtleta?>;
 
@@ -164,7 +180,26 @@ public class ObterAtletaHandler(IScoutDb db, MotorDeAnalise motor, IHistoricoDoA
         var trajetoria = q.ComTrajetoria ? await historico.Obter(l.AtletaId, ct) : null;
 
         return new DetalheAtleta(Resumir.De(l), l.Escudo, l.Funcoes, l.Esquemas, atributos, indicadores,
-            cartoes, CalcularPresenca(linhaDoTempo), linhaDoTempo, trajetoria, await Posicoes(l, ct), Estilo(l));
+            cartoes, CalcularPresenca(linhaDoTempo), linhaDoTempo, trajetoria, await Posicoes(l, ct), Estilo(l), await Copas(l, ct));
+    }
+
+    /// <summary>Copas da mesma temporada da liga em diante (Copa do Brasil, Libertadores, Sul-Americana...).</summary>
+    async Task<List<DesempenhoEmCopa>> Copas(LinhaAnalise l, CancellationToken ct)
+    {
+        var registros = await db.Estatisticas.AsNoTracking()
+            .Where(e => e.AtletaId == l.AtletaId && e.Temporada >= l.Temporada && e.Minutos > 0 && e.Competicao.Tipo == Competicao.TipoCopa)
+            .Select(e => new { e.CompeticaoId, Nome = e.Competicao.Nome, e.Temporada, e.Jogos, e.Minutos, e.Gols, e.Assistencias })
+            .ToListAsync(ct);
+        var copas = new List<DesempenhoEmCopa>();
+        foreach (var g in registros.GroupBy(r => (r.CompeticaoId, r.Nome, r.Temporada)))
+        {
+            // Na copa o atleta pode não ter minutos suficientes para a nota: aí ficam só os fatos
+            var linha = (await motor.Analisar(g.Key.CompeticaoId, g.Key.Temporada, ct))?.Linhas.FirstOrDefault(x => x.AtletaId == l.AtletaId);
+            var destaques = linha is null ? [] : Resumir.De(linha).Destaques;
+            copas.Add(new DesempenhoEmCopa(g.Key.CompeticaoId, g.Key.Nome, g.Key.Temporada, g.Sum(r => r.Jogos), g.Sum(r => r.Minutos),
+                g.Sum(r => r.Gols), g.Sum(r => r.Assistencias), linha?.Nota is { } n ? Math.Round(n, 1) : null, destaques));
+        }
+        return copas.OrderByDescending(c => c.Temporada).ThenByDescending(c => c.Minutos).ToList();
     }
 
     async Task<List<PontoNoCampo>> Posicoes(LinhaAnalise l, CancellationToken ct)

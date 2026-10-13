@@ -95,6 +95,31 @@ export function PainelAtleta({ atleta, gravacao, onFechar, onAbrir, onAbrirTime 
               <LinhaDoTempo jogos={detalhe.linhaDoTempo} />
             </section>
 
+            {detalhe.copas && detalhe.copas.length > 0 && (
+              <section>
+                <h3>Desempenho em copas</h3>
+                <p className="legenda">Separado da nota da liga. A nota na copa só aparece com pelo menos 450 minutos jogados nela.</p>
+                <ul className="copas">
+                  {detalhe.copas.map((c) => (
+                    <li key={`${c.competicaoId}-${c.temporada}`}>
+                      <div className="funcao-topo">
+                        <b>{c.competicao} {c.temporada}</b>
+                        <span className="card-sub">
+                          {c.jogos} {c.jogos === 1 ? 'jogo' : 'jogos'} · {c.minutos.toLocaleString('pt-BR')} min
+                          {c.gols > 0 ? ` · ${c.gols} ${c.gols === 1 ? 'gol' : 'gols'}` : ''}
+                          {c.assistencias > 0 ? ` · ${c.assistencias} ${c.assistencias === 1 ? 'assistência' : 'assistências'}` : ''}
+                        </span>
+                        {c.nota != null && <span className="selo-cargo">nota {Math.round(c.nota)}</span>}
+                      </div>
+                      {c.destaques.length > 0 && (
+                        <div className="grade2">{c.destaques.map((d) => <Medidor key={d.nome} nome={d.nome} valor={d.percentil} mediana />)}</div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
             <section>
               <h3>Disciplina</h3>
               <div className="tiles">

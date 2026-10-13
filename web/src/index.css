@@ -261,3 +261,9 @@ button.lt-quad:hover, button.lt-quad:focus-visible { outline: 2px solid var(--in
 .placar:not(.grande) .placar-time { flex-direction: column; gap: 4px; text-align: center; font-size: 13px; }
 .placar:not(.grande) .placar-time.fora { flex-direction: column-reverse; justify-content: center; }
 .placar:not(.grande) .placar-time span { white-space: normal; overflow-wrap: anywhere; }
+
+/* Desempenho em copas */
+.copas { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.copas li { display: grid; gap: 8px; }
+
+.desfecho { margin: -6px 0 0; text-align: center; font-weight: 700; color: var(--ink-2); }

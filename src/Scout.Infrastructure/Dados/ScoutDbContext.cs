@@ -48,6 +48,7 @@ public class ScoutDbContext(DbContextOptions<ScoutDbContext> options) : DbContex
     {
         // Ids de competição, clube, atleta e partida são os do provedor
         b.Entity<Competicao>().Property(c => c.Id).ValueGeneratedNever();
+        b.Entity<Competicao>().Ignore(c => c.EhCopa);
         b.Entity<Clube>().Property(c => c.Id).ValueGeneratedNever();
         b.Entity<Atleta>().Property(a => a.Id).ValueGeneratedNever();
         b.Entity<Atleta>().HasIndex(a => a.Nome);

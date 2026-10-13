@@ -21,9 +21,9 @@ export function CartaoTime({ time: t, gravacao, onAbrir, detalhe }: CartaoProps)
         <Escudo time={t} oculto={gravacao} />
         <div className="card-id">
           <div className="card-nome">{t.nome}</div>
-          <div className="card-sub">{t.posicao}º · {t.competicao} {t.temporada}</div>
+          <div className="card-sub">{t.copa ? '' : `${t.posicao}º · `}{t.competicao} {t.temporada}</div>
         </div>
-        <div className="nota"><b>{t.pontos}</b><span>pontos</span></div>
+        <NotaDoTime t={t} />
       </div>
       {(t.esquemaMaisUsado || t.estilo) && (
         <span className="funcao">{[t.esquemaMaisUsado, t.estilo].filter(Boolean).join(' · ')}</span>
@@ -37,6 +37,13 @@ export function CartaoTime({ time: t, gravacao, onAbrir, detalhe }: CartaoProps)
       {!detalhe && t.carencias.length > 0 && <span className="carencia">Carência: {t.carencias.join(', ').toLowerCase()}</span>}
     </button>
   )
+}
+
+/** Na liga, os pontos; na copa (mata-mata), o aproveitamento, porque pontos não definem posição. */
+function NotaDoTime({ t }: { t: ResumoTime }) {
+  return t.copa
+    ? <div className="nota"><b>{t.aproveitamento ?? '–'}%</b><span>aprov.</span></div>
+    : <div className="nota"><b>{t.pontos}</b><span>pontos</span></div>
 }
 
 type PainelProps = {
@@ -73,10 +80,10 @@ export function PainelTime({ time, gravacao, onFechar, onAbrirAtleta, onAbrirTre
           <Escudo time={t} grande oculto={gravacao} />
           <div className="perfil-id">
             <h2>{t.nome}</h2>
-            <div className="card-sub">{t.competicao} {t.temporada} · {t.posicao}º colocado</div>
+            <div className="card-sub">{t.competicao} {t.temporada}{t.copa ? '' : ` · ${t.posicao}º colocado`}</div>
             {t.esquemaMaisUsado && <span className="funcao">Esquema mais usado: {t.esquemaMaisUsado}</span>}
           </div>
-          <div className="nota"><b>{t.pontos}</b><span>pontos</span></div>
+          <NotaDoTime t={t} />
         </div>
 
         <div className="tiles">

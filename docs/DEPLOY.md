@@ -53,5 +53,5 @@ Se o `pull` pedir login, rode `docker login ghcr.io` com o seu usuário do GitHu
 ## Atualizações
 
 - **Código novo:** depois do push e do build no GitHub (~3 min): `docker compose pull && docker compose up -d`.
-- **Dados:** a própria API importa as rodadas novas todo dia às 6h (`SCOUT_ATUALIZAR` no `.env`).
+- **Dados:** a própria API importa as rodadas novas todo dia às 6h (`SCOUT_ATUALIZAR` no `.env`). Ligas: 71 Série A, 72 Série B, 75 Série C. Copas: 73 Copa do Brasil, 13 Libertadores, 11 Sul-Americana.
 - **Usuários:** `./coleta.sh criar-usuario ...` (também troca a senha de quem já existe) e `./coleta.sh remover-usuario email`.

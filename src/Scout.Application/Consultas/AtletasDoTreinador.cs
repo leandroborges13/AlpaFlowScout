@@ -59,7 +59,7 @@ public class AtletasParaTreinadorHandler(IScoutDb db, AnaliseDeTimes analise, Mo
         var analises = await ListarTimesHandler.CarregarAnalises(db, analise, null, null, ct);
         var atual = analises.SelectMany(x => x.Treinadores.Select(t => (analise: x, passagem: t)))
             .Where(x => x.passagem.TreinadorId == q.TreinadorId)
-            .OrderByDescending(x => x.passagem.Fim).FirstOrDefault();
+            .OrderBy(x => x.passagem.Linha.Copa).ThenByDescending(x => x.passagem.Fim).FirstOrDefault(); // o perfil vem da liga, não da copa
         if (atual.passagem is null) return null;
         var (a, p) = atual;
 

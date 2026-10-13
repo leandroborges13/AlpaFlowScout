@@ -51,11 +51,14 @@ public class DetalhesDaPartida(ApiFootballClient api, ILogger<DetalhesDaPartida>
         {
             var tipo = Texto(e, "type") ?? "";
             var detalhe = Texto(e, "detail") ?? "";
+            // Cobranças da disputa de pênaltis vêm como gols com o comentário "Penalty Shootout": não são gols do jogo
+            var disputa = (Texto(e, "comments") ?? "").Contains("Shootout", StringComparison.OrdinalIgnoreCase);
             int? jogadorId = Int(e, "player", "id"), outroId = Int(e, "assist", "id");
             string? jogador = Texto(e, "player", "name"), outro = Texto(e, "assist", "name");
 
             string? nome = tipo.ToLowerInvariant() switch
             {
+                "goal" when disputa => detalhe == "Missed Penalty" ? "Pênalti perdido na disputa" : "Pênalti convertido na disputa",
                 "goal" => detalhe switch { "Own Goal" => "Gol contra", "Penalty" => "Gol de pênalti", "Missed Penalty" => "Pênalti perdido", _ => "Gol" },
                 "card" => detalhe.Contains("Yellow", StringComparison.OrdinalIgnoreCase) && !detalhe.Contains("Second", StringComparison.OrdinalIgnoreCase)
                     ? "Cartão amarelo" : "Cartão vermelho",
@@ -73,7 +76,7 @@ public class DetalhesDaPartida(ApiFootballClient api, ILogger<DetalhesDaPartida>
                 if (jogadorId is { } saiu) emCampo.Remove(saiu);
                 if (outroId is { } entrou) emCampo.Add(entrou);
             }
-            if (nome.StartsWith("Cartão") || nome.StartsWith("Gol contra") || nome == "Pênalti perdido") (outro, outroId) = (null, null);
+            if (nome.StartsWith("Cartão") || nome.StartsWith("Gol contra") || nome.StartsWith("Pênalti")) (outro, outroId) = (null, null);
 
             var traduzido = detalhe switch
             {

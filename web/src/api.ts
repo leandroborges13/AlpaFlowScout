@@ -50,6 +50,7 @@ export type DetalheAtleta = {
   linhaDoTempo: JogoNaLinhaDoTempo[]
   posicoes: { x: number; y: number; jogos: number; funcao: string }[]
   estilo?: { indice: number; rotulo: string; ofensivo: number; defensivo: number; explicacao: string } | null
+  copas?: { competicaoId: number; competicao: string; temporada: number; jogos: number; minutos: number; gols: number; assistencias: number; nota?: number | null; destaques: Destaque[] }[]
   trajetoria?: {
     clubes: { clube: string; escudo?: string | null; temporadas: number[] }[]
     transferencias: { data?: string | null; de?: string | null; para?: string | null; tipo?: string | null }[]
@@ -65,7 +66,7 @@ export type ResumoTime = {
   competicaoId: number
   competicao: string
   temporada: number
-  posicao: number
+  posicao?: number | null
   jogos: number
   vitorias: number
   empates: number
@@ -78,6 +79,7 @@ export type ResumoTime = {
   estilo?: string | null
   dimensoes: Destaque[]
   carencias: string[]
+  copa?: boolean
 }
 
 export type TitularNaFuncao = { id: number; nome: string; jogos: number; nota?: number | null }
@@ -194,6 +196,7 @@ export type ResumoTreinador = {
   estilo?: string | null
   dimensoes: Destaque[]
   titularesAte23?: number | null
+  copa?: boolean
 }
 
 export type PassagemDetalhada = {
@@ -259,6 +262,7 @@ export type AnalisePartida = {
   eventos: EventoDaPartida[]
   aspectos: { aspecto: string; vantagem?: string | null; percentilMandante?: number | null; percentilVisitante?: number | null }[]
   observacoes: string[]
+  desfecho?: string | null
 }
 
 export type AtletaDoTreinador = { atleta: ResumoAtleta; jogosComEle: number; funcaoComEle?: string | null }

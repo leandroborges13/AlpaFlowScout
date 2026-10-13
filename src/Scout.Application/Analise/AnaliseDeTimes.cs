@@ -35,6 +35,8 @@ public class LinhaTime
     public int CompeticaoId { get; init; }
     public string Competicao { get; init; } = "";
     public int Temporada { get; init; }
+    /// <summary>Copa (mata-mata ou continental): sem classificação, e fica fora das listas gerais.</summary>
+    public bool Copa { get; init; }
 
     public int Jogos { get; init; }
     public int Vitorias { get; init; }
@@ -311,6 +313,7 @@ public class AnaliseDeTimes(IScoutDb db, MotorDeAnalise motor, IMemoryCache cach
             {
                 ClubeId = clubeId, Nome = clube?.Nome ?? $"Clube {clubeId}", Escudo = clube?.Escudo,
                 CompeticaoId = competicaoId, Competicao = competicao.Nome, Temporada = temporada,
+                Copa = competicao.EhCopa,
                 Jogos = resultados.Count, Vitorias = resultados.Count(r => r.pontos == 3), Empates = resultados.Count(r => r.pontos == 1),
                 Derrotas = resultados.Count(r => r.pontos == 0), GolsPro = resultados.Sum(r => r.pro), GolsContra = resultados.Sum(r => r.contra),
                 EsquemasPorJogo = esquemasPorJogo,

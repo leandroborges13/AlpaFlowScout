@@ -4,6 +4,7 @@ import { Escudo } from './PainelTime'
 
 const ICONE: Record<string, string> = {
   'Gol': '⚽', 'Gol de pênalti': '⚽', 'Gol contra': '⚽', 'Pênalti perdido': '✕',
+  'Pênalti convertido na disputa': '⚽', 'Pênalti perdido na disputa': '✕',
   'Cartão amarelo': '🟨', 'Cartão vermelho': '🟥', 'Substituição': '⇄', 'VAR': 'VAR',
 }
 
@@ -62,6 +63,7 @@ export function PainelPartida({ partida, gravacao, onFechar }: PainelProps) {
       <div className="painel" role="dialog" aria-modal aria-label={`${p.mandante} x ${p.visitante}`} onClick={(e) => e.stopPropagation()}>
         <span className="card-sub">{p.competicao} {p.temporada}{p.rodada ? ` · ${p.rodada.replace('Regular Season - ', 'Rodada ')}` : ''} · {dataDoJogo(p)}</span>
         <Placar p={p} gravacao={gravacao} grande />
+        {a?.desfecho && <p className="desfecho">{a.desfecho}</p>}
 
         {erro && <p className="erro">{erro}</p>}
         {!a && !erro && <p className="pensando">Carregando a partida…</p>}

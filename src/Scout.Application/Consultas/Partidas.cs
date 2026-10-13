@@ -31,13 +31,14 @@ public interface IDetalhesDaPartida
 /// </summary>
 public record AspectoDaPartida(string Aspecto, string? Vantagem, double? PercentilMandante, double? PercentilVisitante);
 
+/// <summary>`Desfecho`: "Decidido nos pênaltis: 4 x 3" ou "Decidido na prorrogação"; nulo no tempo normal.</summary>
 public record AnalisePartida(ResumoPartida Partida, LadoDaPartida Mandante, LadoDaPartida Visitante,
-    IReadOnlyList<EventoDaPartida> Eventos, IReadOnlyList<AspectoDaPartida> Aspectos, IReadOnlyList<string> Observacoes);
+    IReadOnlyList<EventoDaPartida> Eventos, IReadOnlyList<AspectoDaPartida> Aspectos, IReadOnlyList<string> Observacoes, string? Desfecho = null);
 
 // ---------- Procurar partidas ----------
 
 /// <summary>"Galo x Santos no sábado": partidas de um time, com o adversário e o período opcionais, da mais recente para a mais antiga.</summary>
-public record ProcurarPartidas(string Time, string? Adversario = null, DateOnly? De = null, DateOnly? Ate = null, int Limite = 8) : IQuery<IReadOnlyList<ResumoPartida>>;
+public record ProcurarPartidas(string Time, string? Adversario = null, DateOnly? De = null, DateOnly? Ate = null, int Limite = 8, int? CompeticaoId = null) : IQuery<IReadOnlyList<ResumoPartida>>;
 
 public class ProcurarPartidasHandler(IScoutDb db) : IQueryHandler<ProcurarPartidas, IReadOnlyList<ResumoPartida>>
 {
@@ -62,6 +63,7 @@ public class ProcurarPartidasHandler(IScoutDb db) : IQueryHandler<ProcurarPartid
 
         var consulta = db.Partidas.AsNoTracking().Where(p => times.Contains(p.MandanteId) || times.Contains(p.VisitanteId));
         if (adversarios is not null) consulta = consulta.Where(p => adversarios.Contains(p.MandanteId) || adversarios.Contains(p.VisitanteId));
+        if (q.CompeticaoId is { } competicao) consulta = consulta.Where(p => p.CompeticaoId == competicao);
         if (q.De is { } de) { var inicio = InicioDoDiaEmUtc(de); consulta = consulta.Where(p => p.Data >= inicio); }
         if (q.Ate is { } ate) { var fim = InicioDoDiaEmUtc(ate.AddDays(1)); consulta = consulta.Where(p => p.Data < fim); }
         var partidas = await consulta.Where(p => p.Data <= DateTime.UtcNow.AddDays(1)).OrderByDescending(p => p.Data).Take(Math.Clamp(q.Limite, 1, 20)).ToListAsync(ct);
@@ -132,7 +134,15 @@ public class AnalisarPartidaHandler(IScoutDb db, IDetalhesDaPartida detalhes) : 
         if (aspectos.Count == 0) observacoes.Add("Sem estatísticas deste jogo no provedor: a comparação de desempenho fica de fora.");
         else observacoes.Add("Percentil = como o time foi neste jogo em relação aos próprios jogos na temporada (100 = o melhor jogo dele naquele aspecto).");
 
-        return new AnalisePartida(resumo, Lado(p.MandanteId, resumo.Mandante), Lado(p.VisitanteId, resumo.Visitante), eventos, aspectos, observacoes);
+        string? desfecho = p.Status switch
+        {
+            "PEN" => $"Decidido nos pênaltis: {resumo.Mandante} {Convertidos(p.MandanteId)} x {Convertidos(p.VisitanteId)} {resumo.Visitante}",
+            "AET" => "Decidido na prorrogação",
+            _ => null,
+        };
+        int Convertidos(int clubeId) => eventos.Count(e => e.ClubeId == clubeId && e.Tipo == "Pênalti convertido na disputa");
+        if (p.Status == "PEN") observacoes.Add("Placar do jogo (tempo normal e prorrogação); a disputa de pênaltis aparece à parte.");
+        return new AnalisePartida(resumo, Lado(p.MandanteId, resumo.Mandante), Lado(p.VisitanteId, resumo.Visitante), eventos, aspectos, observacoes, desfecho);
     }
 
     async Task<List<AspectoDaPartida>> Aspectos(Partida p, string mandante, string visitante, CancellationToken ct)

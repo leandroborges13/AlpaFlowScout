@@ -10,7 +10,7 @@ public record ResumoTreinador(
     int Id, string Nome, string? Foto, int ClubeId, string Clube, string? Escudo,
     int CompeticaoId, string Competicao, int Temporada, bool NoCargo, DateTime Inicio, DateTime Fim,
     int Jogos, int Vitorias, int Empates, int Derrotas, int? Aproveitamento,
-    string? EsquemaPreferido, string? Estilo, IReadOnlyList<Destaque> Dimensoes, int? TitularesAte23);
+    string? EsquemaPreferido, string? Estilo, IReadOnlyList<Destaque> Dimensoes, int? TitularesAte23, bool Copa = false);
 
 public record OutroTreinadorNoClube(int Id, string Nome, DateTime Inicio, DateTime Fim, int Jogos, int? Aproveitamento);
 
@@ -29,7 +29,7 @@ public static class ResumirTreinador
         p.Linha.EsquemasPorJogo.GroupBy(e => e.Esquema).OrderByDescending(g => g.Count()).Select(g => g.Key).FirstOrDefault(),
         ResumirTime.Estilo(p.Linha)?.Rotulo, ResumirTime.Dimensoes(p.Linha),
         // Com poucos jogos a porcentagem engana (1 jogo com 6 jovens vira "55%")
-        p.Linha.Jogos >= PassagemNaTemporada.JogosMinimos && p.Linha.TitularesAte23 is { } j ? (int)Math.Round(j) : null);
+        p.Linha.Jogos >= PassagemNaTemporada.JogosMinimos && p.Linha.TitularesAte23 is { } j ? (int)Math.Round(j) : null, p.Linha.Copa);
 
     /// <summary>"Assumiu depois de Fulano (38% em 12 jogos). Com ele, 62% em 15 jogos."</summary>
     public static string? Comparacao(PassagemNaTemporada p, IReadOnlyList<PassagemNaTemporada> doClube)
@@ -55,8 +55,10 @@ public class ListarTreinadoresHandler(IScoutDb db, AnaliseDeTimes analise) : IQu
         var passagens = analises.SelectMany(a => a.Treinadores);
         // Buscando pelo nome, vale qualquer passagem, da mais parecida para a menos; sem nome, só quem está no cargo
         var ordenadas = q.Nome is not null
-            ? BuscaPorNome.Filtrar(passagens, q.Nome, p => p.Nome)
-            : passagens.Where(p => !q.SoNoCargo || p.NoCargo).OrderBy(p => p.Linha.CompeticaoId).ThenByDescending(p => p.Linha.Aproveitamento);
+            ? passagens.Select(p => (p, pontos: BuscaPorNome.Pontuar(q.Nome, p.Nome))).Where(x => x.pontos > 0)
+                .OrderByDescending(x => x.pontos).ThenBy(x => x.p.Linha.Copa).Select(x => x.p)
+            // A lista geral fica nas ligas: nas copas o mesmo treinador apareceria de novo
+            : passagens.Where(p => (!q.SoNoCargo || p.NoCargo) && (!p.Linha.Copa || q.CompeticaoId is not null)).OrderBy(p => p.Linha.CompeticaoId).ThenByDescending(p => p.Linha.Aproveitamento);
         return ordenadas
             .Select(ResumirTreinador.De)
             .ToList();
@@ -71,7 +73,7 @@ public class ObterTreinadorHandler(IScoutDb db, AnaliseDeTimes analise, ICarreir
     {
         var analises = await ListarTimesHandler.CarregarAnalises(db, analise, q.Temporada, null, ct);
         var passagens = analises.SelectMany(a => a.Treinadores.Select(p => (a, p))).Where(x => x.p.TreinadorId == q.TreinadorId)
-            .OrderByDescending(x => x.p.Fim).ToList();
+            .OrderBy(x => x.p.Linha.Copa).ThenByDescending(x => x.p.Fim).ToList(); // ligas primeiro; o resumo é a liga mais recente
         if (passagens.Count == 0) return null;
 
         var detalhadas = passagens.Select(x =>

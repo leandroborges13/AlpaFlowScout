@@ -4,8 +4,12 @@ public class Competicao
 {
     public int Id { get; set; }
     public string Nome { get; set; } = "";
+    /// <summary>Como o provedor classifica: "League" (pontos corridos) ou "Cup" (mata-mata, copa continental).</summary>
     public string Tipo { get; set; } = "";
     public string Pais { get; set; } = "";
+
+    public const string TipoCopa = "Cup";
+    public bool EhCopa => Tipo == TipoCopa;
 }
 
 public class Clube

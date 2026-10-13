@@ -39,6 +39,20 @@ public class PartidasTests
     }
 
     [Fact]
+    public void Cobrancas_da_disputa_de_penaltis_nao_viram_gols_do_jogo()
+    {
+        var eventos = Json("""
+            [{"time":{"elapsed":120,"extra":null},"team":{"id":1},"player":{"id":10,"name":"Atleta Teste A"},"assist":{"id":null,"name":null},"type":"Goal","detail":"Penalty","comments":"Penalty Shootout"},
+             {"time":{"elapsed":120,"extra":null},"team":{"id":2},"player":{"id":20,"name":"Atleta Teste B"},"assist":{"id":null,"name":null},"type":"Goal","detail":"Missed Penalty","comments":"Penalty Shootout"},
+             {"time":{"elapsed":80,"extra":null},"team":{"id":1},"player":{"id":10,"name":"Atleta Teste A"},"assist":{"id":null,"name":null},"type":"Goal","detail":"Penalty","comments":null}]
+            """);
+
+        var d = DetalhesDaPartida.Ler([], eventos);
+
+        Assert.Equal(["Gol de pênalti", "Pênalti convertido na disputa", "Pênalti perdido na disputa"], d.Eventos.Select(e => e.Tipo));
+    }
+
+    [Fact]
     public void Treinador_com_id_zero_e_tratado_como_nao_informado()
     {
         var escalacoes = Json("""[{"team":{"id":1,"name":"Time Teste"},"coach":{"id":0,"name":null},"formation":"4-3-3","startXI":[],"substitutes":[]}]""");

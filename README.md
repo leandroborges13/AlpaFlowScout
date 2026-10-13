@@ -40,6 +40,13 @@ Desarmes, interceptações e bloqueios são ajustados à posse do time (×50 / p
 quem joga num time que fica com a bola defende menos vezes, e sem o ajuste os defensores de times
 dominantes pareceriam fracos.
 
+## Competições
+
+Ligas (base da nota dos atletas): Séries A e B 2026 e Série C 2025 (a de 2026 ainda sem estatística de atletas no provedor).
+Copas: Copa do Brasil, Libertadores e Sul-Americana 2026. Entram em jogos, times e treinadores, e no perfil do atleta como
+"desempenho em copas" (nota própria só com 450 minutos na copa). Ficam fora da nota da liga: poucos jogos e times de divisões
+diferentes não dão uma comparação justa. Estaduais não foram importados (a maioria sem estatística no provedor).
+
 ## Análise de times
 
 A partir das escalações e das estatísticas de cada jogo (`/fixtures/statistics`, uma consulta por partida):
