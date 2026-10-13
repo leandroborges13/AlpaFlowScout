@@ -37,6 +37,8 @@ public class AssistenteScout(
     IQueryHandler<AtletasParaTreinador, ResultadoAtletasParaTreinador?> atletasParaTreinador,
     IQueryHandler<ProcurarPartidas, IReadOnlyList<ResumoPartida>> procurarPartidas,
     IQueryHandler<AnalisarPartida, AnalisePartida?> analisarPartida,
+    IQueryHandler<ObterFichaAtleta, FichaAtleta?> fichaAtleta,
+    IQueryHandler<ObterElenco, ElencoDoTime?> elenco,
     IMemoryCache cache,
     ILogger<AssistenteScout> log)
 {
@@ -86,7 +88,8 @@ public class AssistenteScout(
                 async (int atletaId, int? temporada = null) =>
                 {
                     var d = await detalhar.Handle(new ObterAtleta(atletaId, temporada, ComTrajetoria: false), ct);
-                    if (d is null) return (object)"Atleta não encontrado ou fora da análise (menor de idade ou poucos minutos).";
+                    // Sem nota: devolve o motivo real (idade, minutos) e os fatos, para a IA não chutar o porquê
+                    if (d is null) return (object?)await fichaAtleta.Handle(new ObterFichaAtleta(atletaId), ct) ?? "Atleta não encontrado na base.";
                     Citar([d.Resumo]);
                     // Sem a linha do tempo jogo a jogo: o resumo da presença basta para a conversa
                     return (object)new { d.Resumo, d.Funcoes, d.Esquemas, d.Atributos, d.Cartoes, d.Presenca, d.Estilo, DesempenhoEmCopas = d.Copas };
@@ -116,10 +119,29 @@ public class AssistenteScout(
                 {
                     // Poucos milhares de nomes: a busca tolerante (sem acento, com erro de digitação) roda em memória
                     var atletas = await db.Atletas.AsNoTracking().Select(a => new { a.Id, a.Nome, a.NomeCompleto }).ToListAsync(ct);
-                    return BuscaPorNome.Filtrar(atletas, nome, a => $"{a.Nome} {a.NomeCompleto}").Take(8).ToList();
+                    var achados = BuscaPorNome.Filtrar(atletas, nome, a => $"{a.Nome} {a.NomeCompleto}").Take(8).ToList();
+                    // Clube e competição de cada um, para escolher o certo entre homônimos ("Fernando do Bragantino")
+                    var fichas = (await ObterFichaAtletaHandler.Fichas(db, achados.Select(a => a.Id).ToList(), ct)).ToDictionary(f => f.Id);
+                    return achados.Select(a => fichas.GetValueOrDefault(a.Id) is { } f
+                        ? (object)new { a.Id, a.Nome, a.NomeCompleto, f.Idade, f.TemNota, f.Motivo, Clubes = f.Registros.Take(3).Select(r => $"{r.Clube} ({r.Competicao} {r.Temporada}, {r.Minutos} min)") }
+                        : new { a.Id, a.Nome, a.NomeCompleto }).ToList();
                 },
                 "procurar_atleta_por_nome",
-                "Encontra o ID de um atleta pelo nome, para usar nas outras ferramentas."),
+                "Encontra o ID de um atleta pelo nome, com o clube e a competição de cada resultado (para escolher o certo entre homônimos)."),
+            AIFunctionFactory.Create(
+                async (int timeId, [Description("ID da competição; omita para a liga do time")] int? competicao = null, int? temporada = null,
+                       [Description("Função para filtrar, ex.: 'Lateral esquerdo': o primeiro da lista é o titular, os demais são reservas")] string? funcao = null) =>
+                {
+                    var e = await elenco.Handle(new ObterElenco(timeId, competicao, temporada, funcao), ct);
+                    if (e is null) return (object)"Time sem atletas registrados nessa competição.";
+                    if (funcao is null) return e;
+                    // Por função: titular e reservas separados, para a resposta citar os reservas pelo nome
+                    object Atleta(AtletaNoElenco a) => new { a.Nome, a.Idade, a.Jogos, a.Titular, TitularNaFuncao = a.TitularComo, a.Minutos, a.Gols, Nota = a.Nota?.ToString() ?? "sem nota: menos de 450 minutos" };
+                    return new { e.Time, e.Competicao, e.Temporada, Funcao = funcao, Titular = e.Atletas.Take(1).Select(Atleta), Reservas = e.Atletas.Skip(1).Select(Atleta),
+                        Observacao = "Reserva = quem já foi titular na função ou é do mesmo setor sem titularidade. Quem só entrou no segundo tempo nessa posição não aparece: o provedor não informa a posição de quem sai do banco." };
+                },
+                "elenco_do_time",
+                "Todos os atletas que jogaram pelo time na competição, do mais usado ao menos usado, com função, jogos, titularidades, minutos e nota (quando tem). Use para reservas, quem joga pouco e o elenco completo."),
             AIFunctionFactory.Create(
                 async ([Description("ID da competição; omita para todas")] int? competicao = null,
                        [Description("Parte do nome do time, para encontrar o ID")] string? nome = null,
@@ -364,6 +386,15 @@ public class AssistenteScout(
         - Quando o usuário citar um esquema, passe-o em "esquema". O resultado traz experienciaNoEsquema (ex.: "23 de 27 jogos com linha de 3"): destaque quem já está adaptado ao esquema e cite isso na recomendação final.
         - Se a busca vier vazia, tente de novo afrouxando um critério (minutos, idade, lado) antes de responder que não há atletas.
         - Respostas curtas: no máximo 5 atletas, com 1 ou 2 linhas cada, e uma conclusão de uma frase.
+        - Atleta citado pelo nome e pelo clube ("Fernando do Bragantino"): procurar_atleta_por_nome traz o clube de cada resultado;
+          use só o que tem o clube citado. Se nenhum bate, diga isso. Nunca atribua a um atleta um clube que não está nos dados.
+        - Atleta sem nota: detalhar_atleta devolve o "Motivo" (minutos na liga, sem data de nascimento, menor de 18). Diga exatamente esse
+          motivo e mostre os fatos dos "Registros" (clube, jogos, minutos, gols). NUNCA suponha que alguém é menor de idade.
+        - "Reserva", "quem joga pouco", "elenco": use elenco_do_time. Reserva de uma função = quem tem essa função (ou do mesmo setor)
+          com menos titularidades que o titular, que é o de mais titularidades na função. Passe a função em "funcao" no elenco_do_time:
+          o primeiro da lista é o titular e os demais são os reservas (se a lista tiver só o titular, diga que não há reserva com jogos na função).
+          Cite os reservas pelo nome, com idade, jogos, titularidades e minutos, mesmo os que não têm nota (nesse caso, diga que ainda
+          não jogaram o suficiente para a nota).
 
         Times:
         - Dimensões e indicadores de times e treinadores são PERCENTIS (posição de 0 a 100 entre os outros times), não porcentagens:
