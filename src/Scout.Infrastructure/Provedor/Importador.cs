@@ -60,7 +60,8 @@ public class Importador(ApiFootballClient api, ScoutDbContext db, ILogger<Import
             if (!atletas.TryGetValue(atletaId, out var atleta)) atletas[atletaId] = atleta = db.Atletas.Add(new Atleta { Id = atletaId }).Entity;
             atleta.Nome = Texto(j, "name") ?? atleta.Nome;
             atleta.NomeCompleto = string.Join(" ", new[] { Texto(j, "firstname"), Texto(j, "lastname") }.Where(s => !string.IsNullOrWhiteSpace(s)));
-            atleta.Nascimento = DateOnly.TryParse(Texto(j, "birth", "date"), CultureInfo.InvariantCulture, out var nasc) ? nasc : atleta.Nascimento;
+            // Data do provedor vale mais que a manual; sem data no provedor, a manual (se houver) fica
+            if (DateOnly.TryParse(Texto(j, "birth", "date"), CultureInfo.InvariantCulture, out var nasc)) { atleta.Nascimento = nasc; atleta.FonteNascimento = null; }
             atleta.Nacionalidade = Texto(j, "nationality");
             atleta.AlturaCm = Medida(Texto(j, "height"));
             atleta.PesoKg = Medida(Texto(j, "weight"));

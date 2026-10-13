@@ -10,6 +10,8 @@ public class Atleta
     public string Nome { get; set; } = "";
     public string? NomeCompleto { get; set; }
     public DateOnly? Nascimento { get; set; }
+    /// <summary>De onde veio a data quando não foi do provedor (cadastro manual: "site do clube", "BID da CBF"...). Nulo = provedor.</summary>
+    public string? FonteNascimento { get; set; }
     public string? Nacionalidade { get; set; }
     public int? AlturaCm { get; set; }
     public int? PesoKg { get; set; }

@@ -34,6 +34,35 @@ static class Diagnostico
     /// Se a grade do provedor fosse espelhada entre mandante e visitante, o mesmo lateral apareceria
     /// ora na esquerda, ora na direita. Mede a consistência do lado de cada atleta.
     /// </summary>
+    /// <summary>O que a base tem de um atleta (nascimento, estatísticas, escalações): para entender por que ficou fora da análise.</summary>
+    public static async Task Atleta(ScoutDbContext db, string nome, CancellationToken ct)
+    {
+        var termo = nome.ToLower();
+        var atletas = await db.Atletas.AsNoTracking()
+            .Where(a => a.Nome.ToLower().Contains(termo) || (a.NomeCompleto ?? "").ToLower().Contains(termo)).Take(10).ToListAsync(ct);
+        foreach (var a in atletas)
+        {
+            Console.WriteLine($"{a.Id} | {a.Nome} | {a.NomeCompleto} | nascimento: {a.Nascimento?.ToString() ?? "(sem)"} | atualizado {a.AtualizadoEm:dd/MM}");
+            var estat = await db.Estatisticas.AsNoTracking().Where(e => e.AtletaId == a.Id).Include(e => e.Clube).Include(e => e.Competicao).ToListAsync(ct);
+            foreach (var e in estat) Console.WriteLine($"   {e.Competicao.Nome} {e.Temporada} | {e.Clube.Nome} | {e.Jogos} jogos, {e.Titular} tit., {e.Minutos} min | posição {e.PosicaoProvedor}");
+            var esc = await db.Escalacoes.AsNoTracking().Where(e => e.AtletaId == a.Id).GroupBy(e => e.Funcao).Select(g => new { g.Key, N = g.Count() }).ToListAsync(ct);
+            if (esc.Count > 0) Console.WriteLine("   titular como: " + string.Join(", ", esc.Select(e => $"{e.Key} {e.N}")));
+        }
+        if (atletas.Count == 0) Console.WriteLine("Nenhum atleta com esse nome.");
+    }
+
+    /// <summary>Atletas que jogaram pelo menos 450 minutos numa liga mas estão sem data de nascimento (ficam fora da análise).</summary>
+    public static async Task SemNascimento(ScoutDbContext db, CancellationToken ct)
+    {
+        var lista = await db.Estatisticas.AsNoTracking()
+            .Where(e => e.Atleta.Nascimento == null && e.Minutos >= 450 && e.Competicao.Tipo != "Cup")
+            .OrderBy(e => e.Clube.Nome)
+            .Select(e => new { e.AtletaId, e.Atleta.Nome, Clube = e.Clube.Nome, Competicao = e.Competicao.Nome, e.Temporada, e.Minutos })
+            .ToListAsync(ct);
+        foreach (var x in lista) Console.WriteLine($"{x.AtletaId} | {x.Nome} | {x.Clube} | {x.Competicao} {x.Temporada} | {x.Minutos} min");
+        Console.WriteLine($"Total: {lista.Count}");
+    }
+
     public static async Task ConsistenciaDosLados(ScoutDbContext db, int liga, int temporada, CancellationToken ct)
     {
         var linhas = await (from e in db.Escalacoes.AsNoTracking()

@@ -5,6 +5,9 @@
 //   dotnet run --project src/Scout.Coleta -- criar-usuario <email> <nome>   (pede a senha no terminal)
 //   dotnet run --project src/Scout.Coleta -- remover-usuario <email>
 //   dotnet run --project src/Scout.Coleta -- reimportar-partida <id>   (busca de novo escalação, estatísticas e lances)
+//   dotnet run --project src/Scout.Coleta -- sem-nascimento   (atletas com 450+ min na liga sem data de nascimento)
+//   dotnet run --project src/Scout.Coleta -- nascimento <id> <aaaa-mm-dd> <fonte>   (data de fonte pública, ex.: "site do clube")
+//   dotnet run --project src/Scout.Coleta -- atleta <nome>   (o que a base tem do atleta)
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -41,6 +44,25 @@ try
             var r = await sp.GetRequiredService<Importador>().Importar(liga, temporada, !args.Contains("--sem-escalacoes"), cts.Token);
             Console.WriteLine($"{r.Competicao} {r.Temporada}: {r.Clubes} clubes, {r.Atletas} atletas, {r.Partidas} partidas ({r.PartidasComEscalacao} com escalação)");
             Console.WriteLine($"Consultas hoje: {await sp.GetRequiredService<ApiFootballClient>().UsadasHoje(cts.Token)}");
+            break;
+
+        case "atleta" when args.Length >= 2:
+            await Diagnostico.Atleta(sp.GetRequiredService<ScoutDbContext>(), string.Join(' ', args[1..]), cts.Token);
+            break;
+
+        case "nascimento" when args.Length >= 4 && int.TryParse(args[1], out var idAtleta) && DateOnly.TryParseExact(args[2], "yyyy-MM-dd", out var data):
+            // Data de uma fonte pública (site do clube, BID da CBF) para atleta que o provedor não tem
+            var dbN = sp.GetRequiredService<ScoutDbContext>();
+            var atletaN = await dbN.Atletas.FindAsync([idAtleta], cts.Token);
+            if (atletaN is null) { Console.Error.WriteLine("Atleta não encontrado."); return 1; }
+            atletaN.Nascimento = data;
+            atletaN.FonteNascimento = string.Join(' ', args[3..]);
+            await dbN.SaveChangesAsync(cts.Token);
+            Console.WriteLine($"{atletaN.Nome}: nascimento {data:dd/MM/yyyy} (fonte: {atletaN.FonteNascimento})");
+            break;
+
+        case "sem-nascimento":
+            await Diagnostico.SemNascimento(sp.GetRequiredService<ScoutDbContext>(), cts.Token);
             break;
 
         case "diagnostico" when args.Length >= 3 && int.TryParse(args[1], out var ligaD) && int.TryParse(args[2], out var temporadaD):

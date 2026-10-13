@@ -37,7 +37,7 @@ public class ObterFichaAtletaHandler(IScoutDb db) : IQueryHandler<ObterFichaAtle
             var referencia = MotorDeAnalise.ReferenciaDa(doAtleta.Select(r => r.Temporada).DefaultIfEmpty(hoje.Year).Max(), hoje);
             var idade = a.IdadeEm(referencia);
             if (idade is null)
-                return new FichaAtleta(a.Id, a.Nome, null, false, "Sem data de nascimento no provedor: fica fora da análise, porque não dá para garantir que tem 18 anos ou mais.", []);
+                return new FichaAtleta(a.Id, a.Nome, null, false, "O provedor não informa a data de nascimento. Os dados de jogo existem, mas ficam ocultos até a data ser cadastrada (comando nascimento, com uma fonte pública), porque sem ela não dá para garantir que tem 18 anos ou mais.", []);
             if (idade < Atleta.IdadeMinimaAnalise)
                 return new FichaAtleta(a.Id, a.Nome, null, false, "Menor de 18 anos: fica fora de qualquer análise individual.", []);
 

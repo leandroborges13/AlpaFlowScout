@@ -36,6 +36,10 @@ namespace Scout.Infrastructure.Dados.Migracoes
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("atualizado_em");
 
+                    b.Property<string>("FonteNascimento")
+                        .HasColumnType("text")
+                        .HasColumnName("fonte_nascimento");
+
                     b.Property<string>("Foto")
                         .HasColumnType("text")
                         .HasColumnName("foto");
