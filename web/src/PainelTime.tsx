@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type DetalheTime, type NecessidadeNaFuncao, type ResumoAtleta, type ResumoTime } from './api'
+import { api, type DetalheTime, type NecessidadeNaFuncao, type ResumoAtleta, type ResumoTime, type ResumoTreinador } from './api'
 import { CartaoAtleta, Medidor } from './Componentes'
 
 /** Escudo do time, ou as iniciais no modo gravação (marca do clube fora de vídeos públicos). */
@@ -44,9 +44,10 @@ type PainelProps = {
   gravacao: boolean
   onFechar: () => void
   onAbrirAtleta: (a: ResumoAtleta) => void
+  onAbrirTreinador: (t: ResumoTreinador) => void
 }
 
-export function PainelTime({ time, gravacao, onFechar, onAbrirAtleta }: PainelProps) {
+export function PainelTime({ time, gravacao, onFechar, onAbrirAtleta, onAbrirTreinador }: PainelProps) {
   const [detalhe, setDetalhe] = useState<DetalheTime | null>(null)
   const [erro, setErro] = useState<string | null>(null)
 
@@ -62,7 +63,6 @@ export function PainelTime({ time, gravacao, onFechar, onAbrirAtleta }: PainelPr
   }, [onFechar])
 
   const t = detalhe?.resumo ?? time
-  const maxJogos = Math.max(1, ...(detalhe?.esquemas ?? []).map((e) => e.jogos))
   // Funções em ordem de campo: defesa, meio, ataque (goleiro fica de fora, a nota dele mede outra coisa)
   const funcoes = (detalhe?.funcoes ?? []).filter((f) => f.setor !== 'Goleiro')
 
@@ -117,19 +117,25 @@ export function PainelTime({ time, gravacao, onFechar, onAbrirAtleta }: PainelPr
               <section>
                 <h3>Esquemas</h3>
                 <p className="legenda">Esquema inicial de cada jogo, a partir das escalações. Aproveitamento = pontos ganhos com aquele esquema.</p>
-                <div className="esquemas">
-                  {detalhe.esquemas.map((e) => (
-                    <div key={e.esquema} className="esquema">
-                      <b>{e.esquema}</b>
-                      <div className="esquema-barra" role="img" aria-label={`${e.jogos} jogos: ${e.emCasa} em casa e ${e.fora} fora`}>
-                        <i className="casa" style={{ width: `${(e.emCasa / maxJogos) * 100}%` }} />
-                        <i className="fora" style={{ width: `${(e.fora / maxJogos) * 100}%` }} />
-                      </div>
-                      <span className="card-sub">{e.jogos} {e.jogos === 1 ? 'jogo' : 'jogos'} · {e.aproveitamento}% de aproveitamento</span>
-                    </div>
+                <ListaDeEsquemas esquemas={detalhe.esquemas} />
+              </section>
+            )}
+
+            {detalhe.treinadores.length > 0 && (
+              <section>
+                <h3>Treinadores na temporada</h3>
+                <ul className="treinadores-time">
+                  {detalhe.treinadores.map((tr) => (
+                    <li key={tr.id}>
+                      <button className="link" onClick={() => onAbrirTreinador(tr)}>{tr.nome}</button>
+                      {tr.noCargo && <span className="selo-cargo">no cargo</span>}
+                      <span className="card-sub">
+                        {Periodo(tr.inicio, tr.fim, tr.noCargo)} · {tr.jogos} {tr.jogos === 1 ? 'jogo' : 'jogos'} · {tr.vitorias}V {tr.empates}E {tr.derrotas}D
+                        {tr.aproveitamento != null ? ` · ${tr.aproveitamento}%` : ''}
+                      </span>
+                    </li>
                   ))}
-                </div>
-                <div className="lt-legenda"><span><i className="lt-quad casa" /> em casa</span><span><i className="lt-quad fora" /> fora</span></div>
+                </ul>
               </section>
             )}
 
@@ -195,4 +201,32 @@ function LinhaFuncao({ f }: { f: NecessidadeNaFuncao }) {
 
 function Tile({ valor, rotulo }: { valor: string; rotulo: string }) {
   return <div className="tile"><b>{valor}</b><span>{rotulo}</span></div>
+}
+
+/** Barras por esquema, separando jogos em casa e fora, com o aproveitamento de cada um. */
+export function ListaDeEsquemas({ esquemas }: { esquemas: DetalheTime['esquemas'] }) {
+  const maxJogos = Math.max(1, ...esquemas.map((e) => e.jogos))
+  return (
+    <>
+      <div className="esquemas">
+        {esquemas.map((e) => (
+          <div key={e.esquema} className="esquema">
+            <b>{e.esquema}</b>
+            <div className="esquema-barra" role="img" aria-label={`${e.jogos} jogos: ${e.emCasa} em casa e ${e.fora} fora`}>
+              <i className="casa" style={{ width: `${(e.emCasa / maxJogos) * 100}%` }} />
+              <i className="fora" style={{ width: `${(e.fora / maxJogos) * 100}%` }} />
+            </div>
+            <span className="card-sub">{e.jogos} {e.jogos === 1 ? 'jogo' : 'jogos'} · {e.aproveitamento}% de aproveitamento</span>
+          </div>
+        ))}
+      </div>
+      <div className="lt-legenda"><span><i className="lt-quad casa" /> em casa</span><span><i className="lt-quad fora" /> fora</span></div>
+    </>
+  )
+}
+
+/** "12/03 a 20/07" ou "desde 12/03". */
+export function Periodo(inicio: string, fim: string, noCargo: boolean) {
+  const d = (s: string) => new Date(s).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+  return noCargo ? `desde ${d(inicio)}` : `${d(inicio)} a ${d(fim)}`
 }

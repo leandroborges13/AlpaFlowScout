@@ -222,3 +222,14 @@ button.lt-quad:hover, button.lt-quad:focus-visible { outline: 2px solid var(--in
 .funcoes-time li.carente .medidor .trilho i { background: var(--aviso); }
 .encaixe { display: grid; gap: 2px; font-size: 13px; color: var(--ink-2); }
 .encaixe b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* Treinadores */
+.treinadores-time { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.treinadores-time li { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.link { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+.selo-cargo { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent); border: 1px solid var(--accent); border-radius: 6px; padding: 0 6px; }
+.passagem { display: grid; gap: 10px; border-top: 1px solid var(--line); padding-top: 14px; }
+.passagem .clube-linha { gap: 10px; }
+.passagem .retrato.escudo { width: 32px; height: 32px; }
+.passagem p { margin: 0; }
+.comparacao { background: var(--accent-soft); border-radius: 10px; padding: 10px 12px; font-size: 14px; }

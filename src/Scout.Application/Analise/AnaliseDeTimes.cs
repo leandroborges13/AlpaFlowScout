@@ -62,6 +62,11 @@ public class LinhaTime
     public double? Faltas { get; init; }
     public double? Cartoes { get; init; }
 
+    // Titulares (das escalações), com a idade na data de cada jogo
+    public double? IdadeMediaTitulares { get; init; }
+    /// <summary>% das titularidades dadas a atletas de até 23 anos.</summary>
+    public double? TitularesAte23 { get; init; }
+
     // Elenco
     public double? IdadeMedia { get; init; }
     public double? MinutosAte23 { get; init; }
@@ -74,7 +79,14 @@ public class LinhaTime
     public Dictionary<string, double?> Percentis { get; } = [];
 }
 
-public record AnaliseTimesTemporada(int CompeticaoId, string Competicao, int Temporada, IReadOnlyList<LinhaTime> Times);
+/// <summary>Um treinador num clube durante a temporada: os jogos em que comandou, analisados como um time.</summary>
+public record PassagemNaTemporada(int TreinadorId, string Nome, string? Foto, LinhaTime Linha, DateTime Inicio, DateTime Fim, bool NoCargo)
+{
+    public const int JogosMinimos = 5;
+}
+
+public record AnaliseTimesTemporada(int CompeticaoId, string Competicao, int Temporada, IReadOnlyList<LinhaTime> Times,
+    IReadOnlyList<PassagemNaTemporada> Treinadores);
 
 public static class CatalogoTimes
 {
@@ -97,6 +109,7 @@ public static class CatalogoTimes
         new("noAlvoCedidas", "Finalizações no alvo cedidas por jogo", t => t.FinalizacoesNoAlvoCedidas, Inverso: true),
         new("faltas", "Faltas cometidas por jogo", t => t.Faltas, Inverso: true),
         new("cartoes", "Cartões por jogo", t => t.Cartoes, Inverso: true),
+        new("titularesAte23", "Titularidades de atletas até 23 anos", t => t.TitularesAte23),
     ];
 
     public static readonly Dictionary<string, IndicadorTime> PorChave = Indicadores.ToDictionary(i => i.Chave);
@@ -111,6 +124,33 @@ public static class CatalogoTimes
 
     public static double? NotaDaDimensao(LinhaTime t, DimensaoTime d) =>
         MotorDeAnalise.Media(d.Indicadores.Select(k => t.Percentis.GetValueOrDefault(k)));
+
+    /// <summary>
+    /// O provedor às vezes tem o mesmo treinador com dois cadastros ("Alex" e "Souza Alex") no mesmo clube.
+    /// Nomes em que as palavras de um estão todas no outro viram um só, com o Id de quem tem mais jogos.
+    /// </summary>
+    public static Dictionary<int, int> UnificarTreinadores(IReadOnlyDictionary<int, int> jogosPorTreinador, Func<int, string> nome)
+    {
+        var unificado = jogosPorTreinador.Keys.ToDictionary(id => id, id => id);
+        var ordem = jogosPorTreinador.OrderByDescending(x => x.Value).Select(x => x.Key).ToList();
+        for (var i = 0; i < ordem.Count; i++)
+            for (var j = i + 1; j < ordem.Count; j++)
+            {
+                var (maior, menor) = (ordem[i], ordem[j]);
+                if (unificado[maior] != maior || unificado[menor] != menor) continue;
+                var a = Palavras(nome(maior));
+                var b = Palavras(nome(menor));
+                if (a.Count > 0 && b.Count > 0 && (a.IsSubsetOf(b) || b.IsSubsetOf(a))) unificado[menor] = maior;
+            }
+        return unificado;
+    }
+
+    static HashSet<string> Palavras(string nome)
+    {
+        var semAcento = new string(nome.Normalize(System.Text.NormalizationForm.FormD)
+            .Where(c => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.NonSpacingMark).ToArray());
+        return semAcento.ToLowerInvariant().Split([' ', '.', '-'], StringSplitOptions.RemoveEmptyEntries).Where(p => p.Length > 1).ToHashSet();
+    }
 
     /// <summary>"Lateral esquerdo" no 4-4-2 faz o papel do "Ala esquerdo" no 3-5-2, e vice-versa.</summary>
     public static IEnumerable<string> FuncoesEquivalentes(string funcao)
@@ -197,6 +237,7 @@ public class AnaliseDeTimes(IScoutDb db, MotorDeAnalise motor, IMemoryCache cach
         var partidas = await db.Partidas.AsNoTracking()
             .Where(p => p.CompeticaoId == competicaoId && p.Temporada == temporada
                         && (p.Status == "FT" || p.Status == "AET" || p.Status == "PEN") && p.GolsMandante != null)
+            .OrderBy(p => p.Data)
             .ToListAsync(ct);
         if (partidas.Count == 0) return null;
         var ids = partidas.Select(p => p.Id).ToList();
@@ -207,11 +248,17 @@ public class AnaliseDeTimes(IScoutDb db, MotorDeAnalise motor, IMemoryCache cach
             .Select(e => new { e.PartidaId, e.ClubeId, e.AtletaId, e.Esquema, e.Funcao, e.Setor })
             .ToListAsync(ct);
         var escalacoesDoClube = escalacoes.ToLookup(e => e.ClubeId);
+        var idsTitulares = escalacoes.Select(e => e.AtletaId).Distinct().ToList();
+        var nascimentos = await db.Atletas.AsNoTracking().Where(a => idsTitulares.Contains(a.Id) && a.Nascimento != null)
+            .ToDictionaryAsync(a => a.Id, a => a.Nascimento!.Value, ct);
         var elencos = (await db.Estatisticas.AsNoTracking()
                 .Where(e => e.CompeticaoId == competicaoId && e.Temporada == temporada && e.Minutos > 0)
                 .Select(e => new { e.ClubeId, e.AtletaId, e.Minutos, e.Atleta.Nascimento })
                 .ToListAsync(ct))
             .ToLookup(e => e.ClubeId);
+        var comandos = await db.TreinadoresNaPartida.AsNoTracking().Where(t => ids.Contains(t.PartidaId)).ToListAsync(ct);
+        var idsTreinadores = comandos.Select(t => t.TreinadorId).Distinct().ToList();
+        var treinadores = await db.Treinadores.AsNoTracking().Where(t => idsTreinadores.Contains(t.Id)).ToDictionaryAsync(t => t.Id, ct);
 
         var analise = await motor.Analisar(competicaoId, temporada, ct);
         var analisaveis = (analise?.Linhas ?? []).ToDictionary(l => l.AtletaId);
@@ -219,15 +266,14 @@ public class AnaliseDeTimes(IScoutDb db, MotorDeAnalise motor, IMemoryCache cach
         var clubeIds = partidas.SelectMany(p => new[] { p.MandanteId, p.VisitanteId }).Distinct().ToList();
         var clubes = await db.Clubes.AsNoTracking().Where(c => clubeIds.Contains(c.Id)).ToDictionaryAsync(c => c.Id, ct);
 
-        var times = new List<LinhaTime>();
-        foreach (var clubeId in clubeIds)
+        // Um recorte de jogos do clube vira uma linha: a temporada inteira (time) ou só os jogos de um treinador
+        LinhaTime Montar(int clubeId, List<Partida> jogos, bool comElenco)
         {
-            var jogos = partidas.Where(p => p.MandanteId == clubeId || p.VisitanteId == clubeId).ToList();
             var resultados = jogos.Select(p =>
             {
                 var emCasa = p.MandanteId == clubeId;
                 int pro = emCasa ? p.GolsMandante!.Value : p.GolsVisitante!.Value, contra = emCasa ? p.GolsVisitante!.Value : p.GolsMandante!.Value;
-                return (p.Id, emCasa, pro, contra, pontos: pro > contra ? 3 : pro == contra ? 1 : 0);
+                return (p.Id, emCasa, pro, contra, pontos: pro > contra ? 3 : pro == contra ? 1 : 0, data: DateOnly.FromDateTime(p.Data));
             }).ToList();
             var porPartida = resultados.ToDictionary(r => r.Id);
 
@@ -244,20 +290,22 @@ public class AnaliseDeTimes(IScoutDb db, MotorDeAnalise motor, IMemoryCache cach
             double? Media(IEnumerable<int?> v) => comEstatistica ? MotorDeAnalise.Media(v.Select(x => (double?)x)) : null;
             var comPasses = proprias.Where(e => e.Passes > 0 && e.PassesCertos is not null).ToList();
 
-            var esc = escalacoesDoClube[clubeId].ToList();
+            var esc = escalacoesDoClube[clubeId].Where(e => porPartida.ContainsKey(e.PartidaId)).ToList();
             var esquemasPorJogo = esc.GroupBy(e => e.PartidaId)
-                .Where(g => porPartida.ContainsKey(g.Key))
                 .Select(g => (g.First().Esquema, porPartida[g.Key].emCasa, porPartida[g.Key].pontos))
                 .Where(x => x.Esquema != "")
                 .ToList();
+            // Idade de cada titular na data do jogo
+            var idadesTitulares = esc.Where(e => nascimentos.ContainsKey(e.AtletaId))
+                .Select(e => IdadeEm(nascimentos[e.AtletaId], porPartida[e.PartidaId].data)).ToList();
 
-            var elenco = elencos[clubeId].ToList();
+            var elenco = comElenco ? elencos[clubeId].ToList() : [];
             var minutosTotais = elenco.Sum(e => e.Minutos);
             var comIdade = elenco.Where(e => e.Nascimento is not null).Select(e => (idade: IdadeEm(e.Nascimento!.Value, referencia), e.Minutos)).ToList();
             var minutosComIdade = comIdade.Sum(e => e.Minutos);
 
             clubes.TryGetValue(clubeId, out var clube);
-            times.Add(new LinhaTime
+            return new LinhaTime
             {
                 ClubeId = clubeId, Nome = clube?.Nome ?? $"Clube {clubeId}", Escudo = clube?.Escudo,
                 CompeticaoId = competicaoId, Competicao = competicao.Nome, Temporada = temporada,
@@ -275,18 +323,46 @@ public class AnaliseDeTimes(IScoutDb db, MotorDeAnalise motor, IMemoryCache cach
                 Escanteios = Media(proprias.Select(e => e.Escanteios)),
                 Faltas = Media(proprias.Select(e => e.Faltas)),
                 Cartoes = Media(proprias.Select(e => e.Amarelos is null && e.Vermelhos is null ? (int?)null : (e.Amarelos ?? 0) + 2 * (e.Vermelhos ?? 0))),
+                IdadeMediaTitulares = idadesTitulares.Count > 0 ? idadesTitulares.Average() : null,
+                TitularesAte23 = idadesTitulares.Count > 0 ? idadesTitulares.Count(i => i <= 23) * 100.0 / idadesTitulares.Count : null,
                 IdadeMedia = minutosComIdade > 0 ? comIdade.Sum(e => e.idade * (double)e.Minutos) / minutosComIdade : null,
                 MinutosAte23 = minutosComIdade > 0 ? comIdade.Where(e => e.idade <= 23).Sum(e => e.Minutos) * 100.0 / minutosComIdade : null,
                 AtletasUsados = elenco.Select(e => e.AtletaId).Distinct().Count(),
                 MinutosDosOnzeMaisUsados = minutosTotais > 0
                     ? elenco.GroupBy(e => e.AtletaId).Select(g => g.Sum(e => e.Minutos)).OrderByDescending(m => m).Take(11).Sum() * 100.0 / minutosTotais
                     : null,
-                Funcoes = CatalogoTimes.FuncoesDoTime(esquemasPorJogo.Count, esc.Select(e => (e.PartidaId, e.AtletaId, e.Funcao, e.Setor)), analisaveis),
-            });
+                Funcoes = comElenco ? CatalogoTimes.FuncoesDoTime(esquemasPorJogo.Count, esc.Select(e => (e.PartidaId, e.AtletaId, e.Funcao, e.Setor)), analisaveis) : [],
+            };
         }
 
+        var jogosDoClube = clubeIds.ToDictionary(id => id, id => partidas.Where(p => p.MandanteId == id || p.VisitanteId == id).ToList());
+        var times = clubeIds.Select(id => Montar(id, jogosDoClube[id], comElenco: true)).ToList();
         CatalogoTimes.CalcularPercentis(times);
-        return new AnaliseTimesTemporada(competicaoId, competicao.Nome, temporada, times);
+
+        // Passagens de cada treinador por clube na temporada
+        var comandoPorJogo = comandos.ToDictionary(c => (c.PartidaId, c.ClubeId), c => c.TreinadorId);
+        var passagens = new List<PassagemNaTemporada>();
+        foreach (var clubeId in clubeIds)
+        {
+            var comandados = jogosDoClube[clubeId].Where(p => comandoPorJogo.ContainsKey((p.Id, clubeId))).ToList();
+            if (comandados.Count == 0) continue;
+            var porJogos = comandados.GroupBy(p => comandoPorJogo[(p.Id, clubeId)]).ToDictionary(g => g.Key, g => g.Count());
+            string NomeDe(int id) => treinadores.TryGetValue(id, out var t) ? t.Nome : "";
+            var unificado = CatalogoTimes.UnificarTreinadores(porJogos, NomeDe);
+            int Comandante(Partida p) => unificado[comandoPorJogo[(p.Id, clubeId)]];
+            var atual = Comandante(comandados[^1]);
+            foreach (var g in comandados.GroupBy(Comandante))
+            {
+                var doTreinador = g.ToList();
+                treinadores.TryGetValue(g.Key, out var t);
+                passagens.Add(new PassagemNaTemporada(g.Key, t?.Nome ?? $"Treinador {g.Key}", t?.Foto,
+                    Montar(clubeId, doTreinador, comElenco: false), doTreinador[0].Data, doTreinador[^1].Data, g.Key == atual));
+            }
+        }
+        // Treinador com poucos jogos fica fora da comparação: percentil de 2 ou 3 jogos não diz nada
+        CatalogoTimes.CalcularPercentis(passagens.Where(p => p.Linha.Jogos >= PassagemNaTemporada.JogosMinimos).Select(p => p.Linha).ToList());
+
+        return new AnaliseTimesTemporada(competicaoId, competicao.Nome, temporada, times, passagens);
     }
 
     static int IdadeEm(DateOnly nascimento, DateOnly referencia)

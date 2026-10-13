@@ -445,6 +445,10 @@ namespace Scout.Infrastructure.Dados.Migracoes
                         .HasColumnType("integer")
                         .HasColumnName("temporada");
 
+                    b.Property<bool>("TreinadoresImportados")
+                        .HasColumnType("boolean")
+                        .HasColumnName("treinadores_importados");
+
                     b.Property<int>("VisitanteId")
                         .HasColumnType("integer")
                         .HasColumnName("visitante_id");
@@ -456,6 +460,61 @@ namespace Scout.Infrastructure.Dados.Migracoes
                         .HasDatabaseName("ix_partidas_competicao_id_temporada");
 
                     b.ToTable("partidas", (string)null);
+                });
+
+            modelBuilder.Entity("Scout.Domain.Treinador", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Foto")
+                        .HasColumnType("text")
+                        .HasColumnName("foto");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("nome");
+
+                    b.HasKey("Id")
+                        .HasName("pk_treinadores");
+
+                    b.ToTable("treinadores", (string)null);
+                });
+
+            modelBuilder.Entity("Scout.Domain.TreinadorNaPartida", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("ClubeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("clube_id");
+
+                    b.Property<int>("PartidaId")
+                        .HasColumnType("integer")
+                        .HasColumnName("partida_id");
+
+                    b.Property<int>("TreinadorId")
+                        .HasColumnType("integer")
+                        .HasColumnName("treinador_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_treinadores_na_partida");
+
+                    b.HasIndex("TreinadorId")
+                        .HasDatabaseName("ix_treinadores_na_partida_treinador_id");
+
+                    b.HasIndex("PartidaId", "ClubeId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_treinadores_na_partida_partida_id_clube_id");
+
+                    b.ToTable("treinadores_na_partida", (string)null);
                 });
 
             modelBuilder.Entity("Scout.Infrastructure.Dados.ConsultaDiaria", b =>

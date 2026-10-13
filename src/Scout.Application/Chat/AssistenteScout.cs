@@ -13,7 +13,7 @@ namespace Scout.Application.Chat;
 public record MensagemChat(string Papel, string Texto);
 
 /// <summary>Resposta do chat: o texto e os atletas citados e os times citados, para a tela mostrar os cartões.</summary>
-public record RespostaChat(string Texto, IReadOnlyList<ResumoAtleta> Atletas, IReadOnlyList<ResumoTime> Times);
+public record RespostaChat(string Texto, IReadOnlyList<ResumoAtleta> Atletas, IReadOnlyList<ResumoTime> Times, IReadOnlyList<ResumoTreinador> Treinadores);
 
 /// <summary>
 /// Agente de scouting: entende o pedido em linguagem natural e consulta o banco pelas ferramentas.
@@ -30,6 +30,8 @@ public class AssistenteScout(
     IQueryHandler<ObterTime, DetalheTime?> detalharTime,
     IQueryHandler<BuscarTimesComCarencia, IReadOnlyList<TimeComCarencia>> carencias,
     IQueryHandler<TimesParaAtleta, ResultadoTimesParaAtleta?> timesParaAtleta,
+    IQueryHandler<ListarTreinadores, IReadOnlyList<ResumoTreinador>> listarTreinadores,
+    IQueryHandler<ObterTreinador, DetalheTreinador?> detalharTreinador,
     IMemoryCache cache,
     ILogger<AssistenteScout> log)
 {
@@ -41,6 +43,8 @@ public class AssistenteScout(
         void Citar(IEnumerable<ResumoAtleta> atletas) { foreach (var a in atletas) citados[a.Id] = a; }
         var timesCitados = new Dictionary<int, ResumoTime>();
         void CitarTimes(IEnumerable<ResumoTime> times) { foreach (var t in times) timesCitados[t.Id] = t; }
+        var treinadoresCitados = new Dictionary<int, ResumoTreinador>();
+        void CitarTreinadores(IEnumerable<ResumoTreinador> lista) { foreach (var t in lista) treinadoresCitados.TryAdd(t.Id, t); }
 
         var ferramentas = new List<AITool>
         {
@@ -166,13 +170,55 @@ public class AssistenteScout(
                 },
                 "times_para_atleta",
                 "Em que times um atleta encaixaria: times que usam a função dele e têm ali titulares com nota menor."),
+            AIFunctionFactory.Create(
+                async ([Description("ID da competição; omita para todas")] int? competicao = null,
+                       [Description("Parte do nome do treinador, para encontrar o ID")] string? nome = null,
+                       [Description("'aproveitamento' (padrão) ou 'jovens' (quem mais escala atletas até 23 anos)")] string? ordenarPor = null,
+                       int? temporada = null) =>
+                {
+                    var r = await listarTreinadores.Handle(new ListarTreinadores(competicao, nome, temporada), ct);
+                    var jovens = string.Equals(ordenarPor, "jovens", StringComparison.OrdinalIgnoreCase);
+                    var lista = (jovens
+                        ? r.Where(t => t.TitularesAte23 is not null).OrderByDescending(t => t.TitularesAte23)
+                        : r.OrderByDescending(t => t.Aproveitamento)).ToList();
+                    if (nome is not null) CitarTreinadores(lista.Take(3));
+                    else if (ordenarPor is not null) CitarTreinadores(lista.Take(5));
+                    return lista.Select(t => new
+                    {
+                        t.Id, t.Nome, t.Clube, t.Competicao, t.Temporada, t.NoCargo, t.Jogos, AproveitamentoPercentual = t.Aproveitamento,
+                        t.EsquemaPreferido, t.Estilo, PercentualDasTitularidadesParaAte23 = t.TitularesAte23, t.Dimensoes,
+                    });
+                },
+                "listar_treinadores",
+                "Treinadores no cargo (ou todos, buscando pelo nome), já ordenados, com aproveitamento, esquema preferido, estilo e a porcentagem das titularidades dadas a atletas até 23 anos."),
+            AIFunctionFactory.Create(
+                async (int treinadorId, int? temporada = null) =>
+                {
+                    var d = await detalharTreinador.Handle(new ObterTreinador(treinadorId, temporada), ct);
+                    if (d is null) return (object)"Treinador não encontrado.";
+                    CitarTreinadores([d.Resumo]);
+                    return (object)new
+                    {
+                        Passagens = d.Passagens.Select(p => new
+                        {
+                            p.Passagem.Clube, p.Passagem.Competicao, p.Passagem.Temporada, p.Passagem.NoCargo, p.Passagem.Inicio, p.Passagem.Fim,
+                            p.Passagem.Jogos, p.Passagem.Vitorias, p.Passagem.Empates, p.Passagem.Derrotas, p.Passagem.Aproveitamento,
+                            p.Esquemas, p.Estilo, p.Passagem.Dimensoes, p.IdadeMediaTitulares, p.Passagem.TitularesAte23, p.PercentilJovens,
+                            p.Comparacao, OutrosNoClube = p.NoMesmoClube,
+                        }),
+                        Carreira = d.Carreira?.Passagens.Take(8),
+                        d.Observacoes,
+                    };
+                },
+                "analisar_treinador",
+                "Perfil de um treinador: passagens na base com resultados, esquemas, estilo do time sob o comando dele, uso de jovens, comparação com o antecessor e carreira."),
         };
 
         var mensagens = new List<ChatMessage> { new(ChatRole.System, Instrucoes(disponiveis, temporadaPadrao)) };
         mensagens.AddRange(conversa.TakeLast(12).Select(m => new ChatMessage(m.Papel == "user" ? ChatRole.User : ChatRole.Assistant, m.Texto)));
 
         var resposta = await chat.GetResponseAsync(mensagens, new ChatOptions { Tools = ferramentas, Temperature = 0.2f }, ct);
-        return new RespostaChat(resposta.Text, citados.Values.ToList(), timesCitados.Values.ToList());
+        return new RespostaChat(resposta.Text, citados.Values.ToList(), timesCitados.Values.ToList(), treinadoresCitados.Values.ToList());
     }
 
     /// <summary>Parágrafo de analista sobre o atleta, só com as nossas métricas. Guardado por 6 horas.</summary>
@@ -229,5 +275,15 @@ public class AssistenteScout(
         - "Quem precisa de um lateral esquerdo?" = times_com_carencia. "Onde esse atleta encaixa?" = times_para_atleta, explicando o ganho
           (nota do atleta menos a nota dos titulares atuais) e se ele já joga no esquema do time.
         - Carência é relativa: titulares abaixo da maioria dos times da mesma competição naquela função. Diga isso ao usar a palavra.
+
+        Treinadores:
+        - Encontre o ID com listar_treinadores (nome) e use analisar_treinador. Descreva: clube e período, campanha (V/E/D e aproveitamento),
+          esquema preferido e se varia, estilo do time sob o comando dele em percentis, uso de jovens (% das titularidades para até 23 anos)
+          e, se houver, a comparação com o antecessor no clube.
+        - Os percentis comparam só os jogos em que cada treinador comandou, com os outros treinadores da mesma competição.
+          Passagens com menos de 5 jogos não têm percentil: diga que a amostra é pequena.
+        - Para rankings, use ordenarPor ("jovens" ou "aproveitamento") e mantenha a ordem recebida. Uso de jovens é porcentagem:
+          "55% das titularidades para atletas até 23 anos", nunca "55 jovens".
+        - Não opine sobre a pessoa nem sobre a vida pessoal: fale do trabalho em campo, com dados.
         """;
 }

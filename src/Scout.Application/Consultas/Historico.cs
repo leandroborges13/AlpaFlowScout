@@ -27,3 +27,13 @@ public record PontoNoCampo(double X, double Y, int Jogos, string Funcao);
 /// Estilo pelos atributos, comparado ao próprio setor: de −100 (muito marcador) a +100 (bem ofensivo).
 /// </summary>
 public record EstiloDeJogo(int Indice, string Rotulo, double Ofensivo, double Defensivo, string Explicacao);
+
+public record PassagemNaCarreira(string Clube, string? Escudo, DateOnly? Inicio, DateOnly? Fim);
+
+public record CarreiraTreinador(int? Idade, string? Nacionalidade, IReadOnlyList<PassagemNaCarreira> Passagens);
+
+/// <summary>Carreira do treinador (clubes e períodos), buscada no provedor sob demanda.</summary>
+public interface ICarreiraDoTreinador
+{
+    Task<CarreiraTreinador?> Obter(int treinadorId, CancellationToken ct);
+}

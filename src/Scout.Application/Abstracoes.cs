@@ -13,6 +13,8 @@ public interface IScoutDb
     DbSet<Partida> Partidas { get; }
     DbSet<Escalacao> Escalacoes { get; }
     DbSet<EstatisticaPartida> EstatisticasPartida { get; }
+    DbSet<Treinador> Treinadores { get; }
+    DbSet<TreinadorNaPartida> TreinadoresNaPartida { get; }
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 }
 

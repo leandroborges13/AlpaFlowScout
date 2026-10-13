@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { api, EVENTO_SESSAO_EXPIRADA, lerModoGravacao, salvarModoGravacao, type Mensagem, type ResumoAtleta, type ResumoTime } from './api'
+import { api, EVENTO_SESSAO_EXPIRADA, lerModoGravacao, salvarModoGravacao, type Mensagem, type ResumoAtleta, type ResumoTime, type ResumoTreinador } from './api'
 import { CartaoAtleta } from './Componentes'
 import { Login } from './Login'
 import { PainelAtleta } from './PainelAtleta'
 import { CartaoTime, PainelTime } from './PainelTime'
+import { CartaoTreinador, PainelTreinador } from './PainelTreinador'
 
 const SUGESTOES = [
   'Meu time joga no 3-4-3. Preciso de um zagueiro pela esquerda, bom no jogo aéreo e na saída de bola, até 25 anos',
@@ -12,6 +13,7 @@ const SUGESTOES = [
   'Pontas esquerdas com drible e criação, até 24 anos',
   'Quais times da Série B mais precisam de um lateral esquerdo?',
   'Como joga o líder da Série A? Esquema, estilo e carências',
+  'Quais treinadores da Série B mais dão espaço para jovens?',
 ]
 
 /** Confere a sessão: sem login, mostra a tela de entrada. */
@@ -36,6 +38,7 @@ function Plataforma({ usuario, onSair }: { usuario: string; onSair: () => void }
   const [carregando, setCarregando] = useState(false)
   const [aberto, setAberto] = useState<ResumoAtleta | null>(null)
   const [timeAberto, setTimeAberto] = useState<ResumoTime | null>(null)
+  const [treinadorAberto, setTreinadorAberto] = useState<Pick<ResumoTreinador, 'id' | 'nome'> | null>(null)
   const [gravacao, setGravacao] = useState(lerModoGravacao)
   const fim = useRef<HTMLDivElement>(null)
 
@@ -52,7 +55,7 @@ function Plataforma({ usuario, onSair }: { usuario: string; onSair: () => void }
     setCarregando(true)
     try {
       const r = await api.chat(historico)
-      setMensagens([...historico, { papel: 'assistant', texto: r.texto, atletas: r.atletas, times: r.times }])
+      setMensagens([...historico, { papel: 'assistant', texto: r.texto, atletas: r.atletas, times: r.times, treinadores: r.treinadores }])
     } catch (e) {
       setMensagens([...historico, { papel: 'assistant', texto: `Não consegui responder agora: ${(e as Error).message}` }])
     } finally {
@@ -66,13 +69,13 @@ function Plataforma({ usuario, onSair }: { usuario: string; onSair: () => void }
         <div className="marca">
           <i aria-hidden>⚽</i>
           <div>
-            AlpaFlow Scout <small>análise de atletas e times com IA</small>
+            AlpaFlow Scout <small>análise de atletas, times e treinadores com IA</small>
           </div>
         </div>
         <div className="topo-acoes">
           <span className="selo">Séries A, B e C · só maiores de 18 anos</span>
           {mensagens.length > 0 && (
-            <button className="btn" onClick={() => { setMensagens([]); setAberto(null); setTimeAberto(null); setTexto('') }} disabled={carregando}>
+            <button className="btn" onClick={() => { setMensagens([]); setAberto(null); setTimeAberto(null); setTreinadorAberto(null); setTexto('') }} disabled={carregando}>
               Limpar conversa
             </button>
           )}
@@ -105,6 +108,11 @@ function Plataforma({ usuario, onSair }: { usuario: string; onSair: () => void }
                 {m.times.map((t) => <CartaoTime key={`${t.id}-${t.competicaoId}`} time={t} gravacao={gravacao} onAbrir={() => setTimeAberto(t)} />)}
               </div>
             )}
+            {m.treinadores && m.treinadores.length > 0 && (
+              <div className="cards">
+                {m.treinadores.map((t) => <CartaoTreinador key={`${t.id}-${t.clubeId}`} treinador={t} gravacao={gravacao} onAbrir={() => setTreinadorAberto(t)} />)}
+              </div>
+            )}
             {m.atletas && m.atletas.length > 0 && (
               <div className="cards">
                 {m.atletas.map((a) => <CartaoAtleta key={a.id} atleta={a} gravacao={gravacao} onAbrir={() => setAberto(a)} />)}
@@ -133,8 +141,10 @@ function Plataforma({ usuario, onSair }: { usuario: string; onSair: () => void }
 
       {aberto && <PainelAtleta atleta={aberto} gravacao={gravacao} onFechar={() => setAberto(null)} onAbrir={setAberto} onAbrirTime={(t) => { setAberto(null); setTimeAberto(t) }} />}
       {timeAberto && (
-        <PainelTime time={timeAberto} gravacao={gravacao} onFechar={() => setTimeAberto(null)} onAbrirAtleta={(a) => { setTimeAberto(null); setAberto(a) }} />
+        <PainelTime time={timeAberto} gravacao={gravacao} onFechar={() => setTimeAberto(null)} onAbrirAtleta={(a) => { setTimeAberto(null); setAberto(a) }}
+          onAbrirTreinador={(t) => { setTimeAberto(null); setTreinadorAberto(t) }} />
       )}
+      {treinadorAberto && <PainelTreinador treinador={treinadorAberto} gravacao={gravacao} onFechar={() => setTreinadorAberto(null)} />}
     </div>
   )
 }

@@ -103,6 +103,8 @@ public class Importador(ApiFootballClient api, ScoutDbContext db, ILogger<Import
         if (comEscalacoes)
         {
             await ImportarEscalacoes(partidas.Values.Where(x => x.Encerrada && !x.EscalacoesImportadas).ToList(), ct);
+            // Partidas com escalação de antes de guardarmos o treinador: a resposta está no cache, não gasta consulta
+            await ImportarTreinadores(partidas.Values.Where(x => x.EscalacoesImportadas && !x.TreinadoresImportados).ToList(), ct);
             await ImportarEstatisticasDosJogos(partidas.Values.Where(x => x.Encerrada && !x.EstatisticasImportadas).ToList(), ct);
         }
 
@@ -141,11 +143,43 @@ public class Importador(ApiFootballClient api, ScoutDbContext db, ILogger<Import
                     });
                 }
             }
+            await RegistrarTreinadores(partida, times, ct);
             partida.EscalacoesImportadas = true;
             await db.SaveChangesAsync(ct);
             if (++feitas % 25 == 0) log.LogInformation("  escalações: {Feitas}/{Total}", feitas, pendentes.Count);
         }
         return feitas;
+    }
+
+    async Task ImportarTreinadores(List<Partida> pendentes, CancellationToken ct)
+    {
+        foreach (var partida in pendentes)
+        {
+            var times = (await api.Consultar("/fixtures/lineups", new Dictionary<string, object> { ["fixture"] = partida.Id }, null, ct))
+                .GetProperty("response").EnumerateArray().ToList();
+            await RegistrarTreinadores(partida, times, ct);
+            await db.SaveChangesAsync(ct);
+        }
+        if (pendentes.Count > 0) log.LogInformation("  treinadores lidos de {Partidas} partidas", pendentes.Count);
+    }
+
+    Dictionary<int, Treinador>? treinadores;
+
+    /// <summary>O treinador vem junto com a escalação de cada time ("coach": {id, name, photo}).</summary>
+    async Task RegistrarTreinadores(Partida partida, List<JsonElement> times, CancellationToken ct)
+    {
+        treinadores ??= await db.Treinadores.ToDictionaryAsync(t => t.Id, ct);
+        var jaTem = (await db.TreinadoresNaPartida.Where(t => t.PartidaId == partida.Id).Select(t => t.ClubeId).ToListAsync(ct)).ToHashSet();
+        foreach (var t in times)
+        {
+            if (Int(t, "team", "id") is not { } clubeId || Int(t, "coach", "id") is not { } treinadorId || !jaTem.Add(clubeId)) continue;
+            if (!treinadores.TryGetValue(treinadorId, out var treinador))
+                treinadores[treinadorId] = treinador = db.Treinadores.Add(new Treinador { Id = treinadorId }).Entity;
+            treinador.Nome = Texto(t, "coach", "name") ?? treinador.Nome;
+            treinador.Foto = Texto(t, "coach", "photo") ?? treinador.Foto;
+            db.TreinadoresNaPartida.Add(new TreinadorNaPartida { PartidaId = partida.Id, ClubeId = clubeId, TreinadorId = treinadorId });
+        }
+        partida.TreinadoresImportados = true;
     }
 
     /// <summary>Posse, finalizações, passes, faltas... de cada time na partida (base da análise de times).</summary>

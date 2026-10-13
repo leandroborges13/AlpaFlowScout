@@ -38,6 +38,8 @@ public class ScoutDbContext(DbContextOptions<ScoutDbContext> options) : DbContex
     public DbSet<Partida> Partidas => Set<Partida>();
     public DbSet<Escalacao> Escalacoes => Set<Escalacao>();
     public DbSet<EstatisticaPartida> EstatisticasPartida => Set<EstatisticaPartida>();
+    public DbSet<Treinador> Treinadores => Set<Treinador>();
+    public DbSet<TreinadorNaPartida> TreinadoresNaPartida => Set<TreinadorNaPartida>();
     public DbSet<RespostaProvedor> RespostasProvedor => Set<RespostaProvedor>();
     public DbSet<ConsultaDiaria> ConsultasDiarias => Set<ConsultaDiaria>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
@@ -65,6 +67,10 @@ public class ScoutDbContext(DbContextOptions<ScoutDbContext> options) : DbContex
 
         b.Entity<EstatisticaPartida>().HasIndex(e => new { e.PartidaId, e.ClubeId }).IsUnique();
         b.Entity<EstatisticaPartida>().HasIndex(e => e.ClubeId);
+
+        b.Entity<Treinador>().Property(t => t.Id).ValueGeneratedNever();
+        b.Entity<TreinadorNaPartida>().HasIndex(t => new { t.PartidaId, t.ClubeId }).IsUnique();
+        b.Entity<TreinadorNaPartida>().HasIndex(t => t.TreinadorId);
 
         b.Entity<RespostaProvedor>().HasKey(r => r.Chave);
         b.Entity<RespostaProvedor>().Property(r => r.Json).HasColumnType("jsonb");

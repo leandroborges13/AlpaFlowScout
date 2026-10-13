@@ -135,6 +135,12 @@ api.MapGet("/times", (int? competicao, int? temporada, IQueryHandler<ListarTimes
 api.MapGet("/times/{id:int}", async (int id, int? competicao, int? temporada, IQueryHandler<ObterTime, DetalheTime?> h, CancellationToken ct) =>
     await h.Handle(new ObterTime(id, competicao, temporada), ct) is { } d ? Results.Ok(d) : Results.NotFound());
 
+api.MapGet("/treinadores", (int? competicao, string? nome, int? temporada, IQueryHandler<ListarTreinadores, IReadOnlyList<ResumoTreinador>> h, CancellationToken ct) =>
+    h.Handle(new ListarTreinadores(competicao, nome, temporada), ct));
+
+api.MapGet("/treinadores/{id:int}", async (int id, int? temporada, IQueryHandler<ObterTreinador, DetalheTreinador?> h, CancellationToken ct) =>
+    await h.Handle(new ObterTreinador(id, temporada), ct) is { } d ? Results.Ok(d) : Results.NotFound());
+
 api.MapGet("/atletas/{id:int}/times", async (int id, int? temporada, IQueryHandler<TimesParaAtleta, ResultadoTimesParaAtleta?> h, CancellationToken ct) =>
     await h.Handle(new TimesParaAtleta(id, temporada), ct) is { } r ? Results.Ok(r) : Results.NotFound());
 

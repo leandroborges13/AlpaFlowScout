@@ -102,6 +102,7 @@ export type DetalheTime = {
   elenco: { idadeMedia?: number | null; percentualMinutosAte23?: number | null; atletasUsados: number; rodizio?: string | null; explicacao: string }
   funcoes: NecessidadeNaFuncao[]
   principais: ResumoAtleta[]
+  treinadores: ResumoTreinador[]
   observacoes: string[]
 }
 
@@ -117,7 +118,7 @@ export type EncaixeEmTime = {
 
 export type TimesParaAtleta = { atleta: ResumoAtleta; times: EncaixeEmTime[]; observacoes: string[] }
 
-export type Mensagem = { papel: 'user' | 'assistant'; texto: string; atletas?: ResumoAtleta[]; times?: ResumoTime[] }
+export type Mensagem = { papel: 'user' | 'assistant'; texto: string; atletas?: ResumoAtleta[]; times?: ResumoTime[]; treinadores?: ResumoTreinador[] }
 
 /** Avisa a tela quando o login expira, para voltar à tela de entrada. */
 export const EVENTO_SESSAO_EXPIRADA = 'scout:sessao-expirada'
@@ -146,7 +147,7 @@ export const api = {
     pedir<{ nome: string }>('/api/login', { method: 'POST', body: JSON.stringify({ email, senha }) }),
   logout: () => pedir<unknown>('/api/logout', { method: 'POST' }),
   chat: (mensagens: Mensagem[]) =>
-    pedir<{ texto: string; atletas: ResumoAtleta[]; times: ResumoTime[] }>('/api/chat', {
+    pedir<{ texto: string; atletas: ResumoAtleta[]; times: ResumoTime[]; treinadores: ResumoTreinador[] }>('/api/chat', {
       method: 'POST',
       body: JSON.stringify({ mensagens: mensagens.map(({ papel, texto }) => ({ papel, texto })) }),
     }),
@@ -156,6 +157,7 @@ export const api = {
   time: (id: number, competicao: number, temporada: number) =>
     pedir<DetalheTime>(`/api/times/${id}?competicao=${competicao}&temporada=${temporada}`),
   timesParaAtleta: (id: number, temporada: number) => pedir<TimesParaAtleta>(`/api/atletas/${id}/times?temporada=${temporada}`),
+  treinador: (id: number) => pedir<DetalheTreinador>(`/api/treinadores/${id}`),
 }
 
 // Modo gravação: esconde fotos e escudos (direito de imagem e de marca) para vídeos públicos.
@@ -165,4 +167,46 @@ export function lerModoGravacao(): boolean {
 }
 export function salvarModoGravacao(ativo: boolean) {
   try { localStorage.setItem(CHAVE_GRAVACAO, ativo ? '1' : '0') } catch { /* sem armazenamento: vale só nesta sessão */ }
+}
+
+export type ResumoTreinador = {
+  id: number
+  nome: string
+  foto?: string | null
+  clubeId: number
+  clube: string
+  escudo?: string | null
+  competicaoId: number
+  competicao: string
+  temporada: number
+  noCargo: boolean
+  inicio: string
+  fim: string
+  jogos: number
+  vitorias: number
+  empates: number
+  derrotas: number
+  aproveitamento?: number | null
+  esquemaPreferido?: string | null
+  estilo?: string | null
+  dimensoes: Destaque[]
+  titularesAte23?: number | null
+}
+
+export type PassagemDetalhada = {
+  passagem: ResumoTreinador
+  esquemas: DetalheTime['esquemas']
+  indicadores: { nome: string; percentil: number }[]
+  estilo?: DetalheTime['estilo']
+  idadeMediaTitulares?: number | null
+  percentilJovens?: number | null
+  noMesmoClube: { id: number; nome: string; inicio: string; fim: string; jogos: number; aproveitamento?: number | null }[]
+  comparacao?: string | null
+}
+
+export type DetalheTreinador = {
+  resumo: ResumoTreinador
+  passagens: PassagemDetalhada[]
+  carreira?: { idade?: number | null; nacionalidade?: string | null; passagens: { clube: string; escudo?: string | null; inicio?: string | null; fim?: string | null }[] } | null
+  observacoes: string[]
 }

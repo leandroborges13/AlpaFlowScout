@@ -52,6 +52,17 @@ A partir das escalações e das estatísticas de cada jogo (`/fixtures/statistic
   a mesma função. Abaixo do percentil 35 é carência.
 - **Mercado:** times com carência numa função, e em que times um atleta encaixaria (titulares com nota menor que a dele).
 
+## Análise de treinadores
+
+O treinador de cada jogo vem junto com a escalação (o importador também lê as escalações já guardadas, sem gastar consulta).
+
+- **Passagens:** clube, período, campanha e esquemas usados, só nos jogos em que ele comandou.
+- **Estilo:** as mesmas facetas dos times, em percentil entre os treinadores da competição (a partir de 5 jogos).
+- **Jovens:** % das titularidades para atletas até 23 anos e idade média dos titulares.
+- **Antecessor:** aproveitamento antes e depois da troca no clube.
+- **Carreira:** clubes e períodos (`/coachs`, consultado ao abrir o perfil).
+- O provedor às vezes tem o mesmo treinador com dois cadastros no mesmo clube ("Alex" e "Souza Alex"); nomes contidos um no outro viram um só.
+
 ## Como rodar
 
 1. Copie `.env.example` para `.env` e preencha `APIFOOTBALL_KEY`, `SCOUT_DB` e `OPENAI_API_KEY`.

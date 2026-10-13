@@ -16,6 +16,8 @@ public class Partida
     public bool EscalacoesImportadas { get; set; }
     /// <summary>Estatísticas dos dois times já baixadas.</summary>
     public bool EstatisticasImportadas { get; set; }
+    /// <summary>Treinadores dos dois times já lidos das escalações.</summary>
+    public bool TreinadoresImportados { get; set; }
 
     public bool Encerrada => Status is "FT" or "AET" or "PEN";
 }
@@ -57,4 +59,21 @@ public class EstatisticaPartida
     public int? Defesas { get; set; }
     public int? Passes { get; set; }
     public int? PassesCertos { get; set; }
+}
+
+/// <summary>Treinador como vem nas escalações do provedor (o Id é o do provedor).</summary>
+public class Treinador
+{
+    public int Id { get; set; }
+    public string Nome { get; set; } = "";
+    public string? Foto { get; set; }
+}
+
+/// <summary>Quem comandou cada time em cada partida.</summary>
+public class TreinadorNaPartida
+{
+    public long Id { get; set; }
+    public int PartidaId { get; set; }
+    public int ClubeId { get; set; }
+    public int TreinadorId { get; set; }
 }

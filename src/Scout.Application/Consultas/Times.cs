@@ -26,7 +26,8 @@ public record NecessidadeNaFuncao(string Funcao, string Setor, int Jogos, int Po
 
 public record DetalheTime(ResumoTime Resumo, IReadOnlyList<EsquemaDoTime> Esquemas, IReadOnlyList<Destaque> Dimensoes,
     IReadOnlyList<PercentilIndicador> Indicadores, EstiloTime? Estilo, ElencoTime Elenco,
-    IReadOnlyList<NecessidadeNaFuncao> Funcoes, IReadOnlyList<ResumoAtleta> Principais, IReadOnlyList<string> Observacoes);
+    IReadOnlyList<NecessidadeNaFuncao> Funcoes, IReadOnlyList<ResumoAtleta> Principais, IReadOnlyList<ResumoTreinador> Treinadores,
+    IReadOnlyList<string> Observacoes);
 
 public static class ResumirTime
 {
@@ -89,12 +90,15 @@ public class ListarTimesHandler(IScoutDb db, AnaliseDeTimes analise) : IQueryHan
     }
 
     /// <summary>Times das competições pedidas (ou de todas), na temporada mais recente com dados de cada uma.</summary>
-    public static async Task<List<LinhaTime>> CarregarTimes(IScoutDb db, AnaliseDeTimes analise, int? temporada, int[]? competicoes, CancellationToken ct)
+    public static async Task<List<LinhaTime>> CarregarTimes(IScoutDb db, AnaliseDeTimes analise, int? temporada, int[]? competicoes, CancellationToken ct) =>
+        (await CarregarAnalises(db, analise, temporada, competicoes, ct)).SelectMany(a => a.Times).ToList();
+
+    public static async Task<List<AnaliseTimesTemporada>> CarregarAnalises(IScoutDb db, AnaliseDeTimes analise, int? temporada, int[]? competicoes, CancellationToken ct)
     {
-        var times = new List<LinhaTime>();
+        var analises = new List<AnaliseTimesTemporada>();
         foreach (var (competicao, ano) in await BuscarPorPerfilHandler.CompeticoesAlvo(db, temporada, competicoes, ct))
-            if (await analise.Analisar(competicao, ano, ct) is { } r) times.AddRange(r.Times);
-        return times;
+            if (await analise.Analisar(competicao, ano, ct) is { } r) analises.Add(r);
+        return analises;
     }
 }
 
@@ -110,6 +114,8 @@ public class ObterTimeHandler(IScoutDb db, AnaliseDeTimes analise, MotorDeAnalis
         var t = times.Where(x => x.ClubeId == q.ClubeId).OrderByDescending(x => x.Temporada).ThenByDescending(x => x.Jogos).FirstOrDefault();
         if (t is null) return null;
         var daCompeticao = times.Where(x => x.CompeticaoId == t.CompeticaoId && x.Temporada == t.Temporada).ToList();
+        var treinadores = (await analise.Analisar(t.CompeticaoId, t.Temporada, ct))?.Treinadores
+            .Where(p => p.Linha.ClubeId == t.ClubeId).OrderBy(p => p.Inicio).Select(ResumirTreinador.De).ToList() ?? [];
 
         var esquemas = t.EsquemasPorJogo.GroupBy(e => e.Esquema)
             .Select(g => new EsquemaDoTime(g.Key, g.Count(), g.Count(e => e.EmCasa), g.Count(e => !e.EmCasa),
@@ -151,7 +157,7 @@ public class ObterTimeHandler(IScoutDb db, AnaliseDeTimes analise, MotorDeAnalis
             .ToList();
 
         return new DetalheTime(ResumirTime.De(t), esquemas, detalheDimensoes, indicadores, ResumirTime.Estilo(t), elenco,
-            ResumirTime.Necessidades(t), principais, observacoes);
+            ResumirTime.Necessidades(t), principais, treinadores, observacoes);
     }
 }
 
