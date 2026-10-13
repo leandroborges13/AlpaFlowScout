@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { api, type DetalheTreinador, type PassagemDetalhada, type ResumoTreinador } from './api'
-import { Medidor, Retrato } from './Componentes'
+import { api, type AtletaDoTreinador, type DetalheTreinador, type PassagemDetalhada, type ResumoAtleta, type ResumoTreinador, type SugestoesParaTreinador } from './api'
+import { CartaoAtleta, Medidor, Retrato } from './Componentes'
 import { Escudo, ListaDeEsquemas, Periodo } from './PainelTime'
 
 type CartaoProps = { treinador: ResumoTreinador; gravacao: boolean; onAbrir: () => void }
@@ -28,16 +28,30 @@ export function CartaoTreinador({ treinador: t, gravacao, onAbrir }: CartaoProps
   )
 }
 
-type PainelProps = { treinador: { id: number; nome: string }; gravacao: boolean; onFechar: () => void }
+type PainelProps = {
+  treinador: { id: number; nome: string }
+  gravacao: boolean
+  onFechar: () => void
+  onAbrirAtleta: (a: ResumoAtleta) => void
+}
 
-export function PainelTreinador({ treinador, gravacao, onFechar }: PainelProps) {
+export function PainelTreinador({ treinador, gravacao, onFechar, onAbrirAtleta }: PainelProps) {
   const [detalhe, setDetalhe] = useState<DetalheTreinador | null>(null)
+  const [atletas, setAtletas] = useState<AtletaDoTreinador[] | null>(null)
+  const [sugestoes, setSugestoes] = useState<SugestoesParaTreinador | null>(null)
+  const [buscando, setBuscando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
   useEffect(() => {
-    setDetalhe(null); setErro(null)
+    setDetalhe(null); setErro(null); setAtletas(null); setSugestoes(null)
     api.treinador(treinador.id).then(setDetalhe).catch((e) => setErro(e.message))
+    api.atletasDoTreinador(treinador.id).then(setAtletas).catch(() => setAtletas([]))
   }, [treinador])
+
+  function buscarSugestoes() {
+    setBuscando(true)
+    api.sugestoesParaTreinador(treinador.id).then(setSugestoes).catch((e) => setErro(e.message)).finally(() => setBuscando(false))
+  }
 
   useEffect(() => {
     const fechar = (e: KeyboardEvent) => { if (e.key === 'Escape') onFechar() }
@@ -68,6 +82,46 @@ export function PainelTreinador({ treinador, gravacao, onFechar }: PainelProps) 
 
         {detalhe?.passagens.map((p) => <Passagem key={`${p.passagem.clubeId}-${p.passagem.competicaoId}-${p.passagem.temporada}`} p={p} gravacao={gravacao} />)}
 
+        {atletas && atletas.length > 0 && (
+          <section>
+            <h3>Atletas que mais escalou</h3>
+            <div className="cards">
+              {atletas.slice(0, 6).map((x) => (
+                <div key={x.atleta.id} className="com-rotulo">
+                  <span className="card-sub">{x.jogosComEle} jogos como titular{x.funcaoComEle ? ` · ${x.funcaoComEle}` : ''}</span>
+                  <CartaoAtleta atleta={x.atleta} gravacao={gravacao} onAbrir={() => onAbrirAtleta(x.atleta)} />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {sugestoes && (
+          <section>
+            <h3>Atletas com o perfil que ele escala</h3>
+            {sugestoes.funcoes.map((f) => (
+              <div key={f.funcao} className="perfil-funcao">
+                <div className="funcao-topo">
+                  <b>{f.funcao}</b>
+                  {f.percentilNaCompeticao != null && f.percentilNaCompeticao <= 35 && <span className="selo-carencia">carência no time</span>}
+                  <span className="card-sub">perfil: {f.perfil.map((d) => `${d.nome.toLowerCase()} ${d.percentil}`).join(' · ')}</span>
+                </div>
+                <span className="card-sub">Quem ele escala: {f.quemEleEscala.join(', ')}</span>
+                {f.sugestoes.length === 0
+                  ? <span className="card-sub">Nenhum atleta parecido e no mesmo nível na base.</span>
+                  : (
+                    <div className="cards">
+                      {f.sugestoes.map((s) => (
+                        <CartaoAtleta key={s.atleta.id} atleta={s.atleta} semelhanca={s.semelhanca} gravacao={gravacao} onAbrir={() => onAbrirAtleta(s.atleta)} />
+                      ))}
+                    </div>
+                  )}
+              </div>
+            ))}
+            {sugestoes.observacoes.map((o) => <p key={o} className="legenda">{o}</p>)}
+          </section>
+        )}
+
         {carreira && carreira.passagens.length > 0 && (
           <section>
             <h3>Carreira</h3>
@@ -86,6 +140,11 @@ export function PainelTreinador({ treinador, gravacao, onFechar }: PainelProps) 
         {detalhe?.observacoes.map((o) => <p key={o} className="obs">{o}</p>)}
 
         <div className="acoes">
+          {detalhe && !sugestoes && (
+            <button className="btn" disabled={buscando} onClick={buscarSugestoes}>
+              {buscando ? 'Buscando…' : 'Atletas com o perfil dele'}
+            </button>
+          )}
           <button className="btn prim" onClick={onFechar}>Fechar</button>
         </div>
       </div>

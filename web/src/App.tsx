@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { api, EVENTO_SESSAO_EXPIRADA, lerModoGravacao, salvarModoGravacao, type Mensagem, type ResumoAtleta, type ResumoTime, type ResumoTreinador } from './api'
+import { api, EVENTO_SESSAO_EXPIRADA, lerModoGravacao, salvarModoGravacao, type Mensagem, type ResumoAtleta, type ResumoPartida, type ResumoTime, type ResumoTreinador } from './api'
 import { CartaoAtleta } from './Componentes'
 import { Login } from './Login'
 import { PainelAtleta } from './PainelAtleta'
+import { CartaoPartida, PainelPartida } from './PainelPartida'
 import { CartaoTime, PainelTime } from './PainelTime'
 import { CartaoTreinador, PainelTreinador } from './PainelTreinador'
 
@@ -14,6 +15,8 @@ const SUGESTOES = [
   'Quais times da Série B mais precisam de um lateral esquerdo?',
   'Como joga o líder da Série A? Esquema, estilo e carências',
   'Quais treinadores da Série B mais dão espaço para jovens?',
+  'Faça uma análise do último jogo do Galo',
+  'Que atletas combinam com o estilo do treinador do Flamengo?',
 ]
 
 /** Confere a sessão: sem login, mostra a tela de entrada. */
@@ -39,6 +42,7 @@ function Plataforma({ usuario, onSair }: { usuario: string; onSair: () => void }
   const [aberto, setAberto] = useState<ResumoAtleta | null>(null)
   const [timeAberto, setTimeAberto] = useState<ResumoTime | null>(null)
   const [treinadorAberto, setTreinadorAberto] = useState<Pick<ResumoTreinador, 'id' | 'nome'> | null>(null)
+  const [partidaAberta, setPartidaAberta] = useState<ResumoPartida | null>(null)
   const [gravacao, setGravacao] = useState(lerModoGravacao)
   const fim = useRef<HTMLDivElement>(null)
 
@@ -55,7 +59,7 @@ function Plataforma({ usuario, onSair }: { usuario: string; onSair: () => void }
     setCarregando(true)
     try {
       const r = await api.chat(historico)
-      setMensagens([...historico, { papel: 'assistant', texto: r.texto, atletas: r.atletas, times: r.times, treinadores: r.treinadores }])
+      setMensagens([...historico, { papel: 'assistant', texto: r.texto, atletas: r.atletas, times: r.times, treinadores: r.treinadores, partidas: r.partidas }])
     } catch (e) {
       setMensagens([...historico, { papel: 'assistant', texto: `Não consegui responder agora: ${(e as Error).message}` }])
     } finally {
@@ -69,13 +73,13 @@ function Plataforma({ usuario, onSair }: { usuario: string; onSair: () => void }
         <div className="marca">
           <i aria-hidden>⚽</i>
           <div>
-            AlpaFlow Scout <small>análise de atletas, times e treinadores com IA</small>
+            AlpaFlow Scout <small>atletas, times, treinadores e jogos com IA</small>
           </div>
         </div>
         <div className="topo-acoes">
           <span className="selo">Séries A, B e C · só maiores de 18 anos</span>
           {mensagens.length > 0 && (
-            <button className="btn" onClick={() => { setMensagens([]); setAberto(null); setTimeAberto(null); setTreinadorAberto(null); setTexto('') }} disabled={carregando}>
+            <button className="btn" onClick={() => { setMensagens([]); setAberto(null); setTimeAberto(null); setTreinadorAberto(null); setPartidaAberta(null); setTexto('') }} disabled={carregando}>
               Limpar conversa
             </button>
           )}
@@ -91,7 +95,7 @@ function Plataforma({ usuario, onSair }: { usuario: string; onSair: () => void }
         {mensagens.length === 0 && (
           <section className="vazio">
             <h1>Que atleta o seu time precisa?</h1>
-            <p>Descreva o perfil com as suas palavras: posição, lado, esquema, idade e características. Ou pergunte sobre um time: como joga e onde precisa de reforço. A IA busca na base e explica cada escolha.</p>
+            <p>Descreva o perfil com as suas palavras: posição, lado, esquema, idade e características. Ou pergunte sobre um time, um treinador ou um jogo. A IA busca na base e explica cada escolha.</p>
             <div className="sugestoes">
               {SUGESTOES.map((s) => (
                 <button key={s} onClick={() => enviar(s)}>{s}</button>
@@ -103,6 +107,11 @@ function Plataforma({ usuario, onSair }: { usuario: string; onSair: () => void }
         {mensagens.map((m, i) => (
           <div key={i} className={`msg ${m.papel}`}>
             <div className="balao">{m.texto}</div>
+            {m.partidas && m.partidas.length > 0 && (
+              <div className="cards">
+                {m.partidas.map((p) => <CartaoPartida key={p.id} partida={p} gravacao={gravacao} onAbrir={() => setPartidaAberta(p)} />)}
+              </div>
+            )}
             {m.times && m.times.length > 0 && (
               <div className="cards">
                 {m.times.map((t) => <CartaoTime key={`${t.id}-${t.competicaoId}`} time={t} gravacao={gravacao} onAbrir={() => setTimeAberto(t)} />)}
@@ -144,7 +153,9 @@ function Plataforma({ usuario, onSair }: { usuario: string; onSair: () => void }
         <PainelTime time={timeAberto} gravacao={gravacao} onFechar={() => setTimeAberto(null)} onAbrirAtleta={(a) => { setTimeAberto(null); setAberto(a) }}
           onAbrirTreinador={(t) => { setTimeAberto(null); setTreinadorAberto(t) }} />
       )}
-      {treinadorAberto && <PainelTreinador treinador={treinadorAberto} gravacao={gravacao} onFechar={() => setTreinadorAberto(null)} />}
+      {treinadorAberto && <PainelTreinador treinador={treinadorAberto} gravacao={gravacao} onFechar={() => setTreinadorAberto(null)}
+        onAbrirAtleta={(a) => { setTreinadorAberto(null); setAberto(a) }} />}
+      {partidaAberta && <PainelPartida partida={partidaAberta} gravacao={gravacao} onFechar={() => setPartidaAberta(null)} />}
     </div>
   )
 }

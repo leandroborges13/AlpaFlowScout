@@ -80,7 +80,8 @@ public class LinhaTime
 }
 
 /// <summary>Um treinador num clube durante a temporada: os jogos em que comandou, analisados como um time.</summary>
-public record PassagemNaTemporada(int TreinadorId, string Nome, string? Foto, LinhaTime Linha, DateTime Inicio, DateTime Fim, bool NoCargo)
+public record PassagemNaTemporada(int TreinadorId, string Nome, string? Foto, LinhaTime Linha, DateTime Inicio, DateTime Fim, bool NoCargo,
+    IReadOnlyList<int> Partidas)
 {
     public const int JogosMinimos = 5;
 }
@@ -356,7 +357,8 @@ public class AnaliseDeTimes(IScoutDb db, MotorDeAnalise motor, IMemoryCache cach
                 var doTreinador = g.ToList();
                 treinadores.TryGetValue(g.Key, out var t);
                 passagens.Add(new PassagemNaTemporada(g.Key, t?.Nome ?? $"Treinador {g.Key}", t?.Foto,
-                    Montar(clubeId, doTreinador, comElenco: false), doTreinador[0].Data, doTreinador[^1].Data, g.Key == atual));
+                    Montar(clubeId, doTreinador, comElenco: false), doTreinador[0].Data, doTreinador[^1].Data, g.Key == atual,
+                    doTreinador.Select(p => p.Id).ToList()));
             }
         }
         // Treinador com poucos jogos fica fora da comparação: percentil de 2 ou 3 jogos não diz nada

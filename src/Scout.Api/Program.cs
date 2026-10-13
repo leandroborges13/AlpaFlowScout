@@ -141,6 +141,18 @@ api.MapGet("/treinadores", (int? competicao, string? nome, int? temporada, IQuer
 api.MapGet("/treinadores/{id:int}", async (int id, int? temporada, IQueryHandler<ObterTreinador, DetalheTreinador?> h, CancellationToken ct) =>
     await h.Handle(new ObterTreinador(id, temporada), ct) is { } d ? Results.Ok(d) : Results.NotFound());
 
+api.MapGet("/partidas", (string time, string? adversario, DateOnly? de, DateOnly? ate, IQueryHandler<ProcurarPartidas, IReadOnlyList<ResumoPartida>> h, CancellationToken ct) =>
+    h.Handle(new ProcurarPartidas(time, adversario, de, ate), ct));
+
+api.MapGet("/partidas/{id:int}", async (int id, IQueryHandler<AnalisarPartida, AnalisePartida?> h, CancellationToken ct) =>
+    await h.Handle(new AnalisarPartida(id), ct) is { } a ? Results.Ok(a) : Results.NotFound());
+
+api.MapGet("/treinadores/{id:int}/atletas", (int id, IQueryHandler<AtletasDoTreinador, IReadOnlyList<AtletaDoTreinador>> h, CancellationToken ct) =>
+    h.Handle(new AtletasDoTreinador(id), ct));
+
+api.MapGet("/treinadores/{id:int}/sugestoes", async (int id, string? funcao, int? idadeMax, IQueryHandler<AtletasParaTreinador, ResultadoAtletasParaTreinador?> h, CancellationToken ct) =>
+    await h.Handle(new AtletasParaTreinador(id, funcao, idadeMax), ct) is { } r ? Results.Ok(r) : Results.NotFound());
+
 api.MapGet("/atletas/{id:int}/times", async (int id, int? temporada, IQueryHandler<TimesParaAtleta, ResultadoTimesParaAtleta?> h, CancellationToken ct) =>
     await h.Handle(new TimesParaAtleta(id, temporada), ct) is { } r ? Results.Ok(r) : Results.NotFound());
 

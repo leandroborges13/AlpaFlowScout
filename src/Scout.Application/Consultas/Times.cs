@@ -84,7 +84,7 @@ public class ListarTimesHandler(IScoutDb db, AnaliseDeTimes analise) : IQueryHan
         var times = await CarregarTimes(db, analise, q.Temporada, q.CompeticaoId is { } c ? [c] : null, ct);
         var ordenados = q.Nome is null
             ? times.OrderBy(t => t.CompeticaoId).ThenBy(t => t.Posicao)
-            : BuscaPorNome.Filtrar(times, q.Nome, t => t.Nome); // "Atlético MG" acha "Atletico-MG"
+            : BuscaPorNome.Filtrar(times, BuscaPorNome.TraduzirApelido(q.Nome), t => t.Nome); // "Atlético MG" acha "Atletico-MG"
         return ordenados
             .Select(ResumirTime.De)
             .ToList();

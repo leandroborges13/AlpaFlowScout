@@ -118,7 +118,7 @@ export type EncaixeEmTime = {
 
 export type TimesParaAtleta = { atleta: ResumoAtleta; times: EncaixeEmTime[]; observacoes: string[] }
 
-export type Mensagem = { papel: 'user' | 'assistant'; texto: string; atletas?: ResumoAtleta[]; times?: ResumoTime[]; treinadores?: ResumoTreinador[] }
+export type Mensagem = { papel: 'user' | 'assistant'; texto: string; atletas?: ResumoAtleta[]; times?: ResumoTime[]; treinadores?: ResumoTreinador[]; partidas?: ResumoPartida[] }
 
 /** Avisa a tela quando o login expira, para voltar à tela de entrada. */
 export const EVENTO_SESSAO_EXPIRADA = 'scout:sessao-expirada'
@@ -147,7 +147,7 @@ export const api = {
     pedir<{ nome: string }>('/api/login', { method: 'POST', body: JSON.stringify({ email, senha }) }),
   logout: () => pedir<unknown>('/api/logout', { method: 'POST' }),
   chat: (mensagens: Mensagem[]) =>
-    pedir<{ texto: string; atletas: ResumoAtleta[]; times: ResumoTime[]; treinadores: ResumoTreinador[] }>('/api/chat', {
+    pedir<{ texto: string; atletas: ResumoAtleta[]; times: ResumoTime[]; treinadores: ResumoTreinador[]; partidas: ResumoPartida[] }>('/api/chat', {
       method: 'POST',
       body: JSON.stringify({ mensagens: mensagens.map(({ papel, texto }) => ({ papel, texto })) }),
     }),
@@ -158,6 +158,9 @@ export const api = {
     pedir<DetalheTime>(`/api/times/${id}?competicao=${competicao}&temporada=${temporada}`),
   timesParaAtleta: (id: number, temporada: number) => pedir<TimesParaAtleta>(`/api/atletas/${id}/times?temporada=${temporada}`),
   treinador: (id: number) => pedir<DetalheTreinador>(`/api/treinadores/${id}`),
+  atletasDoTreinador: (id: number) => pedir<AtletaDoTreinador[]>(`/api/treinadores/${id}/atletas`),
+  sugestoesParaTreinador: (id: number) => pedir<SugestoesParaTreinador>(`/api/treinadores/${id}/sugestoes`),
+  partida: (id: number) => pedir<AnalisePartida>(`/api/partidas/${id}`),
 }
 
 // Modo gravação: esconde fotos e escudos (direito de imagem e de marca) para vídeos públicos.
@@ -208,5 +211,68 @@ export type DetalheTreinador = {
   resumo: ResumoTreinador
   passagens: PassagemDetalhada[]
   carreira?: { idade?: number | null; nacionalidade?: string | null; passagens: { clube: string; escudo?: string | null; inicio?: string | null; fim?: string | null }[] } | null
+  observacoes: string[]
+}
+
+export type ResumoPartida = {
+  id: number
+  data: string
+  rodada?: string | null
+  competicaoId: number
+  competicao: string
+  temporada: number
+  status: string
+  mandanteId: number
+  mandante: string
+  escudoMandante?: string | null
+  visitanteId: number
+  visitante: string
+  escudoVisitante?: string | null
+  golsMandante?: number | null
+  golsVisitante?: number | null
+}
+
+export type LadoDaPartida = {
+  clubeId: number
+  time: string
+  esquema?: string | null
+  treinadorId?: number | null
+  treinador?: string | null
+  titulares: { id?: number | null; nome: string; funcao?: string | null }[]
+  reservas: { id?: number | null; nome: string }[]
+}
+
+export type EventoDaPartida = {
+  minuto: number
+  acrescimo?: number | null
+  clubeId: number
+  tipo: string
+  jogador?: string | null
+  outro?: string | null
+  detalhe?: string | null
+}
+
+export type AnalisePartida = {
+  partida: ResumoPartida
+  mandante: LadoDaPartida
+  visitante: LadoDaPartida
+  eventos: EventoDaPartida[]
+  aspectos: { aspecto: string; vantagem?: string | null; percentilMandante?: number | null; percentilVisitante?: number | null }[]
+  observacoes: string[]
+}
+
+export type AtletaDoTreinador = { atleta: ResumoAtleta; jogosComEle: number; funcaoComEle?: string | null }
+
+export type SugestoesParaTreinador = {
+  treinador: ResumoTreinador
+  funcoes: {
+    funcao: string
+    jogos: number
+    notaTitulares?: number | null
+    percentilNaCompeticao?: number | null
+    perfil: Destaque[]
+    quemEleEscala: string[]
+    sugestoes: { atleta: ResumoAtleta; semelhanca: number }[]
+  }[]
   observacoes: string[]
 }

@@ -63,6 +63,21 @@ O treinador de cada jogo vem junto com a escalação (o importador também lê a
 - **Carreira:** clubes e períodos (`/coachs`, consultado ao abrir o perfil).
 - O provedor às vezes tem o mesmo treinador com dois cadastros no mesmo clube ("Alex" e "Souza Alex"); nomes contidos um no outro viram um só.
 
+Atletas do treinador: quem ele mais escalou e, para cada função do plano de jogo dele, o perfil de quem ele costuma
+escalar (média dos percentis pesada pelos jogos) e atletas de outros clubes parecidos com esse perfil, no mesmo nível ou
+acima e acima da mediana da própria competição.
+
+O provedor só tem o esquema **inicial** de cada jogo. Esquema com e sem a bola exige dados de posicionamento
+(Wyscout, StatsBomb), que não estão na base.
+
+## Análise de jogos
+
+"Galo x Santos no último sábado": a busca entende apelidos de torcida e procura alguns dias em volta da data citada.
+Escalações completas e eventos (`/fixtures/lineups` e `/fixtures/events`) são buscados ao abrir o jogo e guardados para
+sempre depois do apito final. Em cada aspecto (posse, finalizações, escanteios, precisão de passe, faltas) a tela mostra
+quem levou vantagem e como cada time foi em relação aos próprios jogos na temporada, em percentil. Atletas menores de
+18 anos aparecem como "Atleta sub-18".
+
 ## Como rodar
 
 1. Copie `.env.example` para `.env` e preencha `APIFOOTBALL_KEY`, `SCOUT_DB` e `OPENAI_API_KEY`.

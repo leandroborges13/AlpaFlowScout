@@ -11,6 +11,22 @@ public static class BuscaPorNome
 {
     static readonly HashSet<string> Ignoradas = ["de", "da", "do", "das", "dos", "e", "o", "a", "fc", "ec", "sc", "clube", "time", "tecnico", "treinador"];
 
+    /// <summary>Apelidos de torcida que não têm nada do nome oficial (os ambíguos, como "Leão" e "Tricolor", ficam de fora).</summary>
+    static readonly Dictionary<string, string> Apelidos = new()
+    {
+        ["galo"] = "Atletico MG", ["timao"] = "Corinthians", ["mengao"] = "Flamengo", ["verdao"] = "Palmeiras",
+        ["peixe"] = "Santos", ["raposa"] = "Cruzeiro", ["fogao"] = "Botafogo", ["furacao"] = "Athletico PR",
+        ["vozao"] = "Ceara", ["colorado"] = "Internacional", ["imortal"] = "Gremio", ["vascao"] = "Vasco",
+        ["coxa"] = "Coritiba", ["bugre"] = "Guarani", ["macaca"] = "Ponte Preta", ["dragao"] = "Atletico GO", ["papao"] = "Paysandu",
+    };
+
+    /// <summary>"Galo" → "Atletico MG". Sem apelido conhecido, devolve a busca como veio.</summary>
+    public static string TraduzirApelido(string busca)
+    {
+        var palavras = Palavras(busca);
+        return palavras.Count == 1 && Apelidos.TryGetValue(palavras[0], out var oficial) ? oficial : busca;
+    }
+
     /// <summary>Quantas palavras da busca aparecem no nome (0 = não combina).</summary>
     public static int Pontuar(string busca, string nome)
     {

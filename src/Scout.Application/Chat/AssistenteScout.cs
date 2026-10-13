@@ -13,7 +13,8 @@ namespace Scout.Application.Chat;
 public record MensagemChat(string Papel, string Texto);
 
 /// <summary>Resposta do chat: o texto e os atletas citados e os times citados, para a tela mostrar os cartões.</summary>
-public record RespostaChat(string Texto, IReadOnlyList<ResumoAtleta> Atletas, IReadOnlyList<ResumoTime> Times, IReadOnlyList<ResumoTreinador> Treinadores);
+public record RespostaChat(string Texto, IReadOnlyList<ResumoAtleta> Atletas, IReadOnlyList<ResumoTime> Times, IReadOnlyList<ResumoTreinador> Treinadores,
+    IReadOnlyList<ResumoPartida> Partidas);
 
 /// <summary>
 /// Agente de scouting: entende o pedido em linguagem natural e consulta o banco pelas ferramentas.
@@ -32,6 +33,10 @@ public class AssistenteScout(
     IQueryHandler<TimesParaAtleta, ResultadoTimesParaAtleta?> timesParaAtleta,
     IQueryHandler<ListarTreinadores, IReadOnlyList<ResumoTreinador>> listarTreinadores,
     IQueryHandler<ObterTreinador, DetalheTreinador?> detalharTreinador,
+    IQueryHandler<AtletasDoTreinador, IReadOnlyList<AtletaDoTreinador>> atletasDoTreinador,
+    IQueryHandler<AtletasParaTreinador, ResultadoAtletasParaTreinador?> atletasParaTreinador,
+    IQueryHandler<ProcurarPartidas, IReadOnlyList<ResumoPartida>> procurarPartidas,
+    IQueryHandler<AnalisarPartida, AnalisePartida?> analisarPartida,
     IMemoryCache cache,
     ILogger<AssistenteScout> log)
 {
@@ -45,6 +50,7 @@ public class AssistenteScout(
         void CitarTimes(IEnumerable<ResumoTime> times) { foreach (var t in times) timesCitados[t.Id] = t; }
         var treinadoresCitados = new Dictionary<int, ResumoTreinador>();
         void CitarTreinadores(IEnumerable<ResumoTreinador> lista) { foreach (var t in lista) treinadoresCitados.TryAdd(t.Id, t); }
+        var partidasCitadas = new Dictionary<int, ResumoPartida>();
 
         var ferramentas = new List<AITool>
         {
@@ -212,13 +218,81 @@ public class AssistenteScout(
                 },
                 "analisar_treinador",
                 "Perfil de um treinador: passagens na base com resultados, esquemas, estilo do time sob o comando dele, uso de jovens, comparação com o antecessor e carreira."),
+            AIFunctionFactory.Create(
+                async (int treinadorId, int? limite = null) =>
+                {
+                    var r = await atletasDoTreinador.Handle(new AtletasDoTreinador(treinadorId, limite ?? 12), ct);
+                    Citar(r.Take(6).Select(x => x.Atleta));
+                    return r.Select(x => new { x.Atleta.Id, x.Atleta.Nome, x.Atleta.Idade, x.Atleta.Clube, x.Atleta.Temporada, x.JogosComEle, x.FuncaoComEle, x.Atleta.Nota });
+                },
+                "atletas_do_treinador",
+                "Atletas que o treinador mais escalou como titular nas passagens da base, com a função em que jogaram com ele."),
+            AIFunctionFactory.Create(
+                async (int treinadorId,
+                       [Description("Função para restringir, ex.: 'Volante', 'Lateral esquerdo'; omita para todas as funções do esquema dele")] string? funcao = null,
+                       int? idadeMaxima = null, [Description("IDs de competição para as sugestões; omita para todas")] int[]? competicoes = null) =>
+                {
+                    var r = await atletasParaTreinador.Handle(new AtletasParaTreinador(treinadorId, funcao, idadeMaxima, competicoes), ct);
+                    if (r is null) return (object)"Treinador não encontrado.";
+                    Citar(r.Funcoes.SelectMany(f => f.Sugestoes.Take(2)).Take(8).Select(s => s.Atleta));
+                    return (object)new
+                    {
+                        Treinador = new { r.Treinador.Nome, r.Treinador.Clube, r.Treinador.EsquemaPreferido },
+                        Funcoes = r.Funcoes.Select(f => new
+                        {
+                            f.Funcao, f.Jogos, NotaDeQuemEleEscala = f.NotaTitulares, PercentilDoTimeNaFuncao = f.PercentilNaCompeticao, f.Perfil, f.QuemEleEscala,
+                            Sugestoes = f.Sugestoes.Select(s => new { s.Atleta.Id, s.Atleta.Nome, s.Atleta.Idade, s.Atleta.Clube, s.Atleta.Competicao, s.Atleta.Nota, s.Semelhanca, s.Atleta.ExperienciaNoEsquema }),
+                        }),
+                        r.Observacoes,
+                    };
+                },
+                "atletas_para_treinador",
+                "Atletas que combinam com o estilo do treinador: para cada função do esquema dele, o perfil de quem ele costuma escalar e atletas de outros clubes parecidos com esse perfil (e no mesmo nível ou acima)."),
+            AIFunctionFactory.Create(
+                async ([Description("Nome do time (oficial ou apelido, ex.: 'Galo')")] string time,
+                       [Description("Nome do adversário, se citado")] string? adversario = null,
+                       [Description("Data inicial (aaaa-mm-dd)")] string? de = null,
+                       [Description("Data final (aaaa-mm-dd)")] string? ate = null) =>
+                {
+                    DateOnly? Data(string? s) => DateOnly.TryParse(s, System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : null;
+                    var r = await procurarPartidas.Handle(new ProcurarPartidas(time, adversario, Data(de), Data(ate)), ct);
+                    return r.Select(p => new { p.Id, Data = p.Data.ToString("yyyy-MM-dd"), DiaDaSemana = p.Data.DayOfWeek.ToString(), p.Competicao, p.Rodada, p.Mandante, p.Visitante, p.GolsMandante, p.GolsVisitante, p.Status });
+                },
+                "procurar_partidas",
+                "Partidas de um time (com o adversário e o período opcionais), da mais recente para a mais antiga, com o ID para analisar."),
+            AIFunctionFactory.Create(
+                async (int partidaId) =>
+                {
+                    var a = await analisarPartida.Handle(new AnalisarPartida(partidaId), ct);
+                    if (a is null) return (object)"Partida não encontrada.";
+                    partidasCitadas[a.Partida.Id] = a.Partida;
+                    object Lado(LadoDaPartida l) => new
+                    {
+                        l.Time, l.Esquema, l.Treinador, l.TreinadorId,
+                        Titulares = l.Titulares.Select(j => $"{j.Nome}{(j.Funcao is null ? "" : $" ({j.Funcao})")}"),
+                        Reservas = l.Reservas.Select(j => j.Nome),
+                    };
+                    return (object)new
+                    {
+                        a.Partida, Mandante = Lado(a.Mandante), Visitante = Lado(a.Visitante),
+                        Eventos = a.Eventos.Select(e => new
+                        {
+                            Minuto = e.Acrescimo is { } x ? $"{e.Minuto}+{x}" : $"{e.Minuto}",
+                            Time = e.ClubeId == a.Partida.MandanteId ? a.Partida.Mandante : a.Partida.Visitante,
+                            e.Tipo, e.Jogador, AssistenciaOuQuemEntrou = e.Outro, e.Detalhe,
+                        }),
+                        a.Aspectos, a.Observacoes,
+                    };
+                },
+                "analisar_partida",
+                "Análise de uma partida: placar, esquemas, treinadores, titulares e reservas, eventos (gols, cartões, substituições, VAR) e, em cada aspecto, quem levou vantagem e como cada time foi em relação aos próprios jogos."),
         };
 
         var mensagens = new List<ChatMessage> { new(ChatRole.System, Instrucoes(disponiveis, temporadaPadrao)) };
         mensagens.AddRange(conversa.TakeLast(12).Select(m => new ChatMessage(m.Papel == "user" ? ChatRole.User : ChatRole.Assistant, m.Texto)));
 
         var resposta = await chat.GetResponseAsync(mensagens, new ChatOptions { Tools = ferramentas, Temperature = 0.2f }, ct);
-        return new RespostaChat(resposta.Text, citados.Values.ToList(), timesCitados.Values.ToList(), treinadoresCitados.Values.ToList());
+        return new RespostaChat(resposta.Text, citados.Values.ToList(), timesCitados.Values.ToList(), treinadoresCitados.Values.ToList(), partidasCitadas.Values.ToList());
     }
 
     /// <summary>Parágrafo de analista sobre o atleta, só com as nossas métricas. Guardado por 6 horas.</summary>
@@ -248,6 +322,14 @@ public class AssistenteScout(
     /// <summary>Nomes de campo sem ambiguidade: o aproveitamento é do esquema, não dos jogos em casa.</summary>
     static IEnumerable<object> Esquemas(IEnumerable<EsquemaDoTime> esquemas) =>
         esquemas.Select(e => new { e.Esquema, Jogos = e.Jogos, JogosEmCasa = e.EmCasa, JogosFora = e.Fora, AproveitamentoPercentualComEsseEsquema = e.Aproveitamento });
+
+    /// <summary>"terça-feira, 13/10/2026" sem depender da cultura instalada no servidor.</summary>
+    static string Hoje()
+    {
+        string[] dias = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+        var hoje = TimeZoneInfo.ConvertTime(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo"));
+        return $"{dias[(int)hoje.DayOfWeek]}, {hoje:dd/MM/yyyy}";
+    }
 
     static string ChavesAtributos => string.Join(", ", Catalogo.Atributos.Select(a => $"{a.Chave} ({a.Nome})"));
 
@@ -292,5 +374,19 @@ public class AssistenteScout(
         - Para rankings, use ordenarPor ("jovens" ou "aproveitamento") e mantenha a ordem recebida. Uso de jovens é porcentagem:
           "55% das titularidades para atletas até 23 anos", nunca "55 jovens".
         - Não opine sobre a pessoa nem sobre a vida pessoal: fale do trabalho em campo, com dados.
+        - "Atletas que trabalharam com ele" = atletas_do_treinador. "Que atletas combinam com ele" = atletas_para_treinador: explique o perfil
+          que ele escala em cada função (atributos em percentil) e por que cada sugestão se parece com esse perfil (semelhança 0–100).
+        - A base só tem o esquema inicial de cada jogo. Se perguntarem pelo esquema com e sem a bola, explique que esse dado não existe
+          no provedor atual (exige dados de posicionamento, como Wyscout ou StatsBomb) e mostre os esquemas iniciais que ele usa.
+
+        Partidas:
+        - Hoje é {Hoje()}. Converta datas relativas ("último sábado", "domingo passado") em datas e use procurar_partidas
+          com o time, o adversário e um período de 3 dias antes a 3 dias depois da data (as pessoas erram o dia: "sábado" pode ter sido domingo);
+          depois analisar_partida com o ID do jogo mais próximo. Se a data real for outra, diga ("o jogo foi no domingo, 11/10").
+          Sem jogo no período, procure sem datas e ofereça o mais recente.
+        - Na análise: placar e contexto (competição, rodada), esquemas e treinadores, gols e lances (minuto, autor, assistência), cartões,
+          substituições e quem levou vantagem em cada aspecto. Compare com o normal de cada time pelos percentis ("finalizou mais que em
+          85% dos próprios jogos"). Não cite números brutos do provedor (posse em %, total de finalizações ou de passes).
+        - Atletas menores de 18 anos aparecem como "Atleta sub-18": não tente identificá-los.
         """;
 }

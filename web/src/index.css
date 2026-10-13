@@ -233,3 +233,31 @@ button.lt-quad:hover, button.lt-quad:focus-visible { outline: 2px solid var(--in
 .passagem .retrato.escudo { width: 32px; height: 32px; }
 .passagem p { margin: 0; }
 .comparacao { background: var(--accent-soft); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+
+/* Partidas */
+.placar { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 10px; align-items: center; }
+.placar b { font-size: 22px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.placar b small { font-size: 14px; color: var(--muted); font-weight: 500; }
+.placar.grande b { font-size: 34px; }
+.placar-time { display: flex; align-items: center; gap: 8px; min-width: 0; font-weight: 600; }
+.placar-time span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.placar-time.fora { justify-content: flex-end; text-align: right; }
+.aspectos { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.aspectos li { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; }
+.vantagem { font-size: 12.5px; font-weight: 600; color: var(--accent); }
+.vantagem.neutra { color: var(--muted); }
+.lances { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+.lances li { display: grid; grid-template-columns: 3.2em 1.8em minmax(0, 1fr); gap: 6px; align-items: baseline; }
+.minuto { font-variant-numeric: tabular-nums; color: var(--ink-2); font-weight: 600; }
+.icone { text-align: center; font-size: 12px; }
+.escalacoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.escalacao { display: grid; gap: 4px; font-size: 14px; align-content: start; }
+.escalacao ol { margin: 4px 0 0; padding-left: 20px; display: grid; gap: 2px; }
+
+/* Atletas do treinador */
+.com-rotulo { display: grid; gap: 4px; align-content: start; }
+.perfil-funcao { display: grid; gap: 6px; padding: 10px 0; border-top: 1px solid var(--line); }
+/* Placar compacto (cartão do chat): escudo em cima, nome embaixo, sem cortar */
+.placar:not(.grande) .placar-time { flex-direction: column; gap: 4px; text-align: center; font-size: 13px; }
+.placar:not(.grande) .placar-time.fora { flex-direction: column-reverse; justify-content: center; }
+.placar:not(.grande) .placar-time span { white-space: normal; overflow-wrap: anywhere; }

@@ -8,7 +8,7 @@ namespace Scout.Tests;
 public class TreinadoresTests
 {
     static PassagemNaTemporada Passagem(int id, string nome, int v, int e, int d, DateTime inicio, DateTime fim) =>
-        new(id, nome, null, new LinhaTime { ClubeId = 1, Nome = "Time Teste", Jogos = v + e + d, Vitorias = v, Empates = e, Derrotas = d }, inicio, fim, false);
+        new(id, nome, null, new LinhaTime { ClubeId = 1, Nome = "Time Teste", Jogos = v + e + d, Vitorias = v, Empates = e, Derrotas = d }, inicio, fim, false, []);
 
     [Fact]
     public void Compara_com_o_antecessor_no_mesmo_clube()
