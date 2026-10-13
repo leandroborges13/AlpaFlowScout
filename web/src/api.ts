@@ -58,7 +58,66 @@ export type DetalheAtleta = {
 
 export type Parecidos = { referencia: ResumoAtleta; parecidos: { atleta: ResumoAtleta; semelhanca: number }[] }
 
-export type Mensagem = { papel: 'user' | 'assistant'; texto: string; atletas?: ResumoAtleta[] }
+export type ResumoTime = {
+  id: number
+  nome: string
+  escudo?: string | null
+  competicaoId: number
+  competicao: string
+  temporada: number
+  posicao: number
+  jogos: number
+  vitorias: number
+  empates: number
+  derrotas: number
+  golsPro: number
+  golsContra: number
+  pontos: number
+  aproveitamento?: number | null
+  esquemaMaisUsado?: string | null
+  estilo?: string | null
+  dimensoes: Destaque[]
+  carencias: string[]
+}
+
+export type TitularNaFuncao = { id: number; nome: string; jogos: number; nota?: number | null }
+
+export type NecessidadeNaFuncao = {
+  funcao: string
+  setor: string
+  jogos: number
+  porJogo: number
+  notaTitulares?: number | null
+  percentil?: number | null
+  carencia: boolean
+  titulares: TitularNaFuncao[]
+}
+
+export type DetalheTime = {
+  resumo: ResumoTime
+  esquemas: { esquema: string; jogos: number; emCasa: number; fora: number; aproveitamento?: number | null }[]
+  dimensoes: Destaque[]
+  indicadores: { nome: string; percentil: number }[]
+  estilo?: { rotulo: string; percentilPosse?: number | null; explicacao: string } | null
+  elenco: { idadeMedia?: number | null; percentualMinutosAte23?: number | null; atletasUsados: number; rodizio?: string | null; explicacao: string }
+  funcoes: NecessidadeNaFuncao[]
+  principais: ResumoAtleta[]
+  observacoes: string[]
+}
+
+export type EncaixeEmTime = {
+  time: ResumoTime
+  funcao: string
+  notaTitulares?: number | null
+  notaAtleta: number
+  ganho: number
+  experienciaNoEsquema?: string | null
+  titularesAtuais: TitularNaFuncao[]
+}
+
+export type TimesParaAtleta = { atleta: ResumoAtleta; times: EncaixeEmTime[]; observacoes: string[] }
+
+export type Mensagem = { papel: 'user' | 'assistant'; texto: string; atletas?: ResumoAtleta[]; times?: ResumoTime[] }
 
 /** Avisa a tela quando o login expira, para voltar à tela de entrada. */
 export const EVENTO_SESSAO_EXPIRADA = 'scout:sessao-expirada'
@@ -87,13 +146,16 @@ export const api = {
     pedir<{ nome: string }>('/api/login', { method: 'POST', body: JSON.stringify({ email, senha }) }),
   logout: () => pedir<unknown>('/api/logout', { method: 'POST' }),
   chat: (mensagens: Mensagem[]) =>
-    pedir<{ texto: string; atletas: ResumoAtleta[] }>('/api/chat', {
+    pedir<{ texto: string; atletas: ResumoAtleta[]; times: ResumoTime[] }>('/api/chat', {
       method: 'POST',
       body: JSON.stringify({ mensagens: mensagens.map(({ papel, texto }) => ({ papel, texto })) }),
     }),
   atleta: (id: number, temporada: number) => pedir<DetalheAtleta>(`/api/atletas/${id}?temporada=${temporada}`),
   parecidos: (id: number, temporada: number) => pedir<Parecidos>(`/api/atletas/${id}/parecidos?temporada=${temporada}`),
   resumoIa: (id: number, temporada: number) => pedir<{ texto: string }>(`/api/atletas/${id}/resumo-ia?temporada=${temporada}`),
+  time: (id: number, competicao: number, temporada: number) =>
+    pedir<DetalheTime>(`/api/times/${id}?competicao=${competicao}&temporada=${temporada}`),
+  timesParaAtleta: (id: number, temporada: number) => pedir<TimesParaAtleta>(`/api/atletas/${id}/times?temporada=${temporada}`),
 }
 
 // Modo gravação: esconde fotos e escudos (direito de imagem e de marca) para vídeos públicos.

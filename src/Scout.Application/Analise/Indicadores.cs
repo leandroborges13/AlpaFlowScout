@@ -11,6 +11,13 @@ public static class Catalogo
     static double? Por90(int valor, LinhaAnalise l) => l.Minutos > 0 ? valor * 90.0 / l.Minutos : null;
     static double? Taxa(int parte, int total, int minimo) => total >= minimo ? parte * 100.0 / total : null;
 
+    /// <summary>
+    /// Ajuste à posse (PAdj): com 65% de posse, o adversário tem a bola só 35% do tempo e o time defende menos vezes.
+    /// Os números defensivos são levados para uma posse de 50% (×50/35), senão defensores de times dominantes parecem fracos.
+    /// </summary>
+    public static double AjustePosse(LinhaAnalise l) => l.PosseDoTime is { } p && p is > 20 and < 80 ? 50 / (100 - p) : 1;
+    static double? Defensivo90(int valor, LinhaAnalise l) => Por90(valor, l) * AjustePosse(l);
+
     public static readonly Indicador[] Indicadores =
     [
         new("gols90", "Gols por 90 min", l => Por90(l.Gols, l)),
@@ -20,9 +27,9 @@ public static class Catalogo
         new("passes90", "Passes por 90 min", l => Por90(l.Passes, l)),
         new("precisaoPasses", "Precisão de passe", l => l.PrecisaoPasses),
         new("passesDecisivos90", "Passes decisivos por 90 min", l => Por90(l.PassesDecisivos, l)),
-        new("desarmes90", "Desarmes por 90 min", l => Por90(l.Desarmes, l)),
-        new("interceptacoes90", "Interceptações por 90 min", l => Por90(l.Interceptacoes, l)),
-        new("bloqueios90", "Bloqueios por 90 min", l => Por90(l.Bloqueios, l)),
+        new("desarmes90", "Desarmes por 90 min (ajustado à posse)", l => Defensivo90(l.Desarmes, l)),
+        new("interceptacoes90", "Interceptações por 90 min (ajustado à posse)", l => Defensivo90(l.Interceptacoes, l)),
+        new("bloqueios90", "Bloqueios por 90 min (ajustado à posse)", l => Defensivo90(l.Bloqueios, l)),
         new("duelos90", "Duelos disputados por 90 min", l => Por90(l.Duelos, l)),
         new("duelosGanhos90", "Duelos ganhos por 90 min", l => Por90(l.DuelosGanhos, l)),
         new("aproveitamentoDuelos", "% de duelos ganhos", l => Taxa(l.DuelosGanhos, l.Duelos, 20)),

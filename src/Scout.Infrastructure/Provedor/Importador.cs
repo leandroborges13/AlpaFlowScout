@@ -101,7 +101,10 @@ public class Importador(ApiFootballClient api, ScoutDbContext db, ILogger<Import
         await db.SaveChangesAsync(ct);
 
         if (comEscalacoes)
+        {
             await ImportarEscalacoes(partidas.Values.Where(x => x.Encerrada && !x.EscalacoesImportadas).ToList(), ct);
+            await ImportarEstatisticasDosJogos(partidas.Values.Where(x => x.Encerrada && !x.EstatisticasImportadas).ToList(), ct);
+        }
 
         return new ResultadoImportacao(competicao.Nome, temporada, times.Count, vistos.Select(v => v.Item1).Distinct().Count(),
             vistos.Count, partidas.Count, partidas.Values.Count(x => x.EscalacoesImportadas));
@@ -143,6 +146,61 @@ public class Importador(ApiFootballClient api, ScoutDbContext db, ILogger<Import
             if (++feitas % 25 == 0) log.LogInformation("  escalações: {Feitas}/{Total}", feitas, pendentes.Count);
         }
         return feitas;
+    }
+
+    /// <summary>Posse, finalizações, passes, faltas... de cada time na partida (base da análise de times).</summary>
+    async Task ImportarEstatisticasDosJogos(List<Partida> pendentes, CancellationToken ct)
+    {
+        var feitas = 0;
+        foreach (var partida in pendentes)
+        {
+            var times = (await api.Consultar("/fixtures/statistics", new Dictionary<string, object> { ["fixture"] = partida.Id }, null, ct))
+                .GetProperty("response").EnumerateArray().ToList();
+            var existentes = await db.EstatisticasPartida.Where(e => e.PartidaId == partida.Id).ToDictionaryAsync(e => e.ClubeId, ct);
+
+            foreach (var t in times)
+            {
+                if (Int(t, "team", "id") is not { } clubeId || !t.TryGetProperty("statistics", out var lista) || lista.ValueKind != JsonValueKind.Array) continue;
+                var valores = LerEstatisticas(lista);
+                if (valores.Count == 0) continue;
+                if (!existentes.TryGetValue(clubeId, out var e))
+                    existentes[clubeId] = e = db.EstatisticasPartida.Add(new EstatisticaPartida { PartidaId = partida.Id, ClubeId = clubeId }).Entity;
+                int? V(string tipo) => valores.TryGetValue(tipo, out var v) ? v : null;
+                e.Posse = V("Ball Possession");
+                e.Finalizacoes = V("Total Shots");
+                e.FinalizacoesNoAlvo = V("Shots on Goal");
+                e.FinalizacoesNaArea = V("Shots insidebox");
+                e.Escanteios = V("Corner Kicks");
+                e.Faltas = V("Fouls");
+                e.Impedimentos = V("Offsides");
+                e.Amarelos = V("Yellow Cards");
+                e.Vermelhos = V("Red Cards");
+                e.Defesas = V("Goalkeeper Saves");
+                e.Passes = V("Total passes");
+                e.PassesCertos = V("Passes accurate");
+            }
+            partida.EstatisticasImportadas = true;
+            await db.SaveChangesAsync(ct);
+            if (++feitas % 25 == 0) log.LogInformation("  estatísticas dos jogos: {Feitas}/{Total}", feitas, pendentes.Count);
+        }
+    }
+
+    /// <summary>[{type: "Ball Possession", value: "55%"}, {type: "Fouls", value: 12}] → tipo → número. Sem valor = não informado.</summary>
+    public static Dictionary<string, int> LerEstatisticas(JsonElement lista)
+    {
+        var r = new Dictionary<string, int>();
+        foreach (var s in lista.EnumerateArray())
+        {
+            if (Texto(s, "type") is not { } tipo || Caminho(s, ["value"]) is not { } v) continue;
+            int? n = v.ValueKind switch
+            {
+                JsonValueKind.Number => (int)Math.Round(v.GetDouble()),
+                JsonValueKind.String => int.TryParse(v.GetString()!.TrimEnd('%').Trim(), out var i) ? i : null,
+                _ => null,
+            };
+            if (n is not null) r[tipo] = n.Value;
+        }
+        return r;
     }
 
     static void Preencher(EstatisticaTemporada e, JsonElement s)

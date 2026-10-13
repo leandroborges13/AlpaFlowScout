@@ -12,8 +12,8 @@ namespace Scout.Application.Chat;
 
 public record MensagemChat(string Papel, string Texto);
 
-/// <summary>Resposta do chat: o texto e os atletas citados, para a tela mostrar os cartões.</summary>
-public record RespostaChat(string Texto, IReadOnlyList<ResumoAtleta> Atletas);
+/// <summary>Resposta do chat: o texto e os atletas citados e os times citados, para a tela mostrar os cartões.</summary>
+public record RespostaChat(string Texto, IReadOnlyList<ResumoAtleta> Atletas, IReadOnlyList<ResumoTime> Times);
 
 /// <summary>
 /// Agente de scouting: entende o pedido em linguagem natural e consulta o banco pelas ferramentas.
@@ -26,6 +26,10 @@ public class AssistenteScout(
     IQueryHandler<AtletasParecidos, ResultadoParecidos?> parecidos,
     IQueryHandler<BuscarOportunidades, IReadOnlyList<ResumoAtleta>> oportunidades,
     IQueryHandler<ListarCompeticoes, IReadOnlyList<CompeticaoDisponivel>> competicoes,
+    IQueryHandler<ListarTimes, IReadOnlyList<ResumoTime>> listarTimes,
+    IQueryHandler<ObterTime, DetalheTime?> detalharTime,
+    IQueryHandler<BuscarTimesComCarencia, IReadOnlyList<TimeComCarencia>> carencias,
+    IQueryHandler<TimesParaAtleta, ResultadoTimesParaAtleta?> timesParaAtleta,
     IMemoryCache cache,
     ILogger<AssistenteScout> log)
 {
@@ -35,6 +39,8 @@ public class AssistenteScout(
         var temporadaPadrao = disponiveis.Select(c => c.Temporada).DefaultIfEmpty(DateTime.Today.Year).Max();
         var citados = new Dictionary<int, ResumoAtleta>();
         void Citar(IEnumerable<ResumoAtleta> atletas) { foreach (var a in atletas) citados[a.Id] = a; }
+        var timesCitados = new Dictionary<int, ResumoTime>();
+        void CitarTimes(IEnumerable<ResumoTime> times) { foreach (var t in times) timesCitados[t.Id] = t; }
 
         var ferramentas = new List<AITool>
         {
@@ -104,13 +110,69 @@ public class AssistenteScout(
                         .ToListAsync(ct),
                 "procurar_atleta_por_nome",
                 "Encontra o ID de um atleta pelo nome, para usar nas outras ferramentas."),
+            AIFunctionFactory.Create(
+                async ([Description("ID da competição; omita para todas")] int? competicao = null,
+                       [Description("Parte do nome do time, para encontrar o ID")] string? nome = null,
+                       int? temporada = null) =>
+                {
+                    var r = await listarTimes.Handle(new ListarTimes(competicao, temporada, nome), ct);
+                    // A lista inteira só vira cartão quando é uma busca por nome (poucos times)
+                    if (nome is not null) CitarTimes(r.Take(4));
+                    return r.Select(t => new { t.Id, t.Nome, t.Competicao, t.Temporada, t.Posicao, t.Pontos, t.Jogos, t.EsquemaMaisUsado, t.Estilo, t.Carencias });
+                },
+                "listar_times",
+                "Times de uma competição com classificação, esquema mais usado, estilo e carências; ou encontra o ID de um time pelo nome."),
+            AIFunctionFactory.Create(
+                async (int timeId, int? competicao = null, int? temporada = null) =>
+                {
+                    var d = await detalharTime.Handle(new ObterTime(timeId, competicao, temporada), ct);
+                    if (d is null) return (object)"Time não encontrado.";
+                    CitarTimes([d.Resumo]);
+                    return (object)new
+                    {
+                        d.Resumo, d.Esquemas, d.Dimensoes, d.Indicadores, d.Estilo, d.Elenco,
+                        Funcoes = d.Funcoes.Select(f => new { f.Funcao, f.Jogos, f.NotaTitulares, f.Percentil, f.Carencia, Titulares = f.Titulares.Select(a => $"{a.Nome} ({a.Jogos} jogos)") }),
+                        Principais = d.Principais.Select(a => new { a.Id, a.Nome, a.Idade, a.Funcao, a.Nota }),
+                        d.Observacoes,
+                    };
+                },
+                "analisar_time",
+                "Análise de um time: esquemas (em casa e fora, com aproveitamento), estilo de jogo, percentis em posse, ataque, defesa e disciplina, perfil do elenco e como está servido em cada função (carências)."),
+            AIFunctionFactory.Create(
+                async ([Description("Função em campo, ex.: 'Lateral esquerdo', 'Volante', 'Centroavante', 'Zagueiro'")] string funcao,
+                       [Description("IDs de competição para restringir; omita para todas")] int[]? competicoes = null,
+                       int? temporada = null, int? limite = null) =>
+                {
+                    var r = await carencias.Handle(new BuscarTimesComCarencia(funcao, temporada, competicoes, limite ?? 6), ct);
+                    CitarTimes(r.Select(x => x.Time));
+                    return r.Select(x => new { Time = x.Time.Nome, TimeId = x.Time.Id, x.Time.Competicao, x.Time.EsquemaMaisUsado, x.Necessidade });
+                },
+                "times_com_carencia",
+                "Times com titulares mais fracos numa função (percentil baixo entre os times da competição): mercado para quem oferece atletas daquela posição."),
+            AIFunctionFactory.Create(
+                async (int atletaId, [Description("IDs de competição; omita para usar só a competição do atleta")] int[]? competicoes = null,
+                       int? temporada = null, int? limite = null) =>
+                {
+                    var r = await timesParaAtleta.Handle(new TimesParaAtleta(atletaId, temporada, competicoes, limite ?? 5), ct);
+                    if (r is null) return (object)"Atleta não encontrado, sem função definida pelas escalações, ou fora da análise.";
+                    Citar([r.Atleta]);
+                    CitarTimes(r.Times.Select(t => t.Time));
+                    return (object)new
+                    {
+                        Atleta = new { r.Atleta.Nome, r.Atleta.Funcao, r.Atleta.Nota, r.Atleta.Clube, r.Atleta.Competicao },
+                        Times = r.Times.Select(t => new { t.Time.Nome, t.Time.EsquemaMaisUsado, t.Funcao, t.NotaTitulares, t.NotaAtleta, t.Ganho, t.ExperienciaNoEsquema, Titulares = t.TitularesAtuais.Select(a => a.Nome) }),
+                        r.Observacoes,
+                    };
+                },
+                "times_para_atleta",
+                "Em que times um atleta encaixaria: times que usam a função dele e têm ali titulares com nota menor."),
         };
 
         var mensagens = new List<ChatMessage> { new(ChatRole.System, Instrucoes(disponiveis, temporadaPadrao)) };
         mensagens.AddRange(conversa.TakeLast(12).Select(m => new ChatMessage(m.Papel == "user" ? ChatRole.User : ChatRole.Assistant, m.Texto)));
 
         var resposta = await chat.GetResponseAsync(mensagens, new ChatOptions { Tools = ferramentas, Temperature = 0.2f }, ct);
-        return new RespostaChat(resposta.Text, citados.Values.ToList());
+        return new RespostaChat(resposta.Text, citados.Values.ToList(), timesCitados.Values.ToList());
     }
 
     /// <summary>Parágrafo de analista sobre o atleta, só com as nossas métricas. Guardado por 6 horas.</summary>
@@ -158,5 +220,14 @@ public class AssistenteScout(
         - Quando o usuário citar um esquema, passe-o em "esquema". O resultado traz experienciaNoEsquema (ex.: "23 de 27 jogos com linha de 3"): destaque quem já está adaptado ao esquema e cite isso na recomendação final.
         - Se a busca vier vazia, tente de novo afrouxando um critério (minutos, idade, lado) antes de responder que não há atletas.
         - Respostas curtas: no máximo 5 atletas, com 1 ou 2 linhas cada, e uma conclusão de uma frase.
+
+        Times:
+        - Para falar de um time, encontre o ID com listar_times (nome) e use analisar_time. Descreva: esquema mais usado (e se muda em casa e fora),
+          estilo, pontos fortes e fracos em percentis entre os times da competição, perfil do elenco e as carências por função.
+        - Nunca cite médias brutas de time (posse em %, finalizações ou passes por jogo). Fale em percentis ("fica com a bola mais que 80% dos times da Série B")
+          e em fatos públicos (classificação, pontos, vitórias, gols, esquemas).
+        - "Quem precisa de um lateral esquerdo?" = times_com_carencia. "Onde esse atleta encaixa?" = times_para_atleta, explicando o ganho
+          (nota do atleta menos a nota dos titulares atuais) e se ele já joga no esquema do time.
+        - Carência é relativa: titulares abaixo da maioria dos times da mesma competição naquela função. Diga isso ao usar a palavra.
         """;
 }

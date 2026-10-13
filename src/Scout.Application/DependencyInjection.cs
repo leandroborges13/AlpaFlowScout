@@ -11,11 +11,16 @@ public static class DependencyInjection
     {
         services.AddMemoryCache();
         services.AddScoped<MotorDeAnalise>();
+        services.AddScoped<AnaliseDeTimes>();
         services.AddScoped<IQueryHandler<ListarCompeticoes, IReadOnlyList<CompeticaoDisponivel>>, ListarCompeticoesHandler>();
         services.AddScoped<IQueryHandler<BuscarPorPerfil, ResultadoBusca>, BuscarPorPerfilHandler>();
         services.AddScoped<IQueryHandler<ObterAtleta, DetalheAtleta?>, ObterAtletaHandler>();
         services.AddScoped<IQueryHandler<AtletasParecidos, ResultadoParecidos?>, AtletasParecidosHandler>();
         services.AddScoped<IQueryHandler<BuscarOportunidades, IReadOnlyList<ResumoAtleta>>, BuscarOportunidadesHandler>();
+        services.AddScoped<IQueryHandler<ListarTimes, IReadOnlyList<ResumoTime>>, ListarTimesHandler>();
+        services.AddScoped<IQueryHandler<ObterTime, DetalheTime?>, ObterTimeHandler>();
+        services.AddScoped<IQueryHandler<BuscarTimesComCarencia, IReadOnlyList<TimeComCarencia>>, BuscarTimesComCarenciaHandler>();
+        services.AddScoped<IQueryHandler<TimesParaAtleta, ResultadoTimesParaAtleta?>, TimesParaAtletaHandler>();
         services.AddScoped<AssistenteScout>();
         return services;
     }

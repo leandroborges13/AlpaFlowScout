@@ -28,7 +28,7 @@ docker compose pull && docker compose up -d
 
 Se o `pull` pedir login, rode `docker login ghcr.io` com o seu usuário do GitHub e um token com `read:packages`.
 
-4. **Importar os dados** (cerca de 1.300 consultas da API-Football):
+4. **Importar os dados** (cerca de 2.300 consultas da API-Football, incluindo as estatísticas de cada jogo):
 
 ```bash
 ./coleta.sh importar 71 2026

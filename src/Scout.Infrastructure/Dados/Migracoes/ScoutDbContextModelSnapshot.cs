@@ -178,6 +178,84 @@ namespace Scout.Infrastructure.Dados.Migracoes
                     b.ToTable("escalacoes", (string)null);
                 });
 
+            modelBuilder.Entity("Scout.Domain.EstatisticaPartida", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int?>("Amarelos")
+                        .HasColumnType("integer")
+                        .HasColumnName("amarelos");
+
+                    b.Property<int>("ClubeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("clube_id");
+
+                    b.Property<int?>("Defesas")
+                        .HasColumnType("integer")
+                        .HasColumnName("defesas");
+
+                    b.Property<int?>("Escanteios")
+                        .HasColumnType("integer")
+                        .HasColumnName("escanteios");
+
+                    b.Property<int?>("Faltas")
+                        .HasColumnType("integer")
+                        .HasColumnName("faltas");
+
+                    b.Property<int?>("Finalizacoes")
+                        .HasColumnType("integer")
+                        .HasColumnName("finalizacoes");
+
+                    b.Property<int?>("FinalizacoesNaArea")
+                        .HasColumnType("integer")
+                        .HasColumnName("finalizacoes_na_area");
+
+                    b.Property<int?>("FinalizacoesNoAlvo")
+                        .HasColumnType("integer")
+                        .HasColumnName("finalizacoes_no_alvo");
+
+                    b.Property<int?>("Impedimentos")
+                        .HasColumnType("integer")
+                        .HasColumnName("impedimentos");
+
+                    b.Property<int>("PartidaId")
+                        .HasColumnType("integer")
+                        .HasColumnName("partida_id");
+
+                    b.Property<int?>("Passes")
+                        .HasColumnType("integer")
+                        .HasColumnName("passes");
+
+                    b.Property<int?>("PassesCertos")
+                        .HasColumnType("integer")
+                        .HasColumnName("passes_certos");
+
+                    b.Property<int?>("Posse")
+                        .HasColumnType("integer")
+                        .HasColumnName("posse");
+
+                    b.Property<int?>("Vermelhos")
+                        .HasColumnType("integer")
+                        .HasColumnName("vermelhos");
+
+                    b.HasKey("Id")
+                        .HasName("pk_estatisticas_partida");
+
+                    b.HasIndex("ClubeId")
+                        .HasDatabaseName("ix_estatisticas_partida_clube_id");
+
+                    b.HasIndex("PartidaId", "ClubeId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_estatisticas_partida_partida_id_clube_id");
+
+                    b.ToTable("estatisticas_partida", (string)null);
+                });
+
             modelBuilder.Entity("Scout.Domain.EstatisticaTemporada", b =>
                 {
                     b.Property<long>("Id")
@@ -337,6 +415,10 @@ namespace Scout.Infrastructure.Dados.Migracoes
                     b.Property<bool>("EscalacoesImportadas")
                         .HasColumnType("boolean")
                         .HasColumnName("escalacoes_importadas");
+
+                    b.Property<bool>("EstatisticasImportadas")
+                        .HasColumnType("boolean")
+                        .HasColumnName("estatisticas_importadas");
 
                     b.Property<int?>("GolsMandante")
                         .HasColumnType("integer")

@@ -1,18 +1,26 @@
 import { useEffect, useState } from 'react'
-import { api, type DetalheAtleta, type JogoNaLinhaDoTempo, type Parecidos, type ResumoAtleta } from './api'
+import { api, type DetalheAtleta, type JogoNaLinhaDoTempo, type Parecidos, type ResumoAtleta, type ResumoTime, type TimesParaAtleta } from './api'
 import { BarraDeEstilo, CampoDePosicoes } from './Campo'
 import { CartaoAtleta, Medidor, Retrato } from './Componentes'
+import { CartaoTime } from './PainelTime'
 
-type Props = { atleta: ResumoAtleta; gravacao: boolean; onFechar: () => void; onAbrir: (a: ResumoAtleta) => void }
+type Props = {
+  atleta: ResumoAtleta
+  gravacao: boolean
+  onFechar: () => void
+  onAbrir: (a: ResumoAtleta) => void
+  onAbrirTime: (t: ResumoTime) => void
+}
 
-export function PainelAtleta({ atleta, gravacao, onFechar, onAbrir }: Props) {
+export function PainelAtleta({ atleta, gravacao, onFechar, onAbrir, onAbrirTime }: Props) {
   const [detalhe, setDetalhe] = useState<DetalheAtleta | null>(null)
   const [resumoIa, setResumoIa] = useState<string | null>(null)
   const [parecidos, setParecidos] = useState<Parecidos | null>(null)
+  const [encaixes, setEncaixes] = useState<TimesParaAtleta | null>(null)
   const [erro, setErro] = useState<string | null>(null)
 
   useEffect(() => {
-    setDetalhe(null); setResumoIa(null); setParecidos(null); setErro(null)
+    setDetalhe(null); setResumoIa(null); setParecidos(null); setEncaixes(null); setErro(null)
     api.atleta(atleta.id, atleta.temporada).then(setDetalhe).catch((e) => setErro(e.message))
     api.resumoIa(atleta.id, atleta.temporada).then((r) => setResumoIa(r.texto)).catch(() => setResumoIa(''))
   }, [atleta])
@@ -149,7 +157,32 @@ export function PainelAtleta({ atleta, gravacao, onFechar, onAbrir }: Props) {
           </section>
         )}
 
+        {encaixes && (
+          <section>
+            <h3>Onde encaixaria</h3>
+            <p className="legenda">Times da mesma competição que usam a função dele e têm ali titulares com nota menor. Ganho = diferença de nota.</p>
+            {encaixes.times.length === 0 && <p className="card-sub">Nenhum time da competição com titulares abaixo dele nessa função.</p>}
+            <div className="cards">
+              {encaixes.times.map((e) => (
+                <CartaoTime key={e.time.id} time={e.time} gravacao={gravacao} onAbrir={() => onAbrirTime(e.time)}
+                  detalhe={(
+                    <div className="encaixe">
+                      <span>{e.funcao}: titulares com nota <b>{e.notaTitulares ?? '—'}</b> · ele <b>{e.notaAtleta}</b> · ganho <b>+{e.ganho}</b></span>
+                      {e.experienciaNoEsquema && <span>{e.experienciaNoEsquema}</span>}
+                      {e.titularesAtuais.length > 0 && <span>Hoje: {e.titularesAtuais.map((t) => t.nome).join(', ')}</span>}
+                    </div>
+                  )} />
+              ))}
+            </div>
+          </section>
+        )}
+
         <div className="acoes">
+          {!encaixes && (
+            <button className="btn" onClick={() => api.timesParaAtleta(atleta.id, atleta.temporada).then(setEncaixes).catch((e) => setErro(e.message))}>
+              Onde ele encaixa
+            </button>
+          )}
           {!parecidos && (
             <button className="btn" onClick={() => api.parecidos(atleta.id, atleta.temporada).then(setParecidos).catch((e) => setErro(e.message))}>
               Ver parecidos

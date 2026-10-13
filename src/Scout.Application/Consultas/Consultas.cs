@@ -107,17 +107,22 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor) : IQueryH
     /// </summary>
     public static async Task<List<LinhaAnalise>> CarregarLinhas(IScoutDb db, MotorDeAnalise motor, int? temporada, int[]? competicoes, CancellationToken ct)
     {
+        var linhas = new List<LinhaAnalise>();
+        foreach (var (competicao, ano) in await CompeticoesAlvo(db, temporada, competicoes, ct))
+            if (await motor.Analisar(competicao, ano, ct) is { } analise) linhas.AddRange(analise.Linhas);
+        return linhas;
+    }
+
+    /// <summary>Competição e temporada a analisar: a pedida, ou a mais recente com estatística de cada competição.</summary>
+    public static async Task<List<(int Competicao, int Temporada)>> CompeticoesAlvo(IScoutDb db, int? temporada, int[]? competicoes, CancellationToken ct)
+    {
         var consulta = db.Estatisticas.AsNoTracking().Where(e => e.Minutos > 0);
         if (competicoes is { Length: > 0 }) consulta = consulta.Where(e => competicoes.Contains(e.CompeticaoId));
         if (temporada is not null) consulta = consulta.Where(e => e.Temporada == temporada);
         var alvos = await consulta.GroupBy(e => e.CompeticaoId)
             .Select(g => new { Competicao = g.Key, Temporada = g.Max(e => e.Temporada) })
             .ToListAsync(ct);
-
-        var linhas = new List<LinhaAnalise>();
-        foreach (var a in alvos)
-            if (await motor.Analisar(a.Competicao, a.Temporada, ct) is { } analise) linhas.AddRange(analise.Linhas);
-        return linhas;
+        return alvos.Select(a => (a.Competicao, a.Temporada)).ToList();
     }
 }
 

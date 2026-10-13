@@ -12,6 +12,7 @@ public interface IScoutDb
     DbSet<EstatisticaTemporada> Estatisticas { get; }
     DbSet<Partida> Partidas { get; }
     DbSet<Escalacao> Escalacoes { get; }
+    DbSet<EstatisticaPartida> EstatisticasPartida { get; }
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 }
 

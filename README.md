@@ -34,6 +34,24 @@ Jogo aéreo, saída de bola, marcação, intensidade, drible, criação, finaliz
 Cada um é a média dos percentis de alguns indicadores. Jogo aéreo, saída de bola e intensidade são
 **aproximações**: o provedor atual não tem duelo aéreo, passe progressivo nem dados físicos.
 
+### Ajuste à posse
+
+Desarmes, interceptações e bloqueios são ajustados à posse do time (×50 / posse do adversário):
+quem joga num time que fica com a bola defende menos vezes, e sem o ajuste os defensores de times
+dominantes pareceriam fracos.
+
+## Análise de times
+
+A partir das escalações e das estatísticas de cada jogo (`/fixtures/statistics`, uma consulta por partida):
+
+- **Esquemas:** esquema inicial de cada jogo, em casa e fora, com o aproveitamento de pontos em cada um.
+- **Estilo e pontos fortes:** posse e construção, força ofensiva, solidez defensiva e disciplina, em percentil
+  entre os times da competição. As médias brutas do provedor não aparecem.
+- **Elenco:** idade média e minutos para atletas até 23 anos (pesados pelos minutos), atletas usados e rodízio.
+- **Carências:** em cada função do plano de jogo, a nota dos titulares comparada com a dos outros times que usam
+  a mesma função. Abaixo do percentil 35 é carência.
+- **Mercado:** times com carência numa função, e em que times um atleta encaixaria (titulares com nota menor que a dele).
+
 ## Como rodar
 
 1. Copie `.env.example` para `.env` e preencha `APIFOOTBALL_KEY`, `SCOUT_DB` e `OPENAI_API_KEY`.

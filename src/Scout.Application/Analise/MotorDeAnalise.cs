@@ -54,6 +54,8 @@ public class LinhaAnalise
     public int Amarelos { get; init; }
     public int Vermelhos { get; init; }
     public double ParticipacaoMinutos { get; init; }
+    /// <summary>Posse média do time (%) nos jogos com estatística; base do ajuste dos números defensivos.</summary>
+    public double? PosseDoTime { get; init; }
 
     public Dictionary<string, double?> Valores { get; } = [];
     /// <summary>Percentil (0–100) dentro do mesmo setor na competição; já invertido nos indicadores "quanto menos, melhor".</summary>
@@ -108,6 +110,15 @@ public class MotorDeAnalise(IScoutDb db, IMemoryCache cache)
                                 where p.CompeticaoId == competicaoId && p.Temporada == temporada
                                 select new { e.AtletaId, e.Funcao, e.Lado, e.Setor, e.Esquema })
             .ToListAsync(ct);
+        // Posse média de cada clube: quem tem muito a bola defende menos vezes (ajuste dos números defensivos)
+        var posses = await (from e in db.EstatisticasPartida.AsNoTracking()
+                            join p in db.Partidas.AsNoTracking() on e.PartidaId equals p.Id
+                            where p.CompeticaoId == competicaoId && p.Temporada == temporada && e.Posse != null
+                            group e by e.ClubeId into g
+                            select new { ClubeId = g.Key, Jogos = g.Count(), Posse = g.Average(x => (double)x.Posse!.Value) })
+            .ToListAsync(ct);
+        var posseDoClube = posses.Where(p => p.Jogos >= 3).ToDictionary(p => p.ClubeId, p => p.Posse);
+
         var escalacoesPorAtleta = escalacoes.GroupBy(e => e.AtletaId).ToDictionary(g => g.Key, g => g.ToList());
 
         var porAtleta = estatisticas.GroupBy(e => e.AtletaId).ToList();
@@ -157,6 +168,9 @@ public class MotorDeAnalise(IScoutDb db, IMemoryCache cache)
                 FaltasCometidas = g.Sum(e => e.FaltasCometidas), FaltasSofridas = g.Sum(e => e.FaltasSofridas),
                 Amarelos = g.Sum(e => e.Amarelos), Vermelhos = g.Sum(e => e.Vermelhos),
                 ParticipacaoMinutos = Math.Min(1, (double)minutos / minutosPossiveis),
+                PosseDoTime = g.Where(e => posseDoClube.ContainsKey(e.ClubeId) && e.Minutos > 0) is var comPosse && comPosse.Any()
+                    ? comPosse.Sum(e => posseDoClube[e.ClubeId] * e.Minutos) / comPosse.Sum(e => e.Minutos)
+                    : null,
             });
         }
 

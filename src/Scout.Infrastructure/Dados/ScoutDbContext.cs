@@ -37,6 +37,7 @@ public class ScoutDbContext(DbContextOptions<ScoutDbContext> options) : DbContex
     public DbSet<EstatisticaTemporada> Estatisticas => Set<EstatisticaTemporada>();
     public DbSet<Partida> Partidas => Set<Partida>();
     public DbSet<Escalacao> Escalacoes => Set<Escalacao>();
+    public DbSet<EstatisticaPartida> EstatisticasPartida => Set<EstatisticaPartida>();
     public DbSet<RespostaProvedor> RespostasProvedor => Set<RespostaProvedor>();
     public DbSet<ConsultaDiaria> ConsultasDiarias => Set<ConsultaDiaria>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
@@ -61,6 +62,9 @@ public class ScoutDbContext(DbContextOptions<ScoutDbContext> options) : DbContex
         b.Entity<Escalacao>().HasIndex(e => e.AtletaId);
         b.Entity<Escalacao>().Property(e => e.Setor).HasConversion<string>().HasMaxLength(10);
         b.Entity<Escalacao>().Property(e => e.Lado).HasConversion<string>().HasMaxLength(10);
+
+        b.Entity<EstatisticaPartida>().HasIndex(e => new { e.PartidaId, e.ClubeId }).IsUnique();
+        b.Entity<EstatisticaPartida>().HasIndex(e => e.ClubeId);
 
         b.Entity<RespostaProvedor>().HasKey(r => r.Chave);
         b.Entity<RespostaProvedor>().Property(r => r.Json).HasColumnType("jsonb");

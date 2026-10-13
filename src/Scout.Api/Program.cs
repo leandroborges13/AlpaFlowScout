@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using OpenAI;
 using Scout.Application;
@@ -12,6 +13,7 @@ using Scout.Application.Chat;
 using Scout.Application.Consultas;
 using Scout.Infrastructure;
 using Scout.Infrastructure.Acesso;
+using Scout.Infrastructure.Dados;
 using Scout.Infrastructure.Provedor;
 
 ArquivoEnv.Carregar();
@@ -67,6 +69,11 @@ builder.Services.AddChatClient(_ => string.IsNullOrWhiteSpace(chaveOpenAi)
     .UseFunctionInvocation();
 
 var app = builder.Build();
+
+// Aplica as migrações pendentes ao subir: um deploy com tabela nova já funciona sem passo manual
+using (var escopo = app.Services.CreateScope())
+    await escopo.ServiceProvider.GetRequiredService<ScoutDbContext>().Database.MigrateAsync();
+
 app.UseForwardedHeaders();
 if (app.Environment.IsDevelopment()) app.MapOpenApi();
 app.UseDefaultFiles();
@@ -121,6 +128,15 @@ api.MapGet("/atletas/{id:int}/parecidos", async (int id, int? temporada, int? id
 
 api.MapGet("/oportunidades", (int? temporada, int? idadeMax, IQueryHandler<BuscarOportunidades, IReadOnlyList<ResumoAtleta>> h, CancellationToken ct) =>
     h.Handle(new BuscarOportunidades(temporada, IdadeMax: idadeMax ?? 23), ct));
+
+api.MapGet("/times", (int? competicao, int? temporada, IQueryHandler<ListarTimes, IReadOnlyList<ResumoTime>> h, CancellationToken ct) =>
+    h.Handle(new ListarTimes(competicao, temporada), ct));
+
+api.MapGet("/times/{id:int}", async (int id, int? competicao, int? temporada, IQueryHandler<ObterTime, DetalheTime?> h, CancellationToken ct) =>
+    await h.Handle(new ObterTime(id, competicao, temporada), ct) is { } d ? Results.Ok(d) : Results.NotFound());
+
+api.MapGet("/atletas/{id:int}/times", async (int id, int? temporada, IQueryHandler<TimesParaAtleta, ResultadoTimesParaAtleta?> h, CancellationToken ct) =>
+    await h.Handle(new TimesParaAtleta(id, temporada), ct) is { } r ? Results.Ok(r) : Results.NotFound());
 
 api.MapPost("/chat", async (PedidoChat pedido, AssistenteScout assistente, CancellationToken ct) =>
     pedido.Mensagens is not { Count: > 0 }
