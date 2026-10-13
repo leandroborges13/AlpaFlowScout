@@ -257,7 +257,8 @@ public class AnaliseDeTimes(IScoutDb db, MotorDeAnalise motor, IMemoryCache cach
                 .Select(e => new { e.ClubeId, e.AtletaId, e.Minutos, e.Atleta.Nascimento })
                 .ToListAsync(ct))
             .ToLookup(e => e.ClubeId);
-        var comandos = await db.TreinadoresNaPartida.AsNoTracking().Where(t => ids.Contains(t.PartidaId)).ToListAsync(ct);
+        // Id 0 é "treinador não informado" (gravado por versões antigas do importador)
+        var comandos = await db.TreinadoresNaPartida.AsNoTracking().Where(t => ids.Contains(t.PartidaId) && t.TreinadorId > 0).ToListAsync(ct);
         var idsTreinadores = comandos.Select(t => t.TreinadorId).Distinct().ToList();
         var treinadores = await db.Treinadores.AsNoTracking().Where(t => idsTreinadores.Contains(t.Id)).ToDictionaryAsync(t => t.Id, ct);
 

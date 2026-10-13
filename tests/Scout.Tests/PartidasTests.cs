@@ -38,6 +38,15 @@ public class PartidasTests
         Assert.Equal("Atleta Teste C", troca.Outro);
     }
 
+    [Fact]
+    public void Treinador_com_id_zero_e_tratado_como_nao_informado()
+    {
+        var escalacoes = Json("""[{"team":{"id":1,"name":"Time Teste"},"coach":{"id":0,"name":null},"formation":"4-3-3","startXI":[],"substitutes":[]}]""");
+        var lado = Assert.Single(DetalhesDaPartida.Ler(escalacoes, []).Lados);
+        Assert.Null(lado.TreinadorId);
+        Assert.Null(lado.Treinador);
+    }
+
     [Theory]
     [InlineData("Galo", "Atletico MG")]
     [InlineData("o Peixe", "Santos")]

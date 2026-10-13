@@ -41,7 +41,7 @@ public class DetalhesDaPartida(ApiFootballClient api, ILogger<DetalhesDaPartida>
                         .ToList()
                     : [];
             return new LadoDaPartida(Int(t, "team", "id") ?? 0, Texto(t, "team", "name") ?? "?", esquema,
-                Int(t, "coach", "id"), Texto(t, "coach", "name"), Jogadores("startXI", true), Jogadores("substitutes", false));
+                Int(t, "coach", "id") is > 0 ? Int(t, "coach", "id") : null, Int(t, "coach", "id") is > 0 ? Texto(t, "coach", "name") : null, Jogadores("startXI", true), Jogadores("substitutes", false));
         }).ToList();
 
         // Quem está em campo, para saber em cada substituição quem saiu e quem entrou

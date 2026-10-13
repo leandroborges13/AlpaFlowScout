@@ -102,23 +102,47 @@ public class Importador(ApiFootballClient api, ScoutDbContext db, ILogger<Import
 
         if (comEscalacoes)
         {
-            await ImportarEscalacoes(partidas.Values.Where(x => x.Encerrada && !x.EscalacoesImportadas).ToList(), ct);
+            await ImportarEscalacoes(partidas.Values.Where(x => x.Encerrada && !x.EscalacoesImportadas).ToList(), null, ct);
             // Partidas com escalação de antes de guardarmos o treinador: a resposta está no cache, não gasta consulta
             await ImportarTreinadores(partidas.Values.Where(x => x.EscalacoesImportadas && !x.TreinadoresImportados).ToList(), ct);
-            await ImportarEstatisticasDosJogos(partidas.Values.Where(x => x.Encerrada && !x.EstatisticasImportadas).ToList(), ct);
+            await ImportarEstatisticasDosJogos(partidas.Values.Where(x => x.Encerrada && !x.EstatisticasImportadas).ToList(), null, ct);
+            // Nos dias seguintes ao jogo o provedor ainda corrige escalação, treinador e estatísticas
+            await Revisar(partidas.Values.Where(x => x.EscalacoesImportadas && x.Data > DateTime.UtcNow.AddDays(-3)).ToList(), TimeSpan.FromHours(12), ct);
         }
 
         return new ResultadoImportacao(competicao.Nome, temporada, times.Count, vistos.Select(v => v.Item1).Distinct().Count(),
             vistos.Count, partidas.Count, partidas.Values.Count(x => x.EscalacoesImportadas));
     }
 
-    async Task<int> ImportarEscalacoes(List<Partida> pendentes, CancellationToken ct)
+    /// <summary>Apaga e importa de novo escalações, treinadores e estatísticas (respostas guardadas há mais que `validade` são buscadas de novo).</summary>
+    public async Task Revisar(List<Partida> partidas, TimeSpan validade, CancellationToken ct)
+    {
+        if (partidas.Count == 0) return;
+        var ids = partidas.Select(p => p.Id).ToList();
+        await db.Escalacoes.Where(e => ids.Contains(e.PartidaId)).ExecuteDeleteAsync(ct);
+        await db.TreinadoresNaPartida.Where(t => ids.Contains(t.PartidaId)).ExecuteDeleteAsync(ct);
+        await db.EstatisticasPartida.Where(e => ids.Contains(e.PartidaId)).ExecuteDeleteAsync(ct);
+        await ImportarEscalacoes(partidas, validade, ct);
+        await ImportarEstatisticasDosJogos(partidas, validade, ct);
+        // Lances (gols, cartões) também são corrigidos depois do jogo: renova a resposta guardada
+        foreach (var p in partidas) await api.Consultar("/fixtures/events", new Dictionary<string, object> { ["fixture"] = p.Id }, validade, ct);
+        log.LogInformation("  revisados {Partidas} jogos recentes", partidas.Count);
+    }
+
+    /// <summary>Um jogo específico, buscando tudo de novo no provedor (para correções feitas depois do apito final).</summary>
+    public async Task ReimportarPartida(int partidaId, CancellationToken ct)
+    {
+        var partida = await db.Partidas.FirstOrDefaultAsync(p => p.Id == partidaId, ct) ?? throw new ArgumentException($"Partida {partidaId} não está na base");
+        await Revisar([partida], TimeSpan.Zero, ct);
+    }
+
+    async Task<int> ImportarEscalacoes(List<Partida> pendentes, TimeSpan? validade, CancellationToken ct)
     {
         var feitas = 0;
         foreach (var partida in pendentes)
         {
-            // Partida encerrada não muda: guardada para sempre
-            var times = (await api.Consultar("/fixtures/lineups", new Dictionary<string, object> { ["fixture"] = partida.Id }, null, ct))
+            // Partida encerrada fica guardada; jogos recentes são revisados (ver Revisar)
+            var times = (await api.Consultar("/fixtures/lineups", new Dictionary<string, object> { ["fixture"] = partida.Id }, validade, ct))
                 .GetProperty("response").EnumerateArray().ToList();
             var jaTem = await db.Escalacoes.Where(e => e.PartidaId == partida.Id).Select(e => e.AtletaId).ToListAsync(ct);
             var existentes = jaTem.ToHashSet();
@@ -172,7 +196,8 @@ public class Importador(ApiFootballClient api, ScoutDbContext db, ILogger<Import
         var jaTem = (await db.TreinadoresNaPartida.Where(t => t.PartidaId == partida.Id).Select(t => t.ClubeId).ToListAsync(ct)).ToHashSet();
         foreach (var t in times)
         {
-            if (Int(t, "team", "id") is not { } clubeId || Int(t, "coach", "id") is not { } treinadorId || !jaTem.Add(clubeId)) continue;
+            // Id 0 = treinador não informado pelo provedor
+            if (Int(t, "team", "id") is not { } clubeId || Int(t, "coach", "id") is not ({ } treinadorId and > 0) || !jaTem.Add(clubeId)) continue;
             if (!treinadores.TryGetValue(treinadorId, out var treinador))
                 treinadores[treinadorId] = treinador = db.Treinadores.Add(new Treinador { Id = treinadorId }).Entity;
             treinador.Nome = Texto(t, "coach", "name") ?? treinador.Nome;
@@ -183,12 +208,12 @@ public class Importador(ApiFootballClient api, ScoutDbContext db, ILogger<Import
     }
 
     /// <summary>Posse, finalizações, passes, faltas... de cada time na partida (base da análise de times).</summary>
-    async Task ImportarEstatisticasDosJogos(List<Partida> pendentes, CancellationToken ct)
+    async Task ImportarEstatisticasDosJogos(List<Partida> pendentes, TimeSpan? validade, CancellationToken ct)
     {
         var feitas = 0;
         foreach (var partida in pendentes)
         {
-            var times = (await api.Consultar("/fixtures/statistics", new Dictionary<string, object> { ["fixture"] = partida.Id }, null, ct))
+            var times = (await api.Consultar("/fixtures/statistics", new Dictionary<string, object> { ["fixture"] = partida.Id }, validade, ct))
                 .GetProperty("response").EnumerateArray().ToList();
             var existentes = await db.EstatisticasPartida.Where(e => e.PartidaId == partida.Id).ToDictionaryAsync(e => e.ClubeId, ct);
 

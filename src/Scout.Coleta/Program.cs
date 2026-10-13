@@ -4,6 +4,7 @@
 //   dotnet run --project src/Scout.Coleta -- migrar
 //   dotnet run --project src/Scout.Coleta -- criar-usuario <email> <nome>   (pede a senha no terminal)
 //   dotnet run --project src/Scout.Coleta -- remover-usuario <email>
+//   dotnet run --project src/Scout.Coleta -- reimportar-partida <id>   (busca de novo escalação, estatísticas e lances)
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -57,6 +58,11 @@ try
             if (LerSenha() != senha) { Console.Error.WriteLine("As senhas não conferem."); return 1; }
             var u = await sp.GetRequiredService<Scout.Infrastructure.Acesso.Usuarios>().Criar(args[1], string.Join(' ', args[2..]), senha, cts.Token);
             Console.WriteLine($"Usuário pronto: {u.Email}");
+            break;
+
+        case "reimportar-partida" when args.Length >= 2 && int.TryParse(args[1], out var partidaId):
+            await sp.GetRequiredService<Importador>().ReimportarPartida(partidaId, cts.Token);
+            Console.WriteLine($"Partida {partidaId} reimportada. Consultas hoje: {await sp.GetRequiredService<ApiFootballClient>().UsadasHoje(cts.Token)}");
             break;
 
         case "remover-usuario" when args.Length >= 2:
