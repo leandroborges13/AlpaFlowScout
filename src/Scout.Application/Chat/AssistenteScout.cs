@@ -125,7 +125,9 @@ public class AssistenteScout(
                        [Description("Parte do nome do time, para encontrar o ID")] string? nome = null,
                        int? temporada = null) =>
                 {
-                    var r = await listarTimes.Handle(new ListarTimes(competicao, temporada, nome), ct);
+                    // Buscando pelo nome, procura em todas as competições: a IA às vezes chuta a série errada ("Cruzeiro na Série B")
+                    var r = await listarTimes.Handle(nome is null ? new ListarTimes(competicao, temporada) : new ListarTimes(Nome: nome), ct);
+                    if (nome is not null && temporada is not null && r.Any(t => t.Temporada == temporada)) r = r.Where(t => t.Temporada == temporada).ToList();
                     if (nome is not null) CitarTimes(r.Take(1)); // busca por nome: só o mais parecido vira cartão
                     return r.Select(t => new { t.Id, t.Nome, t.Competicao, t.Temporada, t.Posicao, t.Pontos, t.Jogos, t.EsquemaMaisUsado, t.Estilo, t.Carencias });
                 },
@@ -134,7 +136,8 @@ public class AssistenteScout(
             AIFunctionFactory.Create(
                 async (int timeId, int? competicao = null, int? temporada = null) =>
                 {
-                    var d = await detalharTime.Handle(new ObterTime(timeId, competicao, temporada), ct);
+                    // Competição ou temporada erradas não podem esconder o time: tenta de novo sem elas
+                    var d = await detalharTime.Handle(new ObterTime(timeId, competicao, temporada), ct) ?? await detalharTime.Handle(new ObterTime(timeId), ct);
                     if (d is null) return (object)"Time não encontrado.";
                     CitarTimes([d.Resumo]);
                     return (object)new
@@ -182,7 +185,8 @@ public class AssistenteScout(
                        [Description("'aproveitamento' (padrão) ou 'jovens' (quem mais escala atletas até 23 anos)")] string? ordenarPor = null,
                        int? temporada = null) =>
                 {
-                    var r = await listarTreinadores.Handle(new ListarTreinadores(competicao, nome, temporada), ct);
+                    var r = await listarTreinadores.Handle(nome is null ? new ListarTreinadores(competicao, null, temporada) : new ListarTreinadores(Nome: nome), ct);
+                    if (nome is not null && temporada is not null && r.Any(t => t.Temporada == temporada)) r = r.Where(t => t.Temporada == temporada).ToList();
                     var jovens = string.Equals(ordenarPor, "jovens", StringComparison.OrdinalIgnoreCase);
                     var lista = (jovens
                         ? r.Where(t => t.TitularesAte23 is not null).OrderByDescending(t => t.TitularesAte23)
@@ -354,6 +358,10 @@ public class AssistenteScout(
         - Respostas curtas: no máximo 5 atletas, com 1 ou 2 linhas cada, e uma conclusão de uma frase.
 
         Times:
+        - Dimensões e indicadores de times e treinadores são PERCENTIS (posição de 0 a 100 entre os outros times), não porcentagens:
+          "percentil 95 em titularidades para jovens" = escala mais jovens que 95% dos times, e não "95% das titularidades".
+          Porcentagem real só nos campos com "Percentual" no nome.
+        - Ao procurar um time ou treinador pelo nome, NÃO passe competição: a busca já procura em todas (não suponha a série do time).
         - Para falar de um time, encontre o ID com listar_times (nome) e use analisar_time. Descreva: esquema mais usado (e se muda em casa e fora),
           estilo, pontos fortes e fracos em percentis entre os times da competição, perfil do elenco e as carências por função.
         - Nunca cite médias brutas de time (posse em %, finalizações ou passes por jogo). Fale em percentis ("fica com a bola mais que 80% dos times da Série B")
