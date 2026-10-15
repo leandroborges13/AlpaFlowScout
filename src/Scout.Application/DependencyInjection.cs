@@ -29,6 +29,7 @@ public static class DependencyInjection
         services.AddScoped<IQueryHandler<AtletasParaTreinador, ResultadoAtletasParaTreinador?>, AtletasParaTreinadorHandler>();
         services.AddScoped<IQueryHandler<ObterFichaAtleta, FichaAtleta?>, ObterFichaAtletaHandler>();
         services.AddScoped<IQueryHandler<ObterElenco, ElencoDoTime?>, ObterElencoHandler>();
+        services.AddScoped<IQueryHandler<ObterCopasDoTime, CopasDoTime?>, ObterCopasDoTimeHandler>();
         services.AddScoped<AssistenteScout>();
         return services;
     }

@@ -39,6 +39,7 @@ public class AssistenteScout(
     IQueryHandler<AnalisarPartida, AnalisePartida?> analisarPartida,
     IQueryHandler<ObterFichaAtleta, FichaAtleta?> fichaAtleta,
     IQueryHandler<ObterElenco, ElencoDoTime?> elenco,
+    IQueryHandler<ObterCopasDoTime, CopasDoTime?> copasDoTime,
     IMemoryCache cache,
     ILogger<AssistenteScout> log)
 {
@@ -175,6 +176,39 @@ public class AssistenteScout(
                 },
                 "analisar_time",
                 "Análise de um time: esquemas (em casa e fora, com aproveitamento), estilo de jogo, percentis em posse, ataque, defesa e disciplina, perfil do elenco e como está servido em cada função (carências)."),
+            AIFunctionFactory.Create(
+                async (int timeId,
+                       [Description("true só quando o usuário perguntar chance, probabilidade ou favoritismo de título")] bool chanceDeTitulo = false,
+                       int? temporada = null) =>
+                {
+                    var c = await copasDoTime.Handle(new ObterCopasDoTime(timeId, temporada), ct);
+                    if (c is null) return (object)"Time não encontrado.";
+                    if (c.Copas.Count == 0) return (object)$"{c.Time} não tem jogos de Copa do Brasil, Libertadores ou Sul-Americana na base em {c.Temporada}.";
+                    return (object)new
+                    {
+                        c.Time, c.Temporada, ChanceDeAlgumTituloPercentual = chanceDeTitulo ? c.ChanceDeAlgumTituloPercentual : null,
+                        Copas = c.Copas.Select(x => new
+                        {
+                            x.Competicao, x.Situacao, x.Jogos, x.Vitorias, x.Empates, x.Derrotas, x.GolsPro, x.GolsContra,
+                            Fases = x.Fases.Select(f => new
+                            {
+                                f.Fase, f.Resultado,
+                                Jogos = f.Jogos.Select(j => j.GolsPro is null
+                                    ? $"{j.Data.AddHours(-3):dd/MM} {(j.EmCasa ? "em casa" : "fora")} contra {j.Adversario} (a jogar)"
+                                    : $"{j.Data.AddHours(-3):dd/MM} {(j.EmCasa ? "em casa" : "fora")} {j.GolsPro} x {j.GolsContra} {j.Adversario}{(j.Penaltis ? " (pênaltis)" : "")}"),
+                            }),
+                            ProximoJogo = x.ProximoJogo is { } p ? $"{p.Data.AddHours(-3):dd/MM HH:mm} {(p.EmCasa ? "em casa" : "fora")} contra {p.Adversario} ({p.Fase})" : null,
+                            Chance = chanceDeTitulo && x.Chance is { } ch ? new
+                            {
+                                ch.TituloPercentual, ChegarAFinalPercentual = ch.FinalPercentual,
+                                PassarDaFaseAtualPercentual = ch.PassarDaFasePercentual, ch.FaseAtual, ch.AdversarioDaFase,
+                                Favoritos = ch.Favoritos.Select(f => $"{f.Time}: {f.TituloPercentual}%"), ch.Metodo,
+                            } : null,
+                        }),
+                    };
+                },
+                "copas_do_time",
+                "Campanha do time nas copas da temporada (Copa do Brasil, Libertadores, Sul-Americana): situação (vivo, eliminado, campeão), V/E/D, gols, resultados de cada fase, próximo jogo e a chance de título estimada pelo modelo AlpaFlow."),
             AIFunctionFactory.Create(
                 async ([Description("Função em campo, ex.: 'Lateral esquerdo', 'Volante', 'Centroavante', 'Zagueiro'")] string funcao,
                        [Description("IDs de competição para restringir; omita para todas")] int[]? competicoes = null,
@@ -408,6 +442,15 @@ public class AssistenteScout(
         - "Quem precisa de um lateral esquerdo?" = times_com_carencia. "Onde esse atleta encaixa?" = times_para_atleta, explicando o ganho
           (nota do atleta menos a nota dos titulares atuais) e se ele já joga no esquema do time.
         - Carência é relativa: titulares abaixo da maioria dos times da mesma competição naquela função. Diga isso ao usar a palavra.
+        - "Como o time está nas copas", campanha, fase, próximo jogo ou chance de ser campeão = copas_do_time (já traz as três copas;
+          não precisa do ID da competição). Para o estilo do time numa copa em percentis, use analisar_time com o ID da copa
+          (73 Copa do Brasil, 13 Libertadores, 11 Sul-Americana).
+        - Na campanha nas copas, fale de fase, resultados (adversários e placares), V/E/D, gols e próximo jogo. Só fale de chance de título
+          quando perguntarem por chance, probabilidade, favoritismo ou quem vai ganhar.
+        - Chance de título: para CADA copa em que o time está vivo, dê o número em porcentagem como estimativa do modelo AlpaFlow, explique em uma frase como é calculada
+          (força pelos resultados da temporada e o restante da copa simulado 10 mil vezes), cite o adversário da fase atual,
+          a chance de chegar à final e os favoritos. Diga que é probabilidade, não certeza. Não invente número fora do que a ferramenta trouxe.
+          "Chance de ganhar alguma/uma das copas" = ChanceDeAlgumTituloPercentual (já calculado): nunca some nem multiplique porcentagens você mesmo.
 
         Treinadores:
         - Encontre o ID com listar_treinadores (nome) e use analisar_treinador. Descreva: clube e período, campanha (V/E/D e aproveitamento),
