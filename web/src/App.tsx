@@ -77,7 +77,9 @@ function Plataforma({ usuario, onSair }: { usuario: string; onSair: () => void }
           </div>
         </div>
         <div className="topo-acoes">
-          <span className="selo">Séries A, B e C · só maiores de 18 anos</span>
+          <span className="selo" title="Brasileirão Séries A, B e C e as copas (Copa do Brasil, Libertadores e Sul-Americana). As notas de atleta vêm da liga; nas copas entram jogos, times e treinadores. Só atletas maiores de 18 anos.">
+            Séries A, B e C + Copa do Brasil, Libertadores e Sul-Americana · só maiores de 18
+          </span>
           {mensagens.length > 0 && (
             <button className="btn" onClick={() => { setMensagens([]); setAberto(null); setTimeAberto(null); setTreinadorAberto(null); setPartidaAberta(null); setTexto('') }} disabled={carregando}>
               Limpar conversa
