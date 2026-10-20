@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
-import { api, type AnalisePartida, type EventoDaPartida, type LadoDaPartida, type ResumoPartida } from './api'
+import { useEffect, useMemo, useState } from 'react'
+import { api, type AnalisePartida, type DesempenhoNoJogo, type EventoDaPartida, type LadoDaPartida, type ResumoPartida } from './api'
 import { Escudo } from './PainelTime'
+import { CampoDaPartida, DesempenhoNaPartida, Destaques, LinhaDoTempo } from './PartidaVisual'
 
 const ICONE: Record<string, string> = {
   'Gol': '⚽', 'Gol de pênalti': '⚽', 'Gol contra': '⚽', 'Pênalti perdido': '✕',
@@ -42,9 +43,10 @@ type PainelProps = { partida: ResumoPartida; gravacao: boolean; onFechar: () => 
 export function PainelPartida({ partida, gravacao, onFechar }: PainelProps) {
   const [a, setA] = useState<AnalisePartida | null>(null)
   const [erro, setErro] = useState<string | null>(null)
+  const [selecionado, setSelecionado] = useState<number | null>(null)
 
   useEffect(() => {
-    setA(null); setErro(null)
+    setA(null); setErro(null); setSelecionado(null)
     api.partida(partida.id).then(setA).catch((e) => setErro(e.message))
   }, [partida])
 
@@ -57,10 +59,17 @@ export function PainelPartida({ partida, gravacao, onFechar }: PainelProps) {
   const p = a?.partida ?? partida
   const principais = (a?.eventos ?? []).filter((e) => e.tipo !== 'Substituição')
   const trocas = (a?.eventos ?? []).filter((e) => e.tipo === 'Substituição')
+  const desempenhos = a?.desempenhos ?? []
+  const notas = useMemo(() => new Map((a?.desempenhos ?? []).map((d) => [d.atletaId, d])), [a])
+  const titulares = new Set([...(a?.mandante.titulares ?? []), ...(a?.visitante.titulares ?? [])].map((j) => j.id))
+  const entraram = desempenhos.filter((d) => !titulares.has(d.atletaId))
+  const timeDe = (d: DesempenhoNoJogo) => (d.clubeId === p.mandanteId ? 'casa' : 'fora') as 'casa' | 'fora'
+  const timeNome = (d: DesempenhoNoJogo) => (d.clubeId === p.mandanteId ? p.mandante : p.visitante)
+  const aberto = selecionado != null ? notas.get(selecionado) : undefined
 
   return (
     <div className="fundo" onClick={onFechar}>
-      <div className="painel" role="dialog" aria-modal aria-label={`${p.mandante} x ${p.visitante}`} onClick={(e) => e.stopPropagation()}>
+      <div className="painel largo" role="dialog" aria-modal aria-label={`${p.mandante} x ${p.visitante}`} onClick={(e) => e.stopPropagation()}>
         <span className="card-sub">{p.competicao} {p.temporada}{p.rodada ? ` · ${p.rodada.replace('Regular Season - ', 'Rodada ')}` : ''} · {dataDoJogo(p)}</span>
         <Placar p={p} gravacao={gravacao} grande />
         {a?.desfecho && <p className="desfecho">{a.desfecho}</p>}
@@ -70,6 +79,25 @@ export function PainelPartida({ partida, gravacao, onFechar }: PainelProps) {
 
         {a && (
           <>
+            {(desempenhos.length > 0 || a.mandante.titulares.some((j) => j.x != null)) && (
+              <section>
+                <h3>Em campo</h3>
+                <Destaques desempenhos={desempenhos} timeDe={timeDe} selecionado={selecionado} onSelecionar={setSelecionado} />
+                <CampoDaPartida a={a} notas={notas} selecionado={selecionado} onSelecionar={setSelecionado} />
+                {entraram.length > 0 && (
+                  <div className="entraram">
+                    <span className="card-sub">Entraram:</span>
+                    {entraram.map((d) => (
+                      <button key={d.atletaId} className={`destaque ${timeDe(d)} ${selecionado === d.atletaId ? 'foco' : ''}`} onClick={() => setSelecionado(d.atletaId)}>
+                        <b>{d.nota ?? '–'}</b><span>{d.nome}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {aberto && <DesempenhoNaPartida key={aberto.atletaId} d={aberto} todos={desempenhos} timeNome={timeNome} timeDe={timeDe} onFechar={() => setSelecionado(null)} />}
+              </section>
+            )}
+
             {a.aspectos.length > 0 && (
               <section>
                 <h3>Quem levou vantagem</h3>
@@ -91,6 +119,7 @@ export function PainelPartida({ partida, gravacao, onFechar }: PainelProps) {
             {principais.length > 0 && (
               <section>
                 <h3>Lances</h3>
+                <LinhaDoTempo a={a} />
                 <ol className="lances">
                   {principais.map((e, i) => <Lance key={i} e={e} p={p} />)}
                 </ol>

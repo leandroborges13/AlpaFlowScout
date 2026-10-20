@@ -8,7 +8,28 @@ public record ResumoPartida(int Id, DateTime Data, string? Rodada, int Competica
     int MandanteId, string Mandante, string? EscudoMandante, int VisitanteId, string Visitante, string? EscudoVisitante,
     int? GolsMandante, int? GolsVisitante);
 
-public record JogadorNaPartida(int? Id, string Nome, string? Funcao);
+/// <summary>`X`/`Y` (0–100): lugar no desenho tático, como em <see cref="FuncaoTatica.Coordenadas"/>; só para titulares.</summary>
+public record JogadorNaPartida(int? Id, string Nome, string? Funcao, double? X = null, double? Y = null);
+
+/// <summary>
+/// Números de um atleta numa partida, como o provedor informa (/fixtures/players). Uso interno: viram
+/// percentis e a nossa nota do jogo, nunca aparecem crus.
+/// </summary>
+public record EstatisticaDoJogador(int AtletaId, int ClubeId, int Minutos, string? Posicao,
+    int Gols, int Assistencias, int GolsSofridos, int Defesas, int Finalizacoes, int FinalizacoesNoAlvo,
+    int Passes, int PassesDecisivos, int? PassesCertos, int Desarmes, int Bloqueios, int Interceptacoes,
+    int Duelos, int DuelosGanhos, int DriblesTentados, int DriblesCertos, int FaltasCometidas, int FaltasSofridas,
+    int Amarelos, int Vermelhos);
+
+/// <summary>Um indicador do atleta no jogo: percentil do rendimento por 90 min contra o setor na temporada.</summary>
+public record IndicadorNoJogo(string Chave, string Nome, double? Percentil, bool DoSetor);
+
+/// <summary>
+/// Como o atleta foi no jogo: a nossa nota (média dos percentis dos indicadores do setor) e os fatos públicos
+/// (minutos, gols, assistências, cartões). `Nota` nula quando jogou pouco para medir.
+/// </summary>
+public record DesempenhoNoJogo(int AtletaId, string Nome, int ClubeId, string? Funcao, string Setor, int Minutos, double? Nota,
+    int Gols, int Assistencias, int Amarelos, int Vermelhos, IReadOnlyList<IndicadorNoJogo> Indicadores);
 
 public record LadoDaPartida(int ClubeId, string Time, string? Esquema, int? TreinadorId, string? Treinador,
     IReadOnlyList<JogadorNaPartida> Titulares, IReadOnlyList<JogadorNaPartida> Reservas);
@@ -18,7 +39,8 @@ public record EventoDaPartida(int Minuto, int? Acrescimo, int ClubeId, string Ti
     int? JogadorId = null, int? OutroId = null);
 
 /// <summary>Escalações completas e eventos de uma partida, como o provedor informa (buscados sob demanda).</summary>
-public record DetalhesDoProvedor(IReadOnlyList<LadoDaPartida> Lados, IReadOnlyList<EventoDaPartida> Eventos);
+public record DetalhesDoProvedor(IReadOnlyList<LadoDaPartida> Lados, IReadOnlyList<EventoDaPartida> Eventos,
+    IReadOnlyList<EstatisticaDoJogador>? Jogadores = null);
 
 public interface IDetalhesDaPartida
 {
@@ -33,7 +55,8 @@ public record AspectoDaPartida(string Aspecto, string? Vantagem, double? Percent
 
 /// <summary>`Desfecho`: "Decidido nos pênaltis: 4 x 3" ou "Decidido na prorrogação"; nulo no tempo normal.</summary>
 public record AnalisePartida(ResumoPartida Partida, LadoDaPartida Mandante, LadoDaPartida Visitante,
-    IReadOnlyList<EventoDaPartida> Eventos, IReadOnlyList<AspectoDaPartida> Aspectos, IReadOnlyList<string> Observacoes, string? Desfecho = null);
+    IReadOnlyList<EventoDaPartida> Eventos, IReadOnlyList<AspectoDaPartida> Aspectos, IReadOnlyList<string> Observacoes, string? Desfecho = null,
+    IReadOnlyList<DesempenhoNoJogo>? Desempenhos = null);
 
 // ---------- Procurar partidas ----------
 
@@ -86,7 +109,7 @@ public class ProcurarPartidasHandler(IScoutDb db) : IQueryHandler<ProcurarPartid
 
 public record AnalisarPartida(int PartidaId) : IQuery<AnalisePartida?>;
 
-public class AnalisarPartidaHandler(IScoutDb db, IDetalhesDaPartida detalhes) : IQueryHandler<AnalisarPartida, AnalisePartida?>
+public class AnalisarPartidaHandler(IScoutDb db, IDetalhesDaPartida detalhes, MotorDeAnalise motor) : IQueryHandler<AnalisarPartida, AnalisePartida?>
 {
     record Medida(string Aspecto, Func<EstatisticaPartida, double?> Valor, bool Inverso = false, double Margem = 0.1);
 
@@ -114,7 +137,8 @@ public class AnalisarPartidaHandler(IScoutDb db, IDetalhesDaPartida detalhes) : 
 
         // Menores de 18 anos não aparecem pelo nome (regra de proteção da plataforma)
         var idsJogadores = (provedor?.Lados.SelectMany(l => l.Titulares.Concat(l.Reservas)).Select(j => j.Id) ?? [])
-            .Concat(provedor?.Eventos.SelectMany(e => new[] { e.JogadorId, e.OutroId }) ?? []).OfType<int>().Distinct().ToList();
+            .Concat(provedor?.Eventos.SelectMany(e => new[] { e.JogadorId, e.OutroId }) ?? [])
+            .Concat((provedor?.Jogadores ?? []).Select(j => (int?)j.AtletaId)).OfType<int>().Distinct().ToList();
         var nascimentos = await db.Atletas.AsNoTracking().Where(a => idsJogadores.Contains(a.Id) && a.Nascimento != null)
             .ToDictionaryAsync(a => a.Id, a => a.Nascimento!.Value, ct);
         var dataJogo = DateOnly.FromDateTime(resumo.Data);
@@ -142,7 +166,118 @@ public class AnalisarPartidaHandler(IScoutDb db, IDetalhesDaPartida detalhes) : 
         };
         int Convertidos(int clubeId) => eventos.Count(e => e.ClubeId == clubeId && e.Tipo == "Pênalti convertido na disputa");
         if (p.Status == "PEN") observacoes.Add("Placar do jogo (tempo normal e prorrogação); a disputa de pênaltis aparece à parte.");
-        return new AnalisePartida(resumo, Lado(p.MandanteId, resumo.Mandante), Lado(p.VisitanteId, resumo.Visitante), eventos, aspectos, observacoes, desfecho);
+        var mandante = Lado(p.MandanteId, resumo.Mandante);
+        var visitante = Lado(p.VisitanteId, resumo.Visitante);
+        // Nota do jogo só para quem tem data de nascimento e 18 anos ou mais (mesma regra das análises individuais)
+        bool PodeAnalisar(int id) => nascimentos.TryGetValue(id, out var n) && new Atleta { Nascimento = n }.IdadeEm(dataJogo) >= Atleta.IdadeMinimaAnalise;
+        var desempenhos = await Desempenhos(p, provedor?.Jogadores ?? [], [mandante, visitante], PodeAnalisar, ct);
+        if (desempenhos.Count > 0)
+            observacoes.Add($"Nota do jogo (0 a 100) = média dos percentis do atleta nos indicadores do setor, com o rendimento do jogo levado a 90 minutos e comparado ao dos atletas do mesmo setor na temporada. Gol ou assistência de defensor e meio-campista também entra na nota. Só recebe nota quem jogou {MinutosParaNota} minutos ou mais.");
+        return new AnalisePartida(resumo, mandante, visitante, eventos, aspectos, observacoes, desfecho, desempenhos);
+    }
+
+    public const int MinutosParaNota = 30;
+
+    static readonly Dictionary<string, Setor> SetorDaPosicao = new() { ["G"] = Setor.Goleiro, ["D"] = Setor.Defesa, ["M"] = Setor.Meio, ["F"] = Setor.Ataque };
+
+    /// <summary>
+    /// Rendimento de cada atleta no jogo: os números do provedor viram indicadores por 90 min (os defensivos ajustados à
+    /// posse do time naquele jogo) e cada um vira percentil contra os atletas do mesmo setor na temporada.
+    /// </summary>
+    async Task<List<DesempenhoNoJogo>> Desempenhos(Partida p, IReadOnlyList<EstatisticaDoJogador> jogadores, LadoDaPartida[] lados,
+        Func<int, bool> podeAnalisar, CancellationToken ct)
+    {
+        if (jogadores.Count == 0) return [];
+        var temporada = await motor.Analisar(p.CompeticaoId, p.Temporada, ct);
+        var linhas = temporada?.Linhas ?? [];
+        var daTemporada = linhas.ToDictionary(l => l.AtletaId);
+        var porSetor = linhas.GroupBy(l => l.Setor).ToDictionary(g => g.Key, g => g.ToList());
+        var posse = await db.EstatisticasPartida.AsNoTracking().Where(e => e.PartidaId == p.Id && e.Posse != null)
+            .ToDictionaryAsync(e => e.ClubeId, e => (double)e.Posse!.Value, ct);
+        var noJogo = lados.SelectMany(l => l.Titulares.Concat(l.Reservas)).Where(j => j.Id is not null)
+            .GroupBy(j => j.Id!.Value).ToDictionary(g => g.Key, g => g.First());
+        var indicadores = Catalogo.Indicadores.Where(i => i.Chave is not "altura" and not "participacaoMinutos").ToList();
+
+        var lista = new List<DesempenhoNoJogo>();
+        foreach (var j in jogadores)
+        {
+            if (!podeAnalisar(j.AtletaId)) continue;
+            daTemporada.TryGetValue(j.AtletaId, out var naTemporada);
+            Setor? setor = naTemporada?.Setor ?? (SetorDaPosicao.TryGetValue(j.Posicao ?? "", out var s) ? s : null);
+            if (setor is null) continue;
+            var linha = new LinhaAnalise
+            {
+                AtletaId = j.AtletaId, Setor = setor.Value, Minutos = j.Minutos,
+                Gols = j.Gols, Assistencias = j.Assistencias, GolsSofridos = j.GolsSofridos, Defesas = j.Defesas,
+                Finalizacoes = j.Finalizacoes, FinalizacoesNoAlvo = j.FinalizacoesNoAlvo, Passes = j.Passes, PassesDecisivos = j.PassesDecisivos,
+                PrecisaoPasses = j.PassesCertos is { } c && j.Passes >= 10 ? c * 100.0 / j.Passes : null,
+                Desarmes = j.Desarmes, Bloqueios = j.Bloqueios, Interceptacoes = j.Interceptacoes,
+                Duelos = j.Duelos, DuelosGanhos = j.DuelosGanhos, DriblesTentados = j.DriblesTentados, DriblesCertos = j.DriblesCertos,
+                FaltasCometidas = j.FaltasCometidas, FaltasSofridas = j.FaltasSofridas, Amarelos = j.Amarelos, Vermelhos = j.Vermelhos,
+                PosseDoTime = posse.TryGetValue(j.ClubeId, out var ps) ? ps : null,
+            };
+            var doSetor = Catalogo.IndicadoresDoSetor(setor.Value).ToHashSet();
+            // Defensor ou meio-campista que fez gol ou deu assistência: a participação no gol entra na nota do jogo
+            // (só soma quando acontece; não pesa contra quem não marcou)
+            if (setor is Setor.Defesa or Setor.Meio)
+            {
+                if (j.Gols > 0) doSetor.Add("gols90");
+                if (j.Assistencias > 0) doSetor.Add("assistencias90");
+            }
+            var grupo = porSetor.GetValueOrDefault(setor.Value) ?? [];
+            var lidos = new List<IndicadorNoJogo>();
+            foreach (var ind in indicadores)
+            {
+                var valores = grupo.Select(l => l.Valores.GetValueOrDefault(ind.Chave)).OfType<double>().ToList();
+                // Com menos de 10 atletas no setor o percentil não diz nada
+                var pct = valores.Count < 10 ? null : PercentilDoJogo(ind.Chave, valores, ind.Valor(linha), linha);
+                if (pct is null) continue;
+                lidos.Add(new IndicadorNoJogo(ind.Chave, ind.Nome, Math.Round(ind.Inverso ? 100 - pct.Value : pct.Value), doSetor.Contains(ind.Chave)));
+            }
+            double? nota = j.Minutos >= MinutosParaNota ? MotorDeAnalise.Media(lidos.Where(i => i.DoSetor).Select(i => i.Percentil)) : null;
+            noJogo.TryGetValue(j.AtletaId, out var naEscalacao);
+            lista.Add(new DesempenhoNoJogo(j.AtletaId, naEscalacao?.Nome ?? naTemporada?.Nome ?? "?", j.ClubeId,
+                naEscalacao?.Funcao ?? naTemporada?.Funcao, setor.Value.ToString(), j.Minutos, nota is null ? null : Math.Round(nota.Value),
+                j.Gols, j.Assistencias, j.Amarelos, j.Vermelhos, lidos.OrderByDescending(i => i.DoSetor).ToList()));
+        }
+        return lista.OrderByDescending(d => d.Nota ?? -1).ToList();
+    }
+
+    /// <summary>
+    /// Percentil de um jogo contra o setor na temporada. Um jogo varia muito mais que a média de uma temporada
+    /// (num jogo de 30 minutos, um desarme a mais dobra o "por 90"), então a comparação direta com as médias
+    /// jogaria quase todo mundo em 0 ou 100. A distribuição de referência soma a variação entre atletas (das
+    /// médias da temporada) à variação de um jogo daquela duração: Poisson nos indicadores de contagem por 90 min
+    /// e binomial nas porcentagens. O percentil sai da curva normal, entre 1 e 99.
+    /// </summary>
+    public static double? PercentilDoJogo(string chave, IReadOnlyList<double> temporada, double? valor, LinhaAnalise jogo)
+    {
+        if (valor is null || temporada.Count < 2 || jogo.Minutos <= 0) return null;
+        var media = temporada.Average();
+        var entreAtletas = temporada.Sum(v => (v - media) * (v - media)) / (temporada.Count - 1);
+        double? tentativas = chave switch
+        {
+            "precisaoPasses" => jogo.Passes,
+            "aproveitamentoFinalizacoes" => jogo.Finalizacoes,
+            "aproveitamentoDuelos" => jogo.Duelos,
+            "aproveitamentoDribles" => jogo.DriblesTentados,
+            _ => null,
+        };
+        double doJogo = tentativas is { } n
+            ? (n > 0 ? Math.Clamp(media, 1, 99) * (100 - Math.Clamp(media, 1, 99)) / n : double.PositiveInfinity)
+            : Math.Max(media, 0.05) * 90.0 / jogo.Minutos;
+        var desvio = Math.Sqrt(entreAtletas + doJogo);
+        if (desvio <= 0 || double.IsInfinity(desvio)) return null;
+        return Math.Clamp(100 * Normal((valor.Value - media) / desvio), 1, 99);
+    }
+
+    /// <summary>Função de distribuição da normal padrão (aproximação de Abramowitz e Stegun, erro &lt; 1e-7).</summary>
+    static double Normal(double z)
+    {
+        var t = 1 / (1 + 0.2316419 * Math.Abs(z));
+        var d = 0.3989422804014327 * Math.Exp(-z * z / 2);
+        var cauda = d * t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+        return z >= 0 ? 1 - cauda : cauda;
     }
 
     async Task<List<AspectoDaPartida>> Aspectos(Partida p, string mandante, string visitante, CancellationToken ct)

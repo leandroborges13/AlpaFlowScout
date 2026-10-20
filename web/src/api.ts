@@ -241,7 +241,8 @@ export type LadoDaPartida = {
   esquema?: string | null
   treinadorId?: number | null
   treinador?: string | null
-  titulares: { id?: number | null; nome: string; funcao?: string | null }[]
+  /** x/y (0–100): lugar no desenho tático; x da esquerda para a direita do time, y do próprio gol ao adversário. */
+  titulares: { id?: number | null; nome: string; funcao?: string | null; x?: number | null; y?: number | null }[]
   reservas: { id?: number | null; nome: string }[]
 }
 
@@ -253,6 +254,27 @@ export type EventoDaPartida = {
   jogador?: string | null
   outro?: string | null
   detalhe?: string | null
+  jogadorId?: number | null
+  outroId?: number | null
+}
+
+/** Percentil do rendimento no jogo (levado a 90 min) contra o setor na temporada. */
+export type IndicadorNoJogo = { chave: string; nome: string; percentil?: number | null; doSetor: boolean }
+
+export type DesempenhoNoJogo = {
+  atletaId: number
+  nome: string
+  clubeId: number
+  funcao?: string | null
+  setor: string
+  minutos: number
+  /** Nota do jogo (0–100); nula quando jogou pouco para medir. */
+  nota?: number | null
+  gols: number
+  assistencias: number
+  amarelos: number
+  vermelhos: number
+  indicadores: IndicadorNoJogo[]
 }
 
 export type AnalisePartida = {
@@ -263,6 +285,7 @@ export type AnalisePartida = {
   aspectos: { aspecto: string; vantagem?: string | null; percentilMandante?: number | null; percentilVisitante?: number | null }[]
   observacoes: string[]
   desfecho?: string | null
+  desempenhos?: DesempenhoNoJogo[] | null
 }
 
 export type AtletaDoTreinador = { atleta: ResumoAtleta; jogosComEle: number; funcaoComEle?: string | null }

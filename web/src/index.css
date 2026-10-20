@@ -267,3 +267,72 @@ button.lt-quad:hover, button.lt-quad:focus-visible { outline: 2px solid var(--in
 .copas li { display: grid; gap: 8px; }
 
 .desfecho { margin: -6px 0 0; text-align: center; font-weight: 700; color: var(--ink-2); }
+
+/* Partida: campinho, linha do tempo, desempenho e comparação. Mandante = verde, visitante = azul (com rótulo sempre). */
+:root { --casa: #0f9d58; --fora: #2f6fd6; }
+@media (prefers-color-scheme: dark) { :root { --casa: #2fc27b; --fora: #6ea2ff; } }
+.painel.largo { width: min(900px, 100%); }
+.campo-partida, .linha-tempo-bloco { display: grid; gap: 6px; }
+.campo-partida-times { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 600; }
+.time-casa { color: var(--casa); }
+.time-fora { color: var(--fora); text-align: right; }
+.campo-deitado { width: 100%; height: auto; display: block; }
+/* No celular o campo não encolhe abaixo do legível: rola para o lado dentro do painel */
+.campo-rolagem { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+@media (max-width: 600px) { .campo-deitado { min-width: 600px; } }
+.campo-deitado .gramado { fill: var(--gramado); }
+.campo-deitado .linhas { fill: none; stroke: var(--linha-campo); stroke-width: 0.3; }
+.atleta-campo circle { stroke: var(--surface); stroke-width: 0.45; }
+.atleta-campo.casa circle { fill: var(--casa); }
+.atleta-campo.fora circle { fill: var(--fora); }
+.atleta-campo.clicavel { cursor: pointer; }
+.atleta-campo.clicavel:hover circle, .atleta-campo.foco circle { stroke: var(--ink); stroke-width: 0.7; }
+.atleta-campo:focus { outline: none; }
+.atleta-campo:focus-visible circle { stroke: var(--ink); stroke-width: 0.9; }
+.nota-campo { font-size: 2.5px; font-weight: 800; fill: #fff; text-anchor: middle; pointer-events: none; }
+.nome-campo { font-size: 2.05px; font-weight: 600; fill: var(--ink); text-anchor: middle; pointer-events: none; paint-order: stroke; stroke: var(--gramado); stroke-width: 0.5px; }
+.destaques-jogo, .entraram { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+.entraram { margin-top: 8px; }
+.destaque { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); border-radius: 999px; padding: 4px 10px 4px 4px; font-size: 13px; }
+.destaque b { min-width: 26px; height: 22px; border-radius: 999px; display: grid; place-items: center; color: #fff; font-size: 12px; font-variant-numeric: tabular-nums; }
+.destaque.casa b { background: var(--casa); }
+.destaque.fora b { background: var(--fora); }
+.destaque.foco, .destaque:hover { border-color: var(--ink-2); }
+.desempenho-jogo { border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; display: grid; gap: 10px; margin-top: 10px; background: var(--surface); }
+.fechar-mini { padding: 4px 10px; }
+.medidores { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 18px; }
+.comparar { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); flex-wrap: wrap; }
+.comparar select { background: var(--surface-2); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; max-width: 100%; }
+.comparacao-jogo { display: grid; gap: 8px; }
+.comparacao-topo, .comparacao-linha { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: center; }
+.comparacao-topo { grid-template-columns: 1fr 1fr; padding-left: calc(37.5% + 5px); }
+.comparacao-topo div { display: grid; font-size: 13.5px; }
+.comparacao-topo .casa b { color: var(--casa); }
+.comparacao-topo .fora b { color: var(--fora); }
+.comparacao-nome { font-size: 12.5px; color: var(--ink-2); }
+.barra-comp { display: grid; grid-template-columns: minmax(0, 1fr) 26px; gap: 6px; align-items: center; }
+.barra-comp .trilho { height: 8px; background: var(--meter-track); border-radius: 4px; overflow: hidden; }
+.barra-comp .trilho i { display: block; height: 100%; border-radius: 0 4px 4px 0; }
+.barra-comp.casa .trilho i { background: var(--casa); }
+.barra-comp.fora .trilho i { background: var(--fora); }
+.barra-comp.claro .trilho i { opacity: 0.5; }
+.barra-comp b { font-size: 12.5px; text-align: right; font-variant-numeric: tabular-nums; }
+.linha-tempo { width: 100%; height: auto; display: block; }
+.linha-tempo .eixo { stroke: var(--linha-campo); stroke-width: 2; }
+.linha-tempo .marca-tempo { font-size: 15px; fill: var(--muted); text-anchor: middle; }
+.linha-tempo .haste { stroke-width: 2; }
+.linha-tempo .evento.casa .haste { stroke: var(--casa); }
+.linha-tempo .evento.fora .haste { stroke: var(--fora); }
+.linha-tempo .evento.troca .haste { stroke-dasharray: 3 3; opacity: 0.6; }
+.linha-tempo .icone-tempo { font-size: 22px; text-anchor: middle; cursor: default; }
+@media (max-width: 600px) {
+  .comparacao-topo { padding-left: 0; }
+  .comparacao-linha { grid-template-columns: 1fr 1fr; }
+  .comparacao-nome { grid-column: 1 / -1; }
+}
+
+/* Contato comercial (tela de entrada) */
+.contato-comercial { display: grid; gap: 8px; text-align: center; border-top: 1px solid var(--line); padding-top: 14px; margin-top: 4px; }
+.contato-comercial p { margin: 0; font-size: 13.5px; color: var(--ink-2); }
+.btn.whatsapp { display: inline-flex; justify-content: center; align-items: center; gap: 8px; background: #1fa855; border-color: #1fa855; color: #fff; text-decoration: none; font-weight: 600; }
+.btn.whatsapp:hover { background: #18914a; }

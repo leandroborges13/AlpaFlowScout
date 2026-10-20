@@ -346,10 +346,18 @@ public class AssistenteScout(
                             e.Tipo, e.Jogador, AssistenciaOuQuemEntrou = e.Outro, e.Detalhe,
                         }),
                         a.Desfecho, a.Aspectos, a.Observacoes,
+                        // Melhores notas do jogo de cada time (nota nossa, 0 a 100)
+                        Destaques = (a.Desempenhos ?? []).Where(d => d.Nota is not null).GroupBy(d => d.ClubeId)
+                            .SelectMany(g => g.Take(3)).Select(d => new
+                            {
+                                d.Nome, Time = d.ClubeId == a.Partida.MandanteId ? a.Partida.Mandante : a.Partida.Visitante,
+                                d.Funcao, d.Nota, d.Minutos,
+                                Melhores = d.Indicadores.Where(i => i.DoSetor && i.Percentil >= 70).Select(i => i.Nome),
+                            }),
                     };
                 },
                 "analisar_partida",
-                "Análise de uma partida: placar, esquemas, treinadores, titulares e reservas, eventos (gols, cartões, substituições, VAR) e, em cada aspecto, quem levou vantagem e como cada time foi em relação aos próprios jogos."),
+                "Análise de uma partida: placar, esquemas, treinadores, titulares e reservas, eventos (gols, cartões, substituições, VAR), em cada aspecto quem levou vantagem e como cada time foi em relação aos próprios jogos, e os destaques individuais pela nota do jogo."),
         };
 
         var mensagens = new List<ChatMessage> { new(ChatRole.System, Instrucoes(disponiveis, temporadaPadrao)) };
