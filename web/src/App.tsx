@@ -96,8 +96,8 @@ function Plataforma({ usuario, onSair }: { usuario: string; onSair: () => void }
       <main className="conversa" aria-live="polite">
         {mensagens.length === 0 && (
           <section className="vazio">
-            <h1>Que atleta o seu time precisa?</h1>
-            <p>Descreva o perfil com as suas palavras: posição, lado, esquema, idade e características. Ou pergunte sobre um time, um treinador ou um jogo. A IA busca na base e explica cada escolha.</p>
+            <h1>Qual a análise de hoje?</h1>
+            <p>Pergunte sobre um atleta, um time, um treinador ou um jogo, do Brasileirão às copas. Para buscar atletas, descreva o perfil com as suas palavras: posição, lado, esquema, idade e características. A IA consulta a base e explica cada resposta.</p>
             <div className="sugestoes">
               {SUGESTOES.map((s) => (
                 <button key={s} onClick={() => enviar(s)}>{s}</button>
