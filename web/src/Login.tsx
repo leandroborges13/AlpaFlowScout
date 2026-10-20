@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { api } from './api'
 
+/** WhatsApp da equipe comercial, com a mensagem já escrita. */
+const CONTATO_COMERCIAL = `https://wa.me/5531998725328?text=${encodeURIComponent('Olá! Vi a AlpaFlow Scout e quero saber como usar a plataforma.')}`
+
 export function Login({ onEntrar }: { onEntrar: (nome: string) => void }) {
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
@@ -36,6 +39,10 @@ export function Login({ onEntrar }: { onEntrar: (nome: string) => void }) {
         </label>
         {erro && <p className="erro" role="alert">{erro}</p>}
         <button className="btn prim" type="submit" disabled={enviando}>{enviando ? 'Entrando…' : 'Entrar'}</button>
+        <div className="contato-comercial">
+          <p><b>Quer usar a plataforma no seu clube ou empresa?</b><br />Fale com a nossa equipe comercial.</p>
+          <a className="btn whatsapp" href={CONTATO_COMERCIAL} target="_blank" rel="noopener noreferrer">💬 Falar no WhatsApp</a>
+        </div>
       </form>
     </main>
   )
