@@ -15,6 +15,7 @@ public interface IScoutDb
     DbSet<EstatisticaPartida> EstatisticasPartida { get; }
     DbSet<Treinador> Treinadores { get; }
     DbSet<TreinadorNaPartida> TreinadoresNaPartida { get; }
+    DbSet<CobrancaDisputa> CobrancasDisputa { get; }
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 }
 

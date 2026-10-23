@@ -107,6 +107,7 @@ public class Importador(ApiFootballClient api, ScoutDbContext db, ILogger<Import
             // Partidas com escalação de antes de guardarmos o treinador: a resposta está no cache, não gasta consulta
             await ImportarTreinadores(partidas.Values.Where(x => x.EscalacoesImportadas && !x.TreinadoresImportados).ToList(), ct);
             await ImportarEstatisticasDosJogos(partidas.Values.Where(x => x.Encerrada && !x.EstatisticasImportadas).ToList(), null, ct);
+            await ImportarDisputas(partidas.Values.Where(x => x.Status == "PEN" && !x.DisputaImportada).ToList(), null, ct);
             // Nos dias seguintes ao jogo o provedor ainda corrige escalação, treinador e estatísticas
             await Revisar(partidas.Values.Where(x => x.EscalacoesImportadas && x.Data > DateTime.UtcNow.AddDays(-3)).ToList(), TimeSpan.FromHours(12), ct);
         }
@@ -127,6 +128,7 @@ public class Importador(ApiFootballClient api, ScoutDbContext db, ILogger<Import
         await ImportarEstatisticasDosJogos(partidas, validade, ct);
         // Lances (gols, cartões) também são corrigidos depois do jogo: renova a resposta guardada
         foreach (var p in partidas) await api.Consultar("/fixtures/events", new Dictionary<string, object> { ["fixture"] = p.Id }, validade, ct);
+        await ImportarDisputas(partidas.Where(p => p.Status == "PEN").ToList(), validade, ct);
         log.LogInformation("  revisados {Partidas} jogos recentes", partidas.Count);
     }
 
@@ -245,6 +247,36 @@ public class Importador(ApiFootballClient api, ScoutDbContext db, ILogger<Import
         }
     }
 
+    /// <summary>Cobranças da disputa de pênaltis: nos lances, são gols com o comentário "Penalty Shootout".</summary>
+    async Task ImportarDisputas(List<Partida> pendentes, TimeSpan? validade, CancellationToken ct)
+    {
+        foreach (var partida in pendentes)
+        {
+            var eventos = (await api.Consultar("/fixtures/events", new Dictionary<string, object> { ["fixture"] = partida.Id }, validade, ct))
+                .GetProperty("response").EnumerateArray().ToList();
+            await db.CobrancasDisputa.Where(c => c.PartidaId == partida.Id).ExecuteDeleteAsync(ct);
+            db.CobrancasDisputa.AddRange(LerDisputa(partida.Id, eventos));
+            partida.DisputaImportada = true;
+            await db.SaveChangesAsync(ct);
+        }
+        if (pendentes.Count > 0) log.LogInformation("  disputas de pênaltis: {Jogos} jogos", pendentes.Count);
+    }
+
+    public static List<CobrancaDisputa> LerDisputa(int partidaId, List<JsonElement> eventos)
+    {
+        var ordem = 0;
+        return eventos
+            .Where(e => string.Equals(Texto(e, "type"), "Goal", StringComparison.OrdinalIgnoreCase)
+                        && (Texto(e, "comments") ?? "").Contains("Shootout", StringComparison.OrdinalIgnoreCase))
+            .Select(e => new CobrancaDisputa
+            {
+                PartidaId = partidaId, ClubeId = Int(e, "team", "id") ?? 0, AtletaId = Int(e, "player", "id"),
+                Jogador = Texto(e, "player", "name") ?? "?", Ordem = ++ordem,
+                Convertida = !string.Equals(Texto(e, "detail"), "Missed Penalty", StringComparison.OrdinalIgnoreCase),
+            })
+            .ToList();
+    }
+
     /// <summary>[{type: "Ball Possession", value: "55%"}, {type: "Fouls", value: 12}] → tipo → número. Sem valor = não informado.</summary>
     public static Dictionary<string, int> LerEstatisticas(JsonElement lista)
     {
@@ -289,6 +321,11 @@ public class Importador(ApiFootballClient api, ScoutDbContext db, ILogger<Import
         e.FaltasSofridas = Int(s, "fouls", "drawn") ?? 0;
         e.Amarelos = Int(s, "cards", "yellow") ?? 0;
         e.Vermelhos = (Int(s, "cards", "red") ?? 0) + (Int(s, "cards", "yellowred") ?? 0);
+        e.PenaltisConvertidos = Int(s, "penalty", "scored") ?? 0;
+        e.PenaltisPerdidos = Int(s, "penalty", "missed") ?? 0;
+        e.PenaltisDefendidos = Int(s, "penalty", "saved") ?? 0;
+        e.PenaltisSofridos = Int(s, "penalty", "won") ?? 0;
+        e.PenaltisCometidos = Int(s, "penalty", "commited") ?? 0;
     }
 
     static JsonElement? Caminho(JsonElement e, string[] caminho)

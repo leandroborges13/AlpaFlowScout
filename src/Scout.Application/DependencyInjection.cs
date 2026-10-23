@@ -30,6 +30,7 @@ public static class DependencyInjection
         services.AddScoped<IQueryHandler<ObterFichaAtleta, FichaAtleta?>, ObterFichaAtletaHandler>();
         services.AddScoped<IQueryHandler<ObterElenco, ElencoDoTime?>, ObterElencoHandler>();
         services.AddScoped<IQueryHandler<ObterCopasDoTime, CopasDoTime?>, ObterCopasDoTimeHandler>();
+        services.AddScoped<IQueryHandler<ObterRankingPenaltis, RankingPenaltis>, ObterRankingPenaltisHandler>();
         services.AddScoped<AssistenteScout>();
         return services;
     }

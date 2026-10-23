@@ -18,6 +18,8 @@ public class Partida
     public bool EstatisticasImportadas { get; set; }
     /// <summary>Treinadores dos dois times já lidos das escalações.</summary>
     public bool TreinadoresImportados { get; set; }
+    /// <summary>Cobranças da disputa de pênaltis já lidas dos lances (só jogos decididos nos pênaltis).</summary>
+    public bool DisputaImportada { get; set; }
 
     public bool Encerrada => Status is "FT" or "AET" or "PEN";
 }
@@ -59,6 +61,19 @@ public class EstatisticaPartida
     public int? Defesas { get; set; }
     public int? Passes { get; set; }
     public int? PassesCertos { get; set; }
+}
+
+/// <summary>Uma cobrança na disputa de pênaltis (fato público: quem bateu e se converteu).</summary>
+public class CobrancaDisputa
+{
+    public long Id { get; set; }
+    public int PartidaId { get; set; }
+    public int ClubeId { get; set; }
+    public int? AtletaId { get; set; }
+    public string Jogador { get; set; } = "";
+    /// <summary>Ordem da cobrança na disputa (1, 2, 3...), na sequência dos lances.</summary>
+    public int Ordem { get; set; }
+    public bool Convertida { get; set; }
 }
 
 /// <summary>Treinador como vem nas escalações do provedor (o Id é o do provedor).</summary>

@@ -57,5 +57,13 @@ public class EstatisticaTemporada
     public int FaltasSofridas { get; set; }
     public int Amarelos { get; set; }
     public int Vermelhos { get; set; }
+    // Pênaltis no tempo de jogo, como o provedor informa (a disputa de pênaltis fica em CobrancaDisputa)
+    public int PenaltisConvertidos { get; set; }
+    public int PenaltisPerdidos { get; set; }
+    /// <summary>Goleiro: pênaltis defendidos.</summary>
+    public int PenaltisDefendidos { get; set; }
+    /// <summary>Pênaltis sofridos (cavados) pelo atleta.</summary>
+    public int PenaltisSofridos { get; set; }
+    public int PenaltisCometidos { get; set; }
     public DateTime AtualizadoEm { get; set; }
 }

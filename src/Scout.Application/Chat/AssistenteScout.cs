@@ -40,6 +40,7 @@ public class AssistenteScout(
     IQueryHandler<ObterFichaAtleta, FichaAtleta?> fichaAtleta,
     IQueryHandler<ObterElenco, ElencoDoTime?> elenco,
     IQueryHandler<ObterCopasDoTime, CopasDoTime?> copasDoTime,
+    IQueryHandler<ObterRankingPenaltis, RankingPenaltis> penaltis,
     IMemoryCache cache,
     ILogger<AssistenteScout> log)
 {
@@ -358,6 +359,21 @@ public class AssistenteScout(
                 },
                 "analisar_partida",
                 "Análise de uma partida: placar, esquemas, treinadores, titulares e reservas, eventos (gols, cartões, substituições, VAR), em cada aspecto quem levou vantagem e como cada time foi em relação aos próprios jogos, e os destaques individuais pela nota do jogo."),
+            AIFunctionFactory.Create(
+                async ([Description("'batedores' (aproveitamento de quem cobra, padrão), 'goleiros' (pênaltis defendidos), 'sofridos' (quem mais cava) ou 'cometidos'")] string tipo = "batedores",
+                       [Description("IDs de competição para restringir; omita para todas da temporada")] int[]? competicoes = null,
+                       [Description("ID do time, para os pênaltis de um clube")] int? timeId = null,
+                       [Description("ID do atleta, para os pênaltis de um atleta específico")] int? atletaId = null,
+                       [Description("Somar as cobranças das disputas de pênaltis (padrão true)")] bool comDisputas = true,
+                       [Description("Mínimo de cobranças para entrar no ranking de batedores (padrão 3)")] int? minimoDeCobrancas = null,
+                       int? temporada = null, int? limite = null) =>
+                {
+                    var r = await penaltis.Handle(new ObterRankingPenaltis(tipo, temporada, competicoes, timeId, comDisputas,
+                        minimoDeCobrancas ?? (atletaId is null && timeId is null ? 3 : 1), limite ?? 8, atletaId), ct);
+                    return r;
+                },
+                "penaltis",
+                "Pênaltis por atleta na temporada: ranking dos melhores batedores (convertidos de cobrados, no jogo e nas disputas), goleiros que mais defendem, quem mais sofre e quem mais comete pênalti; também os números de um time ou de um atleta."),
         };
 
         var mensagens = new List<ChatMessage> { new(ChatRole.System, Instrucoes(disponiveis, temporadaPadrao)) };
@@ -476,6 +492,13 @@ public class AssistenteScout(
           que ele escala em cada função (atributos em percentil) e por que cada sugestão se parece com esse perfil (semelhança 0–100).
         - A base só tem o esquema inicial de cada jogo. Se perguntarem pelo esquema com e sem a bola, explique que esse dado não existe
           no provedor atual (exige dados de posicionamento, como Wyscout ou StatsBomb) e mostre os esquemas iniciais que ele usa.
+
+        Pênaltis:
+        - "Melhor batedor", "quem mais converte pênalti", goleiro que mais defende, quem mais sofre ou comete pênalti, ou os pênaltis de um time ou atleta = ferramenta penaltis.
+        - São fatos públicos, como gols: diga "converteu 7 de 8 (88%)", separando "no tempo de jogo" e "nas disputas de pênaltis" quando houver os dois.
+        - Explique em meia frase o critério do ranking (mínimo de cobranças, desempate por convertidos) e mantenha a ordem recebida. Diga a temporada e as competições consideradas.
+        - Mesma "Posicao" = empate: diga "empatados" e nunca invente desempate. Defesas de goleiro são só do tempo de jogo (não diga que incluem disputas).
+        - Pênaltis de um time: cite todos os batedores que vieram, com quantos converteu e cobrou no jogo e na disputa.
 
         Partidas:
         - Hoje é {Hoje()}. Converta datas relativas ("último sábado", "domingo passado") em datas e use procurar_partidas

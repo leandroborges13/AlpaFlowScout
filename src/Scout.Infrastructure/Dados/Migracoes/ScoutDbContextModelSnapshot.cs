@@ -95,6 +95,52 @@ namespace Scout.Infrastructure.Dados.Migracoes
                     b.ToTable("clubes", (string)null);
                 });
 
+            modelBuilder.Entity("Scout.Domain.CobrancaDisputa", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int?>("AtletaId")
+                        .HasColumnType("integer")
+                        .HasColumnName("atleta_id");
+
+                    b.Property<int>("ClubeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("clube_id");
+
+                    b.Property<bool>("Convertida")
+                        .HasColumnType("boolean")
+                        .HasColumnName("convertida");
+
+                    b.Property<string>("Jogador")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("jogador");
+
+                    b.Property<int>("Ordem")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordem");
+
+                    b.Property<int>("PartidaId")
+                        .HasColumnType("integer")
+                        .HasColumnName("partida_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_cobrancas_disputa");
+
+                    b.HasIndex("AtletaId")
+                        .HasDatabaseName("ix_cobrancas_disputa_atleta_id");
+
+                    b.HasIndex("PartidaId")
+                        .HasDatabaseName("ix_cobrancas_disputa_partida_id");
+
+                    b.ToTable("cobrancas_disputa", (string)null);
+                });
+
             modelBuilder.Entity("Scout.Domain.Competicao", b =>
                 {
                     b.Property<int>("Id")
@@ -365,6 +411,26 @@ namespace Scout.Infrastructure.Dados.Migracoes
                         .HasColumnType("integer")
                         .HasColumnName("passes_decisivos");
 
+                    b.Property<int>("PenaltisCometidos")
+                        .HasColumnType("integer")
+                        .HasColumnName("penaltis_cometidos");
+
+                    b.Property<int>("PenaltisConvertidos")
+                        .HasColumnType("integer")
+                        .HasColumnName("penaltis_convertidos");
+
+                    b.Property<int>("PenaltisDefendidos")
+                        .HasColumnType("integer")
+                        .HasColumnName("penaltis_defendidos");
+
+                    b.Property<int>("PenaltisPerdidos")
+                        .HasColumnType("integer")
+                        .HasColumnName("penaltis_perdidos");
+
+                    b.Property<int>("PenaltisSofridos")
+                        .HasColumnType("integer")
+                        .HasColumnName("penaltis_sofridos");
+
                     b.Property<string>("PosicaoProvedor")
                         .HasColumnType("text")
                         .HasColumnName("posicao_provedor");
@@ -415,6 +481,10 @@ namespace Scout.Infrastructure.Dados.Migracoes
                     b.Property<DateTime>("Data")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("data");
+
+                    b.Property<bool>("DisputaImportada")
+                        .HasColumnType("boolean")
+                        .HasColumnName("disputa_importada");
 
                     b.Property<bool>("EscalacoesImportadas")
                         .HasColumnType("boolean")
