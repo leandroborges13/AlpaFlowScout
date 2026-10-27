@@ -210,7 +210,7 @@ public class ObterCopasDoTimeHandler(IScoutDb db) : IQueryHandler<ObterCopasDoTi
     }
 
     /// <summary>Placar de um jogo: gols de cada lado por Poisson, com a média dividida pela expectativa do rating.</summary>
-    static (int, int) Placar(Random rnd, double mandante, double visitante, bool neutro)
+    internal static (int, int) Placar(Random rnd, double mandante, double visitante, bool neutro)
     {
         const double golsPorJogo = 2.4;
         var e = 1 / (1 + Math.Pow(10, -((mandante - visitante + (neutro ? 0 : MandoDeCampo)) / 400)));

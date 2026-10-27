@@ -40,6 +40,7 @@ public class AssistenteScout(
     IQueryHandler<ObterFichaAtleta, FichaAtleta?> fichaAtleta,
     IQueryHandler<ObterElenco, ElencoDoTime?> elenco,
     IQueryHandler<ObterCopasDoTime, CopasDoTime?> copasDoTime,
+    IQueryHandler<ObterChancesNaLiga, ChancesNaLiga?> chancesNaLiga,
     IQueryHandler<ObterRankingPenaltis, RankingPenaltis> penaltis,
     IMemoryCache cache,
     ILogger<AssistenteScout> log)
@@ -210,6 +211,24 @@ public class AssistenteScout(
                 },
                 "copas_do_time",
                 "Campanha do time nas copas da temporada (Copa do Brasil, Libertadores, Sul-Americana): situação (vivo, eliminado, campeão), V/E/D, gols, resultados de cada fase, próximo jogo e a chance de título estimada pelo modelo AlpaFlow."),
+            AIFunctionFactory.Create(
+                async ([Description("ID da liga (71 Série A, 72 Série B); omita para a Série A")] int? competicao = null,
+                       int? temporada = null) =>
+                {
+                    var c = await chancesNaLiga.Handle(new ObterChancesNaLiga(competicao, temporada), ct);
+                    if (c is null) return (object)"Liga não encontrada na base.";
+                    return (object)new
+                    {
+                        c.Competicao, c.Temporada, JogosQueFaltam = c.JogosRestantes, TimesQueCaem = c.Rebaixados, c.Metodo,
+                        Times = c.Times.Select(t => new
+                        {
+                            t.Posicao, t.Time, t.Pontos, t.Jogos, t.JogosRestantes, PontosEsperadosNoFim = t.PontosEsperados,
+                            t.TituloPercentual, Top4Percentual = t.Top4Percentual, Top6Percentual = t.Top6Percentual, t.RebaixamentoPercentual,
+                        }),
+                    };
+                },
+                "chances_na_liga",
+                "Classificação atual da liga (pontos corridos) e, para cada time, a chance de título, de terminar entre os 4 e os 6 primeiros e de rebaixamento, pelo modelo AlpaFlow (jogos que faltam simulados 10 mil vezes)."),
             AIFunctionFactory.Create(
                 async ([Description("Função em campo, ex.: 'Lateral esquerdo', 'Volante', 'Centroavante', 'Zagueiro'")] string funcao,
                        [Description("IDs de competição para restringir; omita para todas")] int[]? competicoes = null,
@@ -475,6 +494,12 @@ public class AssistenteScout(
           (força pelos resultados da temporada e o restante da copa simulado 10 mil vezes), cite o adversário da fase atual,
           a chance de chegar à final e os favoritos. Diga que é probabilidade, não certeza. Não invente número fora do que a ferramenta trouxe.
           "Chance de ganhar alguma/uma das copas" = ChanceDeAlgumTituloPercentual (já calculado): nunca some nem multiplique porcentagens você mesmo.
+        - Brasileirão (Série A ou B): chance de título, de G4/G6, de acesso ou de rebaixamento, "quem cai", "briga contra a queda" = chances_na_liga.
+          Dê os números em porcentagem como estimativa do modelo AlpaFlow, com a posição e os pontos de hoje, os jogos que faltam e os pontos
+          esperados no fim; explique o método em uma frase. Para rebaixamento, mostre todos os times com chance relevante (não só os 4 últimos).
+          Não diga que G4 ou G6 dão vaga em certa competição: fale "terminar entre os 4 primeiros".
+        - Probabilidade só existe nos campos "Percentual" de copas_do_time e chances_na_liga. Nunca cite "o modelo AlpaFlow" nem descreva
+          "chance alta/baixa" sem um desses números: se a ferramenta não trouxe, diga que essa estimativa não está disponível.
 
         Treinadores:
         - Encontre o ID com listar_treinadores (nome) e use analisar_treinador. Descreva: clube e período, campanha (V/E/D e aproveitamento),
