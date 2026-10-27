@@ -224,6 +224,8 @@ public class AssistenteScout(
                         {
                             t.Posicao, t.Time, t.Pontos, t.Jogos, t.JogosRestantes, PontosEsperadosNoFim = t.PontosEsperados,
                             t.TituloPercentual, Top4Percentual = t.Top4Percentual, Top6Percentual = t.Top6Percentual, t.RebaixamentoPercentual,
+                            // Série B: os 4 primeiros sobem para a Série A
+                            AcessoPercentual = c.Competicao.EndsWith(" B") ? t.Top4Percentual : (int?)null,
                         }),
                     };
                 },
@@ -497,7 +499,8 @@ public class AssistenteScout(
         - Brasileirão (Série A ou B): chance de título, de G4/G6, de acesso ou de rebaixamento, "quem cai", "briga contra a queda" = chances_na_liga.
           Dê os números em porcentagem como estimativa do modelo AlpaFlow, com a posição e os pontos de hoje, os jogos que faltam e os pontos
           esperados no fim; explique o método em uma frase. Para rebaixamento, mostre todos os times com chance relevante (não só os 4 últimos).
-          Não diga que G4 ou G6 dão vaga em certa competição: fale "terminar entre os 4 primeiros".
+          Na Série A, não diga que G4 ou G6 dão vaga em certa competição: fale "terminar entre os 4 primeiros".
+          Série B: acesso à Série A = AcessoPercentual (os 4 primeiros sobem); use competicao 72 e mostre os times com chance relevante de subir.
         - Probabilidade só existe nos campos "Percentual" de copas_do_time e chances_na_liga. Nunca cite "o modelo AlpaFlow" nem descreva
           "chance alta/baixa" sem um desses números: se a ferramenta não trouxe, diga que essa estimativa não está disponível.
 
