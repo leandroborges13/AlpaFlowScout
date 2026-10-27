@@ -56,6 +56,26 @@ public class LigaTests
     }
 
     [Fact]
+    public void Serie_B_de_2026_sobem_dois_direto_e_dois_pelo_playoff()
+    {
+        Assert.Equal(new RegraDeAcesso(2, true), RegraDeAcesso.Da("Serie B", 2026));
+        Assert.Equal(new RegraDeAcesso(4, false), RegraDeAcesso.Da("Serie B", 2025));
+        Assert.Null(RegraDeAcesso.Da("Serie A", 2026));
+
+        var forca = Enumerable.Range(1, 20).ToDictionary(c => c, c => 1500.0 + c * 3);
+        var times = ObterChancesNaLigaHandler.Simular(Liga(), forca, [], 3, RegraDeAcesso.Da("Serie B", 2026)).Times;
+
+        var lider = times.Single(t => t.ClubeId == 1);
+        Assert.Equal(100, lider.AcessoDiretoPercentual);   // 15 pontos contra no máximo 10 dos outros
+        Assert.Equal(0, lider.PlayoffPercentual);
+        Assert.InRange(times.Sum(t => t.AcessoPercentual ?? 0), 398, 402);        // 4 sobem por simulação
+        Assert.InRange(times.Sum(t => t.AcessoDiretoPercentual ?? 0), 199, 201);  // 2 direto
+        Assert.InRange(times.Sum(t => t.PlayoffPercentual ?? 0), 398, 402);       // 4 no playoff
+        Assert.All(times.Where(t => t.ClubeId >= 17), t => Assert.Equal(0, t.AcessoPercentual));
+        Assert.All(times, t => Assert.True(t.AcessoPercentual <= t.AcessoDiretoPercentual + t.PlayoffPercentual));
+    }
+
+    [Fact]
     public void Mesma_semente_da_o_mesmo_resultado_e_as_chances_somam_o_numero_de_vagas()
     {
         var forca = Enumerable.Range(1, 20).ToDictionary(c => c, c => 1500.0 + c * 5);

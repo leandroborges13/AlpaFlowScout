@@ -8,7 +8,22 @@ namespace Scout.Application.Consultas;
 /// da temporada) e os jogos que faltam simulados 10 mil vezes. É probabilidade, não previsão garantida.
 /// </summary>
 public record ChanceNaLiga(int ClubeId, string Time, int Posicao, int Pontos, int Jogos, int Vitorias, int SaldoDeGols, int JogosRestantes,
-    int PontosEsperados, int TituloPercentual, int Top4Percentual, int Top6Percentual, int? RebaixamentoPercentual);
+    int PontosEsperados, int TituloPercentual, int Top4Percentual, int Top6Percentual, int? RebaixamentoPercentual,
+    int? AcessoPercentual = null, int? AcessoDiretoPercentual = null, int? PlayoffPercentual = null);
+
+/// <summary>
+/// Acesso da Série B: até 2025 os 4 primeiros subiam direto; a partir de 2026 sobem os 2 primeiros e do 3º ao 6º há playoff
+/// em ida e volta (3º x 6º e 4º x 5º), e os dois vencedores também sobem.
+/// </summary>
+public record RegraDeAcesso(int Direto, bool Playoff)
+{
+    public static RegraDeAcesso? Da(string liga, int temporada) =>
+        !liga.EndsWith(" B") ? null : temporada >= 2026 ? new(2, true) : new(4, false);
+
+    public string Explicacao => Playoff
+        ? $"Sobem os {Direto} primeiros; do 3º ao 6º há playoff de ida e volta (3º x 6º, 4º x 5º), simulado com a mesma força, o segundo jogo na casa do mais bem colocado e empate no agregado decidido nos pênaltis (50%)."
+        : $"Sobem os {Direto} primeiros.";
+}
 
 public record ChancesNaLiga(int CompeticaoId, string Competicao, int Temporada, int JogosRestantes, int? Rebaixados,
     IReadOnlyList<ChanceNaLiga> Times, string Metodo);
@@ -34,14 +49,15 @@ public class ObterChancesNaLigaHandler(IScoutDb db) : IQueryHandler<ObterChances
         if (daLiga.Count == 0) return null;
         var nomes = await db.Clubes.AsNoTracking().ToDictionaryAsync(c => c.Id, c => c.Nome, ct);
         var forca = ObterCopasDoTimeHandler.Forca(todas, ligas);
-        var (lista, restantes, rebaixados) = Simular(daLiga, forca, nomes, ligaId.Value * 7919 + temporada.Value);
+        var acesso = RegraDeAcesso.Da(nomeLiga, temporada.Value);
+        var (lista, restantes, rebaixados) = Simular(daLiga, forca, nomes, ligaId.Value * 7919 + temporada.Value, acesso);
         return new ChancesNaLiga(ligaId.Value, nomeLiga, temporada.Value, restantes, rebaixados, lista,
-            $"Força de cada time calculada pelos resultados de todas as competições da temporada (rating tipo Elo, com mando de campo) e os {restantes} jogos que faltam na liga simulados {Simulacoes:N0} vezes, com o desempate do campeonato (pontos, vitórias, saldo, gols pró).");
+            $"Força de cada time calculada pelos resultados de todas as competições da temporada (rating tipo Elo, com mando de campo) e os {restantes} jogos que faltam na liga simulados {Simulacoes:N0} vezes, com o desempate do campeonato (pontos, vitórias, saldo, gols pró).{(acesso is null ? "" : " " + acesso.Explicacao)}");
     }
 
     /// <summary>Classificação de hoje e os jogos que faltam simulados. Semente fixa: a mesma pergunta dá o mesmo número.</summary>
     public static (List<ChanceNaLiga> Times, int Restantes, int? Rebaixados) Simular(List<Partida> daLiga, Dictionary<int, double> forca,
-        Dictionary<int, string> nomes, int semente)
+        Dictionary<int, string> nomes, int semente, RegraDeAcesso? acesso = null)
     {
         var jogados = daLiga.Where(p => p.Encerrada && p.GolsMandante is not null).ToList();
         var restantes = daLiga.Where(p => !p.Encerrada && !NaoVaiTerJogo.Contains(p.Status)).ToList();
@@ -58,6 +74,7 @@ public class ObterChancesNaLigaHandler(IScoutDb db) : IQueryHandler<ObterChances
         var rnd = new Random(semente);
         double F(int c) => forca.GetValueOrDefault(c, 1500);
         var (titulo, top4, top6, queda) = (new int[n], new int[n], new int[n], new int[n]);
+        var (sobe, sobeDireto, playoff) = (new int[n], new int[n], new int[n]);
         var pontosSomados = new long[n];
         var ordem = Enumerable.Range(0, n).ToArray();
         var sorteio = new double[n];
@@ -80,6 +97,17 @@ public class ObterChancesNaLigaHandler(IScoutDb db) : IQueryHandler<ObterChances
                 if (pos < 4) top4[t]++;
                 if (pos < 6) top6[t]++;
                 if (rebaixados is { } r && pos >= n - r) queda[t]++;
+                if (acesso is not null && pos < acesso.Direto) { sobeDireto[t]++; sobe[t]++; }
+            }
+            if (acesso is { Playoff: true } && n >= acesso.Direto + 4)
+            {
+                // 3º x 6º e 4º x 5º: o pior colocado manda o primeiro jogo
+                var d = acesso.Direto;
+                for (var k = d; k < d + 4; k++) playoff[ordem[k]]++;
+                int Vencedor(int melhor, int pior) =>
+                    ObterCopasDoTimeHandler.Confronto(rnd, times[pior], times[melhor], F, idaEVolta: true, neutro: false) == times[melhor] ? melhor : pior;
+                sobe[Vencedor(ordem[d], ordem[d + 3])]++;
+                sobe[Vencedor(ordem[d + 1], ordem[d + 2])]++;
             }
             ordem = Enumerable.Range(0, n).ToArray();
         }
@@ -90,7 +118,8 @@ public class ObterChancesNaLigaHandler(IScoutDb db) : IQueryHandler<ObterChances
             .OrderByDescending(i => pts[i]).ThenByDescending(i => vit[i]).ThenByDescending(i => saldo[i]).ThenByDescending(i => gp[i])
             .Select((i, pos) => new ChanceNaLiga(times[i], nomes.GetValueOrDefault(times[i], "?"), pos + 1, pts[i], jogos[i], vit[i], saldo[i],
                 faltam.GetValueOrDefault(times[i]), (int)Math.Round(pontosSomados[i] / (double)Simulacoes),
-                Pct(titulo[i]), Pct(top4[i]), Pct(top6[i]), rebaixados is null ? null : Pct(queda[i])))
+                Pct(titulo[i]), Pct(top4[i]), Pct(top6[i]), rebaixados is null ? null : Pct(queda[i]),
+                acesso is null ? null : Pct(sobe[i]), acesso is null ? null : Pct(sobeDireto[i]), acesso is { Playoff: true } ? Pct(playoff[i]) : null))
             .ToList();
 
         return (lista, restantes.Count, rebaixados);

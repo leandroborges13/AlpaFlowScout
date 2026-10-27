@@ -202,7 +202,8 @@ public class ObterCopasDoTimeHandler(IScoutDb db) : IQueryHandler<ObterCopasDoTi
             $"Força de cada time calculada pelos resultados de todas as competições da temporada (rating tipo Elo, com mando de campo) e o que falta da copa simulado {Simulacoes:N0} vezes. Empate no agregado vira pênaltis (50%). As fases seguintes têm cruzamento sorteado.");
     }
 
-    static int Confronto(Random rnd, int a, int b, Func<int, double> f, bool idaEVolta, bool neutro)
+    /// <summary>Quem passa: `a` manda o primeiro jogo e `b` o segundo; empate no agregado vira pênaltis (50%).</summary>
+    internal static int Confronto(Random rnd, int a, int b, Func<int, double> f, bool idaEVolta, bool neutro)
     {
         var (ga, gb) = Placar(rnd, f(a), f(b), neutro);
         if (idaEVolta) { var (gv, gm) = Placar(rnd, f(b), f(a), false); ga += gm; gb += gv; }

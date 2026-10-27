@@ -41,6 +41,7 @@ public class AssistenteScout(
     IQueryHandler<ObterElenco, ElencoDoTime?> elenco,
     IQueryHandler<ObterCopasDoTime, CopasDoTime?> copasDoTime,
     IQueryHandler<ObterChancesNaLiga, ChancesNaLiga?> chancesNaLiga,
+    IQueryHandler<ObterArtilharia, Artilharia> artilharia,
     IQueryHandler<ObterRankingPenaltis, RankingPenaltis> penaltis,
     IMemoryCache cache,
     ILogger<AssistenteScout> log)
@@ -224,8 +225,7 @@ public class AssistenteScout(
                         {
                             t.Posicao, t.Time, t.Pontos, t.Jogos, t.JogosRestantes, PontosEsperadosNoFim = t.PontosEsperados,
                             t.TituloPercentual, Top4Percentual = t.Top4Percentual, Top6Percentual = t.Top6Percentual, t.RebaixamentoPercentual,
-                            // Série B: os 4 primeiros sobem para a Série A
-                            AcessoPercentual = c.Competicao.EndsWith(" B") ? t.Top4Percentual : (int?)null,
+                            t.AcessoPercentual, t.AcessoDiretoPercentual, PlayoffDeAcessoPercentual = t.PlayoffPercentual,
                         }),
                     };
                 },
@@ -395,6 +395,17 @@ public class AssistenteScout(
                 },
                 "penaltis",
                 "Pênaltis por atleta na temporada: ranking dos melhores batedores (convertidos de cobrados, no jogo e nas disputas), goleiros que mais defendem, quem mais sofre e quem mais comete pênalti; também os números de um time ou de um atleta."),
+            AIFunctionFactory.Create(
+                async ([Description("'gols' (artilharia, padrão) ou 'assistencias'")] string criterio = "gols",
+                       [Description("IDs de competição para restringir (ex.: [71] só a Série A); omita para somar todas da temporada")] int[]? competicoes = null,
+                       [Description("ID do time, para os artilheiros de um clube")] int? timeId = null,
+                       int? temporada = null, int? limite = null) =>
+                {
+                    var r = await artilharia.Handle(new ObterArtilharia(criterio, temporada, competicoes, timeId, limite ?? 8), ct);
+                    return r;
+                },
+                "artilharia",
+                "Ranking de artilheiros (gols) ou de garçons (assistências) da temporada, numa competição ou somando todas, com jogos, minutos, gols de pênalti e a divisão por competição."),
         };
 
         var mensagens = new List<ChatMessage> { new(ChatRole.System, Instrucoes(disponiveis, temporadaPadrao)) };
@@ -500,7 +511,10 @@ public class AssistenteScout(
           Dê os números em porcentagem como estimativa do modelo AlpaFlow, com a posição e os pontos de hoje, os jogos que faltam e os pontos
           esperados no fim; explique o método em uma frase. Para rebaixamento, mostre todos os times com chance relevante (não só os 4 últimos).
           Na Série A, não diga que G4 ou G6 dão vaga em certa competição: fale "terminar entre os 4 primeiros".
-          Série B: acesso à Série A = AcessoPercentual (os 4 primeiros sobem); use competicao 72 e mostre os times com chance relevante de subir.
+          Série B: acesso à Série A = AcessoPercentual (já inclui o playoff); use competicao 72 e mostre os times com chance relevante de subir.
+          Em 2026 sobem os 2 primeiros direto (AcessoDiretoPercentual) e do 3º ao 6º há playoff (PlayoffDeAcessoPercentual): explique o formato
+          como está no Metodo. "Rebaixado"/"já caiu" só quando o RebaixamentoPercentual for 100 E não houver mais pontos em jogo para alcançar a
+          zona de salvação; 100% nas simulações é "praticamente rebaixado", não "matematicamente rebaixado".
         - Probabilidade só existe nos campos "Percentual" de copas_do_time e chances_na_liga. Nunca cite "o modelo AlpaFlow" nem descreva
           "chance alta/baixa" sem um desses números: se a ferramenta não trouxe, diga que essa estimativa não está disponível.
 
@@ -520,6 +534,11 @@ public class AssistenteScout(
           que ele escala em cada função (atributos em percentil) e por que cada sugestão se parece com esse perfil (semelhança 0–100).
         - A base só tem o esquema inicial de cada jogo. Se perguntarem pelo esquema com e sem a bola, explique que esse dado não existe
           no provedor atual (exige dados de posicionamento, como Wyscout ou StatsBomb) e mostre os esquemas iniciais que ele usa.
+
+        Artilharia:
+        - "Artilheiro", "quem mais fez gols", "artilharia", "goleadores" = artilharia (assistências: criterio "assistencias"). Nunca monte ranking de gols
+          com a busca por perfil: ela ordena pelo encaixe, não pelos gols. Mantenha a ordem recebida, diga a temporada e as competições somadas
+          (sem competição citada, some todas e avise que estaduais não entram) e cite empates como empate.
 
         Pênaltis:
         - "Melhor batedor", "quem mais converte pênalti", goleiro que mais defende, quem mais sofre ou comete pênalti, ou os pênaltis de um time ou atleta = ferramenta penaltis.
