@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { AnalisePartida, DesempenhoNoJogo, EventoDaPartida, IndicadorNoJogo, LadoDaPartida } from './api'
 import { Medidor } from './Componentes'
 
@@ -20,11 +20,32 @@ const curto = (nome: string) => {
 
 type Selecao = { selecionado: number | null; onSelecionar: (id: number) => void }
 
-/** Os 22 titulares no desenho tático de cada time, com a nota do jogo. Toque num atleta para ver o desempenho. */
+/**
+ * Os 22 titulares no desenho tático de cada time, com a nota do jogo. Toque num atleta para ver o desempenho.
+ * Com "Mover jogadores" ligado, vira prancheta: dá para arrastar os atletas (mouse ou dedo) para explicar como o time
+ * se posicionou, por exemplo o lateral que vira zagueiro. "Voltar ao desenho" devolve todos ao lugar.
+ */
 export function CampoDaPartida({ a, notas, selecionado, onSelecionar }: { a: AnalisePartida; notas: Map<number, DesempenhoNoJogo> } & Selecao) {
   const lados: [LadoDaPartida, 'casa' | 'fora'][] = [[a.mandante, 'casa'], [a.visitante, 'fora']]
+  const [prancheta, setPrancheta] = useState(false)
+  const [movidos, setMovidos] = useState<Record<string, { x: number; y: number }>>({})
+  const arrastando = useRef<string | null>(null)
+  const svg = useRef<SVGSVGElement>(null)
   const temPosicao = lados.some(([l]) => l.titulares.some((j) => j.x != null))
   if (!temPosicao) return null
+
+  // Posição do ponteiro em metros do campo, presa dentro das linhas
+  const noCampo = (e: React.PointerEvent) => {
+    const m = svg.current?.getScreenCTM()
+    if (!m) return null
+    const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse())
+    return { x: Math.min(C - 1, Math.max(1, p.x)), y: Math.min(L - 1, Math.max(1, p.y)) }
+  }
+  const mover = (e: React.PointerEvent) => {
+    const chave = arrastando.current
+    const p = chave ? noCampo(e) : null
+    if (chave && p) setMovidos((m) => ({ ...m, [chave]: p }))
+  }
 
   return (
     <div className="campo-partida">
@@ -32,8 +53,15 @@ export function CampoDaPartida({ a, notas, selecionado, onSelecionar }: { a: Ana
         <span className="time-casa">{a.mandante.time}{a.mandante.esquema ? ` · ${a.mandante.esquema}` : ''} →</span>
         <span className="time-fora">← {a.visitante.time}{a.visitante.esquema ? ` · ${a.visitante.esquema}` : ''}</span>
       </div>
+      <div className="prancheta-acoes">
+        <button type="button" className={`botao-prancheta ${prancheta ? 'ativo' : ''}`} aria-pressed={prancheta} onClick={() => setPrancheta((v) => !v)}>
+          ✋ {prancheta ? 'Movendo jogadores' : 'Mover jogadores'}
+        </button>
+        {Object.keys(movidos).length > 0 && <button type="button" className="botao-prancheta" onClick={() => setMovidos({})}>↺ Voltar ao desenho</button>}
+      </div>
       <div className="campo-rolagem">
-      <svg viewBox={`-1 -1 ${C + 2} ${L + 2}`} className="campo-deitado" role="img"
+      <svg ref={svg} viewBox={`-1 -1 ${C + 2} ${L + 2}`} className={`campo-deitado ${prancheta ? 'prancheta' : ''}`} role="img"
+        onPointerMove={mover} onPointerUp={() => { arrastando.current = null }} onPointerLeave={() => { arrastando.current = null }}
         aria-label={`Escalações em campo: ${a.mandante.time} à esquerda atacando para a direita, ${a.visitante.time} à direita`}>
         <rect x={0} y={0} width={C} height={L} rx={1.2} className="gramado" />
         <g className="linhas">
@@ -50,14 +78,16 @@ export function CampoDaPartida({ a, notas, selecionado, onSelecionar }: { a: Ana
           // y do time (próprio gol → adversário) vira o comprimento; x (esquerda → direita do time) vira a largura
           // Goleiro colado no gol, para o nome dos zagueiros não passar por cima dele
           const profundidade = j.y <= 5 ? 3.4 : 4.5 + j.y * 0.47
-          const fx = quem === 'casa' ? profundidade : C - profundidade
-          const fy = quem === 'casa' ? 4 + (j.x / 100) * 60 : L - 4 - (j.x / 100) * 60
+          const chave = `${quem}-${i}`
+          const fx = movidos[chave]?.x ?? (quem === 'casa' ? profundidade : C - profundidade)
+          const fy = movidos[chave]?.y ?? (quem === 'casa' ? 4 + (j.x / 100) * 60 : L - 4 - (j.x / 100) * 60)
           const d = j.id != null ? notas.get(j.id) : undefined
           const ativo = d != null
           return (
-            <g key={`${quem}-${i}`} transform={`translate(${fx} ${fy})`}
-              className={`atleta-campo ${quem} ${ativo ? 'clicavel' : ''} ${d && selecionado === d.atletaId ? 'foco' : ''}`}
-              onClick={() => d && onSelecionar(d.atletaId)}
+            <g key={chave} transform={`translate(${fx} ${fy})`}
+              className={`atleta-campo ${quem} ${ativo ? 'clicavel' : ''} ${d && selecionado === d.atletaId ? 'foco' : ''} ${movidos[chave] ? 'movido' : ''}`}
+              onPointerDown={(e) => { if (!prancheta) return; e.preventDefault(); arrastando.current = chave; svg.current?.setPointerCapture(e.pointerId) }}
+              onClick={() => !prancheta && d && onSelecionar(d.atletaId)}
               onKeyDown={(e) => { if (d && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onSelecionar(d.atletaId) } }}
               tabIndex={ativo ? 0 : -1} role={ativo ? 'button' : undefined}>
               <title>{`${j.nome}${j.funcao ? ` · ${j.funcao}` : ''}${d?.nota != null ? ` · nota ${d.nota}` : ''}`}</title>
@@ -69,7 +99,9 @@ export function CampoDaPartida({ a, notas, selecionado, onSelecionar }: { a: Ana
         }))}
       </svg>
       </div>
-      <p className="legenda">Posição no desenho tático (não o deslocamento em jogo). No círculo, a nota do jogo de 0 a 100. Toque num atleta para ver o desempenho.</p>
+      <p className="legenda">{prancheta
+        ? 'Prancheta: arraste os atletas para mostrar como o time se posicionou. As posições movidas são só desenho, não dados do jogo.'
+        : 'Posição no desenho tático (não o deslocamento em jogo). No círculo, a nota do jogo de 0 a 100. Toque num atleta para ver o desempenho.'}</p>
     </div>
   )
 }

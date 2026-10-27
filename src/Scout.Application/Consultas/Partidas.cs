@@ -53,10 +53,16 @@ public interface IDetalhesDaPartida
 /// </summary>
 public record AspectoDaPartida(string Aspecto, string? Vantagem, double? PercentilMandante, double? PercentilVisitante);
 
+/// <summary>
+/// Confronto direto antes deste jogo, só com os jogos que estão na base (todas as competições importadas).
+/// Vitórias contadas pelo placar do jogo: decisão por pênaltis entra como empate.
+/// </summary>
+public record ConfrontoDireto(int VitoriasMandante, int Empates, int VitoriasVisitante, int? DesdeAno, IReadOnlyList<ResumoPartida> Ultimos);
+
 /// <summary>`Desfecho`: "Decidido nos pênaltis: 4 x 3" ou "Decidido na prorrogação"; nulo no tempo normal.</summary>
 public record AnalisePartida(ResumoPartida Partida, LadoDaPartida Mandante, LadoDaPartida Visitante,
     IReadOnlyList<EventoDaPartida> Eventos, IReadOnlyList<AspectoDaPartida> Aspectos, IReadOnlyList<string> Observacoes, string? Desfecho = null,
-    IReadOnlyList<DesempenhoNoJogo>? Desempenhos = null);
+    IReadOnlyList<DesempenhoNoJogo>? Desempenhos = null, ConfrontoDireto? Confronto = null, IReadOnlyList<ResumoPartida>? JogosSeguintes = null);
 
 // ---------- Procurar partidas ----------
 
@@ -118,6 +124,7 @@ public class AnalisarPartidaHandler(IScoutDb db, IDetalhesDaPartida detalhes, Mo
     [
         new("Posse de bola", e => e.Posse, Margem: 0.08),
         new("Volume de finalizações", e => e.Finalizacoes),
+        new("Chances criadas (xG)", e => e.Xg, Margem: 0.15),
         new("Finalizações no alvo", e => e.FinalizacoesNoAlvo),
         new("Finalizações de dentro da área", e => e.FinalizacoesNaArea),
         new("Escanteios", e => e.Escanteios),
@@ -173,7 +180,40 @@ public class AnalisarPartidaHandler(IScoutDb db, IDetalhesDaPartida detalhes, Mo
         var desempenhos = await Desempenhos(p, provedor?.Jogadores ?? [], [mandante, visitante], PodeAnalisar, ct);
         if (desempenhos.Count > 0)
             observacoes.Add($"Nota do jogo (0 a 100) = média dos percentis do atleta nos indicadores do setor, com o rendimento do jogo levado a 90 minutos e comparado ao dos atletas do mesmo setor na temporada. Gol ou assistência de defensor e meio-campista também entra na nota. Só recebe nota quem jogou {MinutosParaNota} minutos ou mais.");
-        return new AnalisePartida(resumo, mandante, visitante, eventos, aspectos, observacoes, desfecho, desempenhos);
+        var (confronto, seguintes) = await ConfrontoESeguintes(p, ct);
+        return new AnalisePartida(resumo, mandante, visitante, eventos, aspectos, observacoes, desfecho, desempenhos, confronto, seguintes);
+    }
+
+    /// <summary>Jogos anteriores entre os dois times e o jogo seguinte de cada um depois desta partida.</summary>
+    async Task<(ConfrontoDireto?, List<ResumoPartida>)> ConfrontoESeguintes(Partida p, CancellationToken ct)
+    {
+        var (a, b) = (p.MandanteId, p.VisitanteId);
+        var anteriores = (await db.Partidas.AsNoTracking()
+                .Where(x => x.Id != p.Id && x.Data < p.Data && x.GolsMandante != null
+                            && ((x.MandanteId == a && x.VisitanteId == b) || (x.MandanteId == b && x.VisitanteId == a)))
+                .OrderByDescending(x => x.Data).ToListAsync(ct))
+            .Where(x => x.Encerrada).ToList();
+        var seguintes = new List<Partida>();
+        foreach (var clube in new[] { a, b })
+            if (await db.Partidas.AsNoTracking().Where(x => x.Data > p.Data && (x.MandanteId == clube || x.VisitanteId == clube))
+                    .OrderBy(x => x.Data).FirstOrDefaultAsync(ct) is { } prox && seguintes.All(s => s.Id != prox.Id))
+                seguintes.Add(prox);
+        var resumoSeguintes = await ProcurarPartidasHandler.Resumir(db, seguintes, ct);
+        if (anteriores.Count == 0) return (null, resumoSeguintes);
+        return (Contar(a, anteriores, await ProcurarPartidasHandler.Resumir(db, anteriores.Take(5).ToList(), ct)), resumoSeguintes);
+    }
+
+    /// <summary>V/E/D do ponto de vista do mandante deste jogo (sem banco, para testar).</summary>
+    public static ConfrontoDireto Contar(int mandanteId, List<Partida> anteriores, IReadOnlyList<ResumoPartida> ultimos)
+    {
+        int GolsDe(Partida x, bool doMandante) => (x.MandanteId == mandanteId) == doMandante ? x.GolsMandante!.Value : x.GolsVisitante!.Value;
+        var (v, e, d) = (0, 0, 0);
+        foreach (var x in anteriores)
+        {
+            var (pro, contra) = (GolsDe(x, true), GolsDe(x, false));
+            if (pro > contra) v++; else if (pro == contra) e++; else d++;
+        }
+        return new ConfrontoDireto(v, e, d, anteriores.Count == 0 ? null : anteriores.Min(x => x.Temporada), ultimos);
     }
 
     public const int MinutosParaNota = 30;

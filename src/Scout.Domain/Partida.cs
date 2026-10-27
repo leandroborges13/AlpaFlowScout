@@ -20,6 +20,8 @@ public class Partida
     public bool TreinadoresImportados { get; set; }
     /// <summary>Cobranças da disputa de pênaltis já lidas dos lances (só jogos decididos nos pênaltis).</summary>
     public bool DisputaImportada { get; set; }
+    /// <summary>xG já procurado nas estatísticas guardadas (jogos importados antes de lermos o xG).</summary>
+    public bool XgLido { get; set; }
 
     public bool Encerrada => Status is "FT" or "AET" or "PEN";
 }
@@ -61,6 +63,8 @@ public class EstatisticaPartida
     public int? Defesas { get; set; }
     public int? Passes { get; set; }
     public int? PassesCertos { get; set; }
+    /// <summary>Gols esperados (xG) como o provedor informa; nulo onde ele não calcula. Só aparece como percentil.</summary>
+    public double? Xg { get; set; }
 }
 
 /// <summary>Uma cobrança na disputa de pênaltis (fato público: quem bateu e se converteu).</summary>

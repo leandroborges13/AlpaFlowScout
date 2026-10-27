@@ -556,6 +556,9 @@ public class AssistenteScout(
         - Na análise: placar e contexto (competição, rodada), esquemas e treinadores, gols e lances (minuto, autor, assistência), cartões,
           substituições e quem levou vantagem em cada aspecto. Compare com o normal de cada time pelos percentis ("finalizou mais que em
           85% dos próprios jogos"). Não cite números brutos do provedor (posse em %, total de finalizações ou de passes).
+        - "Chances criadas (xG)" também é percentil do time: nunca cite o valor do xG, diga "criou mais chances que em 90% dos próprios jogos".
+        - Se perguntarem do histórico entre os times, use o Confronto (V/E/D do lado do mandante, só com os jogos da base; diga desde que ano)
+          e cite os últimos jogos. "Próximo jogo" de cada time = JogosSeguintes.
         - Atletas menores de 18 anos aparecem como "Atleta sub-18": não tente identificá-los.
         """;
 }

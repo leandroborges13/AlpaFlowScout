@@ -140,4 +140,15 @@ public class TimesTests
         Assert.Equal(12, v["Fouls"]);
         Assert.False(v.ContainsKey("Red Cards"));
     }
+
+    [Fact]
+    public void Le_o_xG_com_casas_decimais_e_nulo_quando_o_provedor_nao_informa()
+    {
+        JsonElement Lista(string json) => JsonDocument.Parse(json).RootElement;
+
+        Assert.Equal(1.38, Importador.LerXg(Lista("""[{"type":"Ball Possession","value":"57%"},{"type":"expected_goals","value":"1.38"}]""")));
+        Assert.Equal(0.7, Importador.LerXg(Lista("""[{"type":"expected_goals","value":0.7}]""")));
+        Assert.Null(Importador.LerXg(Lista("""[{"type":"expected_goals","value":null}]""")));
+        Assert.Null(Importador.LerXg(Lista("""[{"type":"Fouls","value":12}]""")));
+    }
 }

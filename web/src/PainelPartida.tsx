@@ -141,6 +141,30 @@ export function PainelPartida({ partida, gravacao, onFechar }: PainelProps) {
               </details>
             )}
 
+            {a.confronto && (
+              <section>
+                <h3>Confronto direto</h3>
+                <div className="confronto">
+                  <span><b>{a.confronto.vitoriasMandante}</b> vitórias {p.mandante}</span>
+                  <span><b>{a.confronto.empates}</b> empates</span>
+                  <span><b>{a.confronto.vitoriasVisitante}</b> vitórias {p.visitante}</span>
+                </div>
+                <p className="legenda">Jogos entre os dois que estão na base{a.confronto.desdeAno ? ` (desde ${a.confronto.desdeAno})` : ''}, em todas as competições importadas. Decisão por pênaltis conta como empate.</p>
+                <div className="lista-jogos">
+                  {a.confronto.ultimos.map((j) => <CartaoPartida key={j.id} partida={j} gravacao={gravacao} onAbrir={() => {}} />)}
+                </div>
+              </section>
+            )}
+
+            {(a.jogosSeguintes?.length ?? 0) > 0 && (
+              <section>
+                <h3>Jogo seguinte</h3>
+                <div className="lista-jogos">
+                  {a.jogosSeguintes!.map((j) => <CartaoPartida key={j.id} partida={j} gravacao={gravacao} onAbrir={() => {}} />)}
+                </div>
+              </section>
+            )}
+
             {a.observacoes.map((o) => <p key={o} className="obs">{o}</p>)}
           </>
         )}

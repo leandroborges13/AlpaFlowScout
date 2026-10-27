@@ -293,6 +293,10 @@ namespace Scout.Infrastructure.Dados.Migracoes
                         .HasColumnType("integer")
                         .HasColumnName("vermelhos");
 
+                    b.Property<double?>("Xg")
+                        .HasColumnType("double precision")
+                        .HasColumnName("xg");
+
                     b.HasKey("Id")
                         .HasName("pk_estatisticas_partida");
 
@@ -526,6 +530,10 @@ namespace Scout.Infrastructure.Dados.Migracoes
                     b.Property<int>("VisitanteId")
                         .HasColumnType("integer")
                         .HasColumnName("visitante_id");
+
+                    b.Property<bool>("XgLido")
+                        .HasColumnType("boolean")
+                        .HasColumnName("xg_lido");
 
                     b.HasKey("Id")
                         .HasName("pk_partidas");

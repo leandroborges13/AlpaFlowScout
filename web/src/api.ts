@@ -286,6 +286,10 @@ export type AnalisePartida = {
   observacoes: string[]
   desfecho?: string | null
   desempenhos?: DesempenhoNoJogo[] | null
+  /** Jogos anteriores entre os dois (só os que estão na base); V/E/D do lado do mandante deste jogo. */
+  confronto?: { vitoriasMandante: number; empates: number; vitoriasVisitante: number; desdeAno?: number | null; ultimos: ResumoPartida[] } | null
+  /** O jogo seguinte de cada time depois desta partida. */
+  jogosSeguintes?: ResumoPartida[] | null
 }
 
 export type AtletaDoTreinador = { atleta: ResumoAtleta; jogosComEle: number; funcaoComEle?: string | null }

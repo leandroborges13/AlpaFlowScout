@@ -107,6 +107,8 @@ public class Importador(ApiFootballClient api, ScoutDbContext db, ILogger<Import
             // Partidas com escalação de antes de guardarmos o treinador: a resposta está no cache, não gasta consulta
             await ImportarTreinadores(partidas.Values.Where(x => x.EscalacoesImportadas && !x.TreinadoresImportados).ToList(), ct);
             await ImportarEstatisticasDosJogos(partidas.Values.Where(x => x.Encerrada && !x.EstatisticasImportadas).ToList(), null, ct);
+            // Jogos importados antes de lermos o xG: relê as estatísticas guardadas (sem validade = vem do cache, não gasta consulta)
+            await ImportarEstatisticasDosJogos(partidas.Values.Where(x => x.EstatisticasImportadas && !x.XgLido).ToList(), null, ct);
             await ImportarDisputas(partidas.Values.Where(x => x.Status == "PEN" && !x.DisputaImportada).ToList(), null, ct);
             // Nos dias seguintes ao jogo o provedor ainda corrige escalação, treinador e estatísticas
             await Revisar(partidas.Values.Where(x => x.EscalacoesImportadas && x.Data > DateTime.UtcNow.AddDays(-3)).ToList(), TimeSpan.FromHours(12), ct);
@@ -240,8 +242,10 @@ public class Importador(ApiFootballClient api, ScoutDbContext db, ILogger<Import
                 e.Defesas = V("Goalkeeper Saves");
                 e.Passes = V("Total passes");
                 e.PassesCertos = V("Passes accurate");
+                e.Xg = LerXg(lista);
             }
             partida.EstatisticasImportadas = true;
+            partida.XgLido = true;
             await db.SaveChangesAsync(ct);
             if (++feitas % 25 == 0) log.LogInformation("  estatísticas dos jogos: {Feitas}/{Total}", feitas, pendentes.Count);
         }
@@ -275,6 +279,18 @@ public class Importador(ApiFootballClient api, ScoutDbContext db, ILogger<Import
                 Convertida = !string.Equals(Texto(e, "detail"), "Missed Penalty", StringComparison.OrdinalIgnoreCase),
             })
             .ToList();
+    }
+
+    /// <summary>{type: "expected_goals", value: "1.37"} → 1.37; nulo quando o provedor não calcula xG para a competição.</summary>
+    public static double? LerXg(JsonElement lista)
+    {
+        foreach (var s in lista.EnumerateArray())
+        {
+            if (!string.Equals(Texto(s, "type"), "expected_goals", StringComparison.OrdinalIgnoreCase) || Caminho(s, ["value"]) is not { } v) continue;
+            if (v.ValueKind == JsonValueKind.Number) return v.GetDouble();
+            if (v.ValueKind == JsonValueKind.String && double.TryParse(v.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var x)) return x;
+        }
+        return null;
     }
 
     /// <summary>[{type: "Ball Possession", value: "55%"}, {type: "Fouls", value: 12}] → tipo → número. Sem valor = não informado.</summary>

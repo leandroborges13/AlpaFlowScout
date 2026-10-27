@@ -288,6 +288,13 @@ button.lt-quad:hover, button.lt-quad:focus-visible { outline: 2px solid var(--in
 .atleta-campo.clicavel { cursor: pointer; }
 .atleta-campo.clicavel:hover circle, .atleta-campo.foco circle { stroke: var(--ink); stroke-width: 0.7; }
 .atleta-campo:focus { outline: none; }
+.prancheta-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.botao-prancheta { font: inherit; font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--linha, #d0d7d3); background: var(--surface); color: var(--ink); cursor: pointer; }
+.botao-prancheta.ativo { background: var(--casa); color: #fff; border-color: transparent; }
+.campo-deitado.prancheta { touch-action: none; }
+.campo-deitado.prancheta .atleta-campo { cursor: grab; }
+.campo-deitado.prancheta .atleta-campo:active { cursor: grabbing; }
+.atleta-campo.movido circle { stroke: var(--ink); stroke-dasharray: 0.8 0.5; }
 .atleta-campo:focus-visible circle { stroke: var(--ink); stroke-width: 0.9; }
 .nota-campo { font-size: 2.5px; font-weight: 800; fill: #fff; text-anchor: middle; pointer-events: none; }
 .nome-campo { font-size: 2.05px; font-weight: 600; fill: var(--ink); text-anchor: middle; pointer-events: none; paint-order: stroke; stroke: var(--gramado); stroke-width: 0.5px; }
@@ -336,3 +343,9 @@ button.lt-quad:hover, button.lt-quad:focus-visible { outline: 2px solid var(--in
 .contato-comercial p { margin: 0; font-size: 13.5px; color: var(--ink-2); }
 .btn.whatsapp { display: inline-flex; justify-content: center; align-items: center; gap: 8px; background: #1fa855; border-color: #1fa855; color: #fff; text-decoration: none; font-weight: 600; }
 .btn.whatsapp:hover { background: #18914a; }
+
+.confronto { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; font-size: 13px; }
+.confronto span { background: var(--surface); border-radius: 12px; padding: 10px 6px; display: grid; gap: 2px; }
+.confronto b { font-size: 24px; }
+.lista-jogos { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.lista-jogos .card { cursor: default; }

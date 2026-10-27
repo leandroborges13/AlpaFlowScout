@@ -121,4 +121,18 @@ public class PartidasTests
         Assert.True(P(6, 20) < P(6, 90));
         Assert.Null(AnalisarPartidaHandler.PercentilDoJogo("desarmes90", temporada, null, new Scout.Application.Analise.LinhaAnalise { Minutos = 90 }));
     }
+
+    [Fact]
+    public void Confronto_direto_conta_do_lado_do_mandante_mesmo_quando_ele_jogou_fora()
+    {
+        Scout.Domain.Partida J(int m, int v, int gm, int gv, string status = "FT") =>
+            new() { MandanteId = m, VisitanteId = v, GolsMandante = gm, GolsVisitante = gv, Status = status, Temporada = 2025 };
+        // Flamengo (1) x Galo (2): 1 vence em casa, 1 vence fora, empate, derrota e 0 x 0 decidido nos pênaltis
+        var anteriores = new List<Scout.Domain.Partida> { J(1, 2, 2, 0), J(2, 1, 0, 1), J(1, 2, 1, 1), J(2, 1, 3, 1), J(2, 1, 0, 0, "PEN") };
+
+        var c = AnalisarPartidaHandler.Contar(1, anteriores, []);
+
+        Assert.Equal((2, 2, 1), (c.VitoriasMandante, c.Empates, c.VitoriasVisitante));
+        Assert.Equal(2025, c.DesdeAno);
+    }
 }
