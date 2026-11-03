@@ -135,4 +135,17 @@ public class PartidasTests
         Assert.Equal((2, 2, 1), (c.VitoriasMandante, c.Empates, c.VitoriasVisitante));
         Assert.Equal(2025, c.DesdeAno);
     }
+
+    [Fact]
+    public void Vitoria_por_mais_de_dois_gols_e_diferenca_no_placar_do_ponto_de_vista_do_time()
+    {
+        // "Vitórias por mais de dois gols" = resultado vitória e diferença mínima 3
+        Assert.True(ProcurarPartidasHandler.AtendeResultado(true, 3, 0, "vitoria", 3));    // 3 x 0 em casa
+        Assert.True(ProcurarPartidasHandler.AtendeResultado(false, 1, 4, "Vitória", 3));   // 1 x 4 fora
+        Assert.False(ProcurarPartidasHandler.AtendeResultado(true, 3, 2, "vitoria", 3));   // 5 gols no jogo, mas 1 de diferença
+        Assert.False(ProcurarPartidasHandler.AtendeResultado(false, 4, 1, "vitoria", 3));  // goleada sofrida não é vitória
+        Assert.True(ProcurarPartidasHandler.AtendeResultado(false, 4, 1, "derrota", 3));
+        Assert.True(ProcurarPartidasHandler.AtendeResultado(true, 2, 2, "empate", null));
+        Assert.False(ProcurarPartidasHandler.AtendeResultado(true, null, null, "vitoria", null)); // jogo sem placar
+    }
 }

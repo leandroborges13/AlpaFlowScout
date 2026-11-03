@@ -338,14 +338,17 @@ public class AssistenteScout(
                        [Description("Nome do adversário, se citado")] string? adversario = null,
                        [Description("Data inicial (aaaa-mm-dd)")] string? de = null,
                        [Description("Data final (aaaa-mm-dd)")] string? ate = null,
-                       [Description("ID da competição, se citada (ex.: Libertadores)")] int? competicao = null) =>
+                       [Description("ID da competição, se citada (ex.: Libertadores)")] int? competicao = null,
+                       [Description("Só jogos com este resultado do time: 'vitoria', 'empate' ou 'derrota'")] string? resultado = null,
+                       [Description("Diferença mínima de gols no placar (ex.: 'vitórias por mais de dois gols' = 3)")] int? diferencaMinima = null,
+                       [Description("Quantos jogos trazer (padrão 8, máximo 50). Para contar ou listar jogos de um período, use 50.")] int? limite = null) =>
                 {
                     DateOnly? Data(string? s) => DateOnly.TryParse(s, System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : null;
-                    var r = await procurarPartidas.Handle(new ProcurarPartidas(time, adversario, Data(de), Data(ate), CompeticaoId: competicao), ct);
+                    var r = await procurarPartidas.Handle(new ProcurarPartidas(time, adversario, Data(de), Data(ate), limite ?? 8, competicao, resultado, diferencaMinima), ct);
                     return r.Select(p => new { p.Id, Data = p.Data.ToString("yyyy-MM-dd"), DiaDaSemana = p.Data.DayOfWeek.ToString(), p.Competicao, p.Rodada, p.Mandante, p.Visitante, p.GolsMandante, p.GolsVisitante, p.Status });
                 },
                 "procurar_partidas",
-                "Partidas de um time (com o adversário e o período opcionais), da mais recente para a mais antiga, com o ID para analisar."),
+                "Partidas de um time (com o adversário, o período, o resultado e a diferença de gols opcionais), da mais recente para a mais antiga, com o ID para analisar."),
             AIFunctionFactory.Create(
                 async (int partidaId) =>
                 {
@@ -557,6 +560,13 @@ public class AssistenteScout(
           substituições e quem levou vantagem em cada aspecto. Compare com o normal de cada time pelos percentis ("finalizou mais que em
           85% dos próprios jogos"). Não cite números brutos do provedor (posse em %, total de finalizações ou de passes).
         - "Chances criadas (xG)" também é percentil do time: nunca cite o valor do xG, diga "criou mais chances que em 90% dos próprios jogos".
+        - Contar ou listar jogos ("quantas vitórias", "liste os jogos") = procurar_partidas com limite 50, sem competição (todas, salvo se
+          citarem uma), e conte só o que veio. Se vierem exatamente 50, diga que podem existir mais e mostre o período coberto.
+        - "Ganhou por mais de dois gols", "venceu por 3 ou mais", "goleadas" = DIFERENÇA no placar: resultado "vitoria" e diferencaMinima
+          (mais de dois = 3; dois ou mais = 2; goleada = 3). "Perdeu por mais de dois" = resultado "derrota". Só "jogos com mais de dois
+          gols" ou "mais de 2,5 gols" é a SOMA dos gols do jogo: aí traga os jogos (limite 50) e conte pelos placares.
+        - "Desde a chegada do técnico X" / "com o técnico X": pegue no analisar_treinador o início da passagem dele no clube e use como "de".
+          Diga a data de início e o critério na resposta ("desde 12/08/2026, todas as competições: 4 vitórias por 3 gols ou mais").
         - Se perguntarem do histórico entre os times, use o Confronto (V/E/D do lado do mandante, só com os jogos da base; diga desde que ano)
           e cite os últimos jogos. "Próximo jogo" de cada time = JogosSeguintes.
         - Atletas menores de 18 anos aparecem como "Atleta sub-18": não tente identificá-los.

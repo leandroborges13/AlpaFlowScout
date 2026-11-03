@@ -66,13 +66,33 @@ public record AnalisePartida(ResumoPartida Partida, LadoDaPartida Mandante, Lado
 
 // ---------- Procurar partidas ----------
 
-/// <summary>"Galo x Santos no sábado": partidas de um time, com o adversário e o período opcionais, da mais recente para a mais antiga.</summary>
-public record ProcurarPartidas(string Time, string? Adversario = null, DateOnly? De = null, DateOnly? Ate = null, int Limite = 8, int? CompeticaoId = null) : IQuery<IReadOnlyList<ResumoPartida>>;
+/// <summary>"Galo x Santos no sábado": partidas de um time, com o adversário e o período opcionais, da mais recente para a mais antiga.
+/// `Resultado` ("vitoria", "empate", "derrota") e `DiferencaMinima` (gols de diferença no placar) são do ponto de vista do time:
+/// "vitórias por mais de dois gols" = Resultado "vitoria" e DiferencaMinima 3.</summary>
+public record ProcurarPartidas(string Time, string? Adversario = null, DateOnly? De = null, DateOnly? Ate = null, int Limite = 8, int? CompeticaoId = null,
+    string? Resultado = null, int? DiferencaMinima = null) : IQuery<IReadOnlyList<ResumoPartida>>;
 
 public class ProcurarPartidasHandler(IScoutDb db) : IQueryHandler<ProcurarPartidas, IReadOnlyList<ResumoPartida>>
 {
     /// <summary>O banco guarda UTC; datas de jogo são lidas e mostradas no horário de Brasília (jogo das 21h30 de sábado é sábado).</summary>
     public static readonly TimeZoneInfo Brasilia = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+
+    public const int LimiteMaximo = 50;
+
+    /// <summary>O jogo encerrado bate com o resultado e a diferença de gols pedidos, do ponto de vista do time (sem banco, para testar).</summary>
+    public static bool AtendeResultado(bool timeEhMandante, int? golsMandante, int? golsVisitante, string? resultado, int? diferencaMinima)
+    {
+        if (golsMandante is not { } gm || golsVisitante is not { } gv) return false;
+        var saldo = timeEhMandante ? gm - gv : gv - gm;
+        var porResultado = string.Join(" ", BuscaPorNome.Palavras(resultado ?? "")) switch
+        {
+            "vitoria" or "vitorias" => saldo > 0,
+            "empate" or "empates" => saldo == 0,
+            "derrota" or "derrotas" => saldo < 0,
+            _ => true,
+        };
+        return porResultado && (diferencaMinima is not { } n || Math.Abs(saldo) >= n);
+    }
 
     static DateTime InicioDoDiaEmUtc(DateOnly dia) => TimeZoneInfo.ConvertTimeToUtc(dia.ToDateTime(TimeOnly.MinValue), Brasilia);
 
@@ -95,7 +115,15 @@ public class ProcurarPartidasHandler(IScoutDb db) : IQueryHandler<ProcurarPartid
         if (q.CompeticaoId is { } competicao) consulta = consulta.Where(p => p.CompeticaoId == competicao);
         if (q.De is { } de) { var inicio = InicioDoDiaEmUtc(de); consulta = consulta.Where(p => p.Data >= inicio); }
         if (q.Ate is { } ate) { var fim = InicioDoDiaEmUtc(ate.AddDays(1)); consulta = consulta.Where(p => p.Data < fim); }
-        var partidas = await consulta.Where(p => p.Data <= DateTime.UtcNow.AddDays(1)).OrderByDescending(p => p.Data).Take(Math.Clamp(q.Limite, 1, 20)).ToListAsync(ct);
+        consulta = consulta.Where(p => p.Data <= DateTime.UtcNow.AddDays(1)).OrderByDescending(p => p.Data);
+        var limite = Math.Clamp(q.Limite, 1, LimiteMaximo);
+        var filtraResultado = !string.IsNullOrWhiteSpace(q.Resultado) || q.DiferencaMinima is not null;
+        // Com filtro de resultado, a conta do placar é feita aqui (só jogos encerrados) e o limite vale depois do filtro
+        var partidas = filtraResultado
+            ? (await consulta.Where(p => p.GolsMandante != null && p.GolsVisitante != null).ToListAsync(ct))
+                .Where(p => p.Encerrada && AtendeResultado(times.Contains(p.MandanteId), p.GolsMandante, p.GolsVisitante, q.Resultado, q.DiferencaMinima))
+                .Take(limite).ToList()
+            : await consulta.Take(limite).ToListAsync(ct);
         return await Resumir(db, partidas, ct);
     }
 
