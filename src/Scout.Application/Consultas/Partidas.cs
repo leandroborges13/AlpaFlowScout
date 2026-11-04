@@ -124,15 +124,20 @@ public class ProcurarPartidasHandler(IScoutDb db) : IQueryHandler<ProcurarPartid
         if (q.CompeticaoId is { } competicao) consulta = consulta.Where(p => p.CompeticaoId == competicao);
         if (q.De is { } de) { var inicio = InicioDoDiaEmUtc(de); consulta = consulta.Where(p => p.Data >= inicio); }
         if (q.Ate is { } ate) { var fim = InicioDoDiaEmUtc(ate.AddDays(1)); consulta = consulta.Where(p => p.Data < fim); }
-        consulta = consulta.Where(p => p.Data <= DateTime.UtcNow.AddDays(1)).OrderByDescending(p => p.Data);
+        var corte = DateTime.UtcNow.AddDays(1);
         var limite = Math.Clamp(q.Limite, 1, LimiteMaximo);
         var filtraResultado = !string.IsNullOrWhiteSpace(q.Resultado) || q.DiferencaMinima is not null;
+        // O próximo jogo, seja quando for (sem ele a IA concluía "o Palmeiras não joga mais"): só quando o período chega até hoje
+        var proximo = filtraResultado || (q.Ate is { } a && InicioDoDiaEmUtc(a.AddDays(1)) <= corte) ? null
+            : await consulta.Where(p => p.Data > corte && (p.Status == "NS" || p.Status == "TBD")).OrderBy(p => p.Data).FirstOrDefaultAsync(ct);
+        consulta = consulta.Where(p => p.Data <= corte).OrderByDescending(p => p.Data);
         // Com filtro de resultado, a conta do placar é feita aqui (só jogos encerrados) e o limite vale depois do filtro
         var partidas = filtraResultado
             ? (await consulta.Where(p => p.GolsMandante != null && p.GolsVisitante != null).ToListAsync(ct))
                 .Where(p => p.Encerrada && AtendeResultado(times.Contains(p.MandanteId), p.GolsMandante, p.GolsVisitante, q.Resultado, q.DiferencaMinima))
                 .Take(limite).ToList()
             : SoEncerradasNoLimite(await consulta.Take(limite + 10).ToListAsync(ct), limite);
+        if (proximo is not null) partidas.Insert(0, proximo);
         return await Resumir(db, partidas, ct);
     }
 

@@ -349,7 +349,7 @@ public class AssistenteScout(
                 },
                 "procurar_partidas",
                 "Partidas de um time (com o adversário, o período, o resultado e a diferença de gols opcionais), da mais recente para a mais antiga, com o ID para analisar. " +
-                "O limite conta só jogos já disputados ('últimos 5' = limite 5); os que ainda não terminaram (hoje, amanhã, adiados) vêm à parte em NaoDisputados e nunca entram em resultado, pontos ou gols. " +
+                "O limite conta só jogos já disputados ('últimos 5' = limite 5); os que ainda não terminaram (o próximo jogo marcado, adiados) vêm à parte em NaoDisputados e nunca entram em resultado, pontos ou gols. " +
                 "Use o ResumoDosDisputados pronto (vitórias, empates, derrotas, pontos, gols pró e contra) em vez de somar placares."),
             AIFunctionFactory.Create(
                 async (int partidaId) =>
@@ -565,8 +565,8 @@ public class AssistenteScout(
         - Contar ou listar jogos ("quantas vitórias", "liste os jogos") = procurar_partidas com limite 50, sem competição (todas, salvo se
           citarem uma), e conte só o que veio. Se vierem exatamente 50, diga que podem existir mais e mostre o período coberto.
         - "Últimos N jogos" / "fase recente" = procurar_partidas com limite N (e a competição, se pedirem só a liga). Use o ResumoDosDisputados
-          como está; jogo em NaoDisputados é o próximo jogo, nunca parte dos últimos. NaoDisputados vazio só quer dizer que o próximo
-          jogo não é hoje nem amanhã: não diga que o time encerrou a temporada nem que não joga mais; se precisar, diga que não há jogo até amanhã.
+          como está; jogo em NaoDisputados é o próximo jogo, nunca parte dos últimos. NaoDisputados traz o próximo jogo
+          marcado (seja quando for); vazio = nenhum jogo marcado na base: não diga que o time encerrou a temporada nem que não joga mais.
         - "Ganhou por mais de dois gols", "venceu por 3 ou mais", "goleadas" = DIFERENÇA no placar: resultado "vitoria" e diferencaMinima
           (mais de dois = 3; dois ou mais = 2; goleada = 3). "Perdeu por mais de dois" = resultado "derrota". Só "jogos com mais de dois
           gols" ou "mais de 2,5 gols" é a SOMA dos gols do jogo: aí traga os jogos (limite 50) e conte pelos placares.
