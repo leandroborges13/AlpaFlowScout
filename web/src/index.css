@@ -267,6 +267,12 @@ button.lt-quad:hover, button.lt-quad:focus-visible { outline: 2px solid var(--in
 .copas li { display: grid; gap: 8px; }
 
 .desfecho { margin: -6px 0 0; text-align: center; font-weight: 700; color: var(--ink-2); }
+/* Pós-jogo do canal (some no modo gravação) */
+.pos-jogo { border: 1px dashed var(--line); border-radius: 14px; padding: 12px 14px; }
+.pos-jogo h3 { margin-top: 0; }
+.pos-jogo-acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+.roteiro { white-space: pre-wrap; font: inherit; font-size: 14px; line-height: 1.5; background: var(--surface-2); border-radius: 10px; padding: 12px; margin: 10px 0 0; max-height: 360px; overflow: auto; }
+.para-video { margin-top: 6px; font-size: 13px; padding: 5px 10px; }
 
 /* Partida: campinho, linha do tempo, desempenho e comparação. Mandante = verde, visitante = azul (com rótulo sempre). */
 :root { --casa: #0f9d58; --fora: #2f6fd6; }

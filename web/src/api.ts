@@ -163,6 +163,12 @@ export const api = {
   atletasDoTreinador: (id: number) => pedir<AtletaDoTreinador[]>(`/api/treinadores/${id}/atletas`),
   sugestoesParaTreinador: (id: number) => pedir<SugestoesParaTreinador>(`/api/treinadores/${id}/sugestoes`),
   partida: (id: number) => pedir<AnalisePartida>(`/api/partidas/${id}`),
+  /** Roteiro do pós-jogo guardado (null se ainda não há) e o pedido para a IA escrever agora. */
+  posJogo: async (id: number) => {
+    const r = await fetch(`/api/partidas/${id}/pos-jogo`, { credentials: 'same-origin' })
+    return r.status === 204 ? null : (r.ok ? (r.json() as Promise<RoteiroPosJogo>) : Promise.reject(new Error(`Erro ${r.status}`)))
+  },
+  gerarPosJogo: (id: number) => pedir<RoteiroPosJogo>(`/api/partidas/${id}/pos-jogo`, { method: 'POST' }),
 }
 
 // Modo gravação: esconde fotos e escudos (direito de imagem e de marca) para vídeos públicos.
@@ -291,6 +297,9 @@ export type AnalisePartida = {
   /** O jogo seguinte de cada time depois desta partida. */
   jogosSeguintes?: ResumoPartida[] | null
 }
+
+/** Roteiro do Short de pós-jogo (canal Futebol em Números), escrito pela IA. */
+export type RoteiroPosJogo = { partidaId: number; texto: string; criadoEm: string; avisadoEm?: string | null }
 
 export type AtletaDoTreinador = { atleta: ResumoAtleta; jogosComEle: number; funcaoComEle?: string | null }
 

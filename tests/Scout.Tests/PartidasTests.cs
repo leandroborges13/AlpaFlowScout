@@ -148,4 +148,37 @@ public class PartidasTests
         Assert.True(ProcurarPartidasHandler.AtendeResultado(true, 2, 2, "empate", null));
         Assert.False(ProcurarPartidasHandler.AtendeResultado(true, null, null, "vitoria", null)); // jogo sem placar
     }
+
+    [Fact]
+    public void Roteiro_do_pos_jogo_recebe_o_placar_gol_a_gol_com_acrescimo_e_o_proximo_jogo_de_cada_time()
+    {
+        var data = new DateTime(2026, 10, 11, 21, 0, 0, DateTimeKind.Utc);
+        ResumoPartida Jogo(int id, DateTime d, int casa, string nomeCasa, int fora, string nomeFora) =>
+            new(id, d, "Regular Season - 30", 71, "Serie A", 2026, "FT", casa, nomeCasa, null, fora, nomeFora, null, 2, 1);
+        var lado = (int id, string nome) => new LadoDaPartida(id, nome, "4-3-3", null, null, [], []);
+        var a = new AnalisePartida(Jogo(1, data, 10, "Time Casa", 20, "Time Fora"), lado(10, "Time Casa"), lado(20, "Time Fora"),
+            [
+                // fora de ordem de propósito; o gol contra do visitante conta para o mandante
+                new EventoDaPartida(90, 7, 10, "Gol", "Atleta C", null, null),
+                new EventoDaPartida(88, null, 20, "Gol", "Atleta A", null, null),
+                new EventoDaPartida(90, 1, 20, "Gol contra", "Atleta B", null, null),
+            ], [], [],
+            JogosSeguintes: [Jogo(2, data.AddDays(3), 10, "Time Casa", 30, "Outro"), Jogo(3, data.AddDays(7), 40, "Mais Um", 20, "Time Fora")]);
+
+        var dados = JsonDocument.Parse(Scout.Application.Chat.RoteiristaPosJogo.Dados(a)).RootElement;
+
+        var gols = dados.GetProperty("Gols").EnumerateArray().Select(g => $"{g.GetProperty("Minuto").GetString()} {g.GetProperty("PlacarDepois").GetString()}");
+        Assert.Equal(["88 0 x 1", "90+1 1 x 1", "90+7 2 x 1"], gols);
+        var proximo = dados.GetProperty("ProximoJogo");
+        Assert.StartsWith("Time Casa x Outro", proximo.GetProperty("Time Casa").GetString());
+        Assert.StartsWith("Mais Um x Time Fora", proximo.GetProperty("Time Fora").GetString());
+        Assert.Contains("domingo", dados.GetProperty("Data").GetString()); // 11/10/2026 foi domingo
+    }
+
+    [Fact]
+    public void Times_do_pos_jogo_automatico_vem_da_configuracao()
+    {
+        Assert.Equal([1062, 118], Scout.Infrastructure.Provedor.AcompanhamentoPosJogo.Times(" 1062, 118 ,x,"));
+        Assert.Empty(Scout.Infrastructure.Provedor.AcompanhamentoPosJogo.Times(null));
+    }
 }

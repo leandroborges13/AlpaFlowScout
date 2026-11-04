@@ -23,6 +23,7 @@ builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Ad
 builder.Services.AddScoutApplication();
 builder.Services.AddScoutInfrastructure(builder.Configuration);
 builder.Services.AddHostedService<AtualizacaoDiaria>();
+builder.Services.AddHostedService<AcompanhamentoPosJogo>(); // pós-jogo automático (SCOUT_POSJOGO_TIMES)
 
 // Login por cookie: uso interno, só quem foi cadastrado pela linha de comando entra
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -147,6 +148,17 @@ api.MapGet("/partidas", (string time, string? adversario, DateOnly? de, DateOnly
 api.MapGet("/partidas/{id:int}", async (int id, IQueryHandler<AnalisarPartida, AnalisePartida?> h, CancellationToken ct) =>
     await h.Handle(new AnalisarPartida(id), ct) is { } a ? Results.Ok(a) : Results.NotFound());
 
+// Pós-jogo do canal: o roteiro guardado (204 se ainda não há) e o pedido para escrever agora.
+// Jogo dos últimos 3 dias é atualizado no provedor antes (placar, estatísticas e lances corrigidos depois do apito).
+api.MapGet("/partidas/{id:int}/pos-jogo", async (int id, IScoutDb db, CancellationToken ct) =>
+    await db.RoteirosPosJogo.FirstOrDefaultAsync(r => r.PartidaId == id, ct) is { } r ? Results.Ok(r) : Results.NoContent());
+api.MapPost("/partidas/{id:int}/pos-jogo", async (int id, IScoutDb db, Importador importador, RoteiristaPosJogo roteirista, CancellationToken ct) =>
+{
+    var partida = await db.Partidas.FirstOrDefaultAsync(p => p.Id == id, ct);
+    if (partida is null) return Results.NotFound();
+    if (partida.Data > DateTime.UtcNow.AddDays(-3)) await importador.AtualizarPartida(id, ct);
+    return await roteirista.Gerar(id, ct) is { } r ? Results.Ok(r) : Results.Problem("O jogo ainda não terminou ou não tem placar.", statusCode: 409);
+});
 api.MapGet("/treinadores/{id:int}/atletas", (int id, IQueryHandler<AtletasDoTreinador, IReadOnlyList<AtletaDoTreinador>> h, CancellationToken ct) =>
     h.Handle(new AtletasDoTreinador(id), ct));
 

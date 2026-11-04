@@ -5,12 +5,13 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
 
 ## Para o canal (conteúdo mais rápido e com gancho)
 
-1. **Pós-jogo automático** (o maior ganho: quem publica primeiro depois do apito pega a busca)
+1. **Pós-jogo automático** — FEITO em 03/11/2026 (RoteiristaPosJogo + AcompanhamentoPosJogo; ligar com SCOUT_POSJOGO_TIMES=1062
+   e SCOUT_WHATSAPP_* no servidor). O maior ganho: quem publica primeiro depois do apito pega a busca.
    - Quando um jogo do Galo termina e as estatísticas chegam, o Scout monta sozinho "onde ganhou/perdeu", as notas e um roteiro
      curto de 40 s, e avisa no WhatsApp do Leandro. Ele só grava a fala por cima.
    - Usa o que já existe: analisar_partida, notas do jogo e percentis.
 
-2. **Cartão vertical da resposta** (botão "Para vídeo" no chat)
+2. **Cartão vertical da resposta** — FEITO em 03/11/2026 (web/src/ParaVideo.ts: botão em cada resposta e 3 cartões no painel da partida)
    - Gera a resposta em 1080x1920, com letra grande, os números em destaque e o escudo, pronta para o Short.
    - Hoje a resposta é gravada da tela do computador e ampliada na edição: o texto fica pequeno e às vezes cortado.
 

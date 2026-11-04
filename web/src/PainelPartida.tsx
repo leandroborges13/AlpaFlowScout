@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { api, type AnalisePartida, type DesempenhoNoJogo, type EventoDaPartida, type LadoDaPartida, type ResumoPartida } from './api'
+import { api, type AnalisePartida, type DesempenhoNoJogo, type EventoDaPartida, type LadoDaPartida, type ResumoPartida, type RoteiroPosJogo } from './api'
+import { cartoesDaPartida } from './ParaVideo'
 import { Escudo } from './PainelTime'
 import { CampoDaPartida, DesempenhoNaPartida, Destaques, LinhaDoTempo } from './PartidaVisual'
 
@@ -75,6 +76,7 @@ export function PainelPartida({ partida, gravacao, onFechar }: PainelProps) {
         {a?.desfecho && <p className="desfecho">{a.desfecho}</p>}
 
         {erro && <p className="erro">{erro}</p>}
+        {a && !gravacao && p.golsMandante != null && <PosJogo a={a} />}
         {!a && !erro && <p className="pensando">Carregando a partida…</p>}
 
         {a && (
@@ -174,6 +176,46 @@ export function PainelPartida({ partida, gravacao, onFechar }: PainelProps) {
         </div>
       </div>
     </div>
+  )
+}
+
+/** Pós-jogo do canal: o roteiro do Short (a IA escreve na hora ou já veio do automático) e os cartões "Para vídeo". */
+function PosJogo({ a }: { a: AnalisePartida }) {
+  const [roteiro, setRoteiro] = useState<RoteiroPosJogo | null>(null)
+  const [estado, setEstado] = useState<'' | 'escrevendo' | 'baixando' | 'copiado'>('')
+  const [erro, setErro] = useState<string | null>(null)
+  const id = a.partida.id
+
+  useEffect(() => { setRoteiro(null); api.posJogo(id).then(setRoteiro).catch(() => {}) }, [id])
+
+  async function escrever() {
+    setEstado('escrevendo'); setErro(null)
+    try { setRoteiro(await api.gerarPosJogo(id)) } catch (e) { setErro((e as Error).message) } finally { setEstado('') }
+  }
+  async function cartoes() {
+    setEstado('baixando')
+    try { await cartoesDaPartida(a) } finally { setEstado('') }
+  }
+  async function copiar() {
+    if (!roteiro) return
+    try { await navigator.clipboard.writeText(roteiro.texto); setEstado('copiado'); setTimeout(() => setEstado(''), 1500) } catch { /* sem permissão: o texto continua na tela */ }
+  }
+
+  return (
+    <section className="pos-jogo">
+      <h3>Pós-jogo do canal</h3>
+      <div className="pos-jogo-acoes">
+        <button className="btn" onClick={escrever} disabled={estado === 'escrevendo'}>
+          {estado === 'escrevendo' ? 'Escrevendo…' : roteiro ? 'Escrever de novo' : 'Escrever roteiro'}
+        </button>
+        <button className="btn" onClick={cartoes} disabled={estado === 'baixando'} title="Baixa 3 imagens 1080x1920: placar, onde o jogo foi decidido e destaques">
+          {estado === 'baixando' ? 'Gerando…' : '🎬 Para vídeo'}
+        </button>
+        {roteiro && <button className="btn" onClick={copiar}>{estado === 'copiado' ? 'Copiado!' : 'Copiar roteiro'}</button>}
+      </div>
+      {erro && <p className="erro">{erro}</p>}
+      {roteiro && <pre className="roteiro">{roteiro.texto}</pre>}
+    </section>
   )
 }
 

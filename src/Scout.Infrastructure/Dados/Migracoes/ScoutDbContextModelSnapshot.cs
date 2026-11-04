@@ -544,6 +544,31 @@ namespace Scout.Infrastructure.Dados.Migracoes
                     b.ToTable("partidas", (string)null);
                 });
 
+            modelBuilder.Entity("Scout.Domain.RoteiroPosJogo", b =>
+                {
+                    b.Property<int>("PartidaId")
+                        .HasColumnType("integer")
+                        .HasColumnName("partida_id");
+
+                    b.Property<DateTime?>("AvisadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("avisado_em");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<string>("Texto")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("texto");
+
+                    b.HasKey("PartidaId")
+                        .HasName("pk_roteiros_pos_jogo");
+
+                    b.ToTable("roteiros_pos_jogo", (string)null);
+                });
+
             modelBuilder.Entity("Scout.Domain.Treinador", b =>
                 {
                     b.Property<int>("Id")

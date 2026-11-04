@@ -6,6 +6,7 @@ import { PainelAtleta } from './PainelAtleta'
 import { CartaoPartida, PainelPartida } from './PainelPartida'
 import { CartaoTime, PainelTime } from './PainelTime'
 import { CartaoTreinador, PainelTreinador } from './PainelTreinador'
+import { cartaoDaResposta } from './ParaVideo'
 
 const SUGESTOES = [
   'Meu time joga no 3-4-3. Preciso de um zagueiro pela esquerda, bom no jogo aéreo e na saída de bola, até 25 anos',
@@ -109,6 +110,11 @@ function Plataforma({ usuario, onSair }: { usuario: string; onSair: () => void }
         {mensagens.map((m, i) => (
           <div key={i} className={`msg ${m.papel}`}>
             <div className="balao">{m.texto}</div>
+            {m.papel === 'assistant' && i > 0 && !gravacao && !m.texto.startsWith('Não consegui responder') && (
+              <button className="btn para-video" onClick={() => cartaoDaResposta(mensagens[i - 1].texto, m.texto)} title="Baixa a resposta em imagem 1080x1920 para o Short">
+                🎬 Para vídeo
+              </button>
+            )}
             {m.partidas && m.partidas.length > 0 && (
               <div className="cards">
                 {m.partidas.map((p) => <CartaoPartida key={p.id} partida={p} gravacao={gravacao} onAbrir={() => setPartidaAberta(p)} />)}

@@ -28,6 +28,12 @@ services:
       OPENAI_MODEL: ${OPENAI_MODEL}
       SCOUT_ATUALIZAR: ${SCOUT_ATUALIZAR}
       SCOUT_ATUALIZAR_HORA: ${SCOUT_ATUALIZAR_HORA}
+      # Pós-jogo automático do canal (vazio = desligado) e o aviso no WhatsApp pela Evolution API
+      SCOUT_POSJOGO_TIMES: ${SCOUT_POSJOGO_TIMES}
+      SCOUT_WHATSAPP_URL: ${SCOUT_WHATSAPP_URL}
+      SCOUT_WHATSAPP_CHAVE: ${SCOUT_WHATSAPP_CHAVE}
+      SCOUT_WHATSAPP_INSTANCIA: ${SCOUT_WHATSAPP_INSTANCIA}
+      SCOUT_WHATSAPP_NUMERO: ${SCOUT_WHATSAPP_NUMERO}
     volumes:
       - alpaflowscout-chaves:/app/chaves
     networks:

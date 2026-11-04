@@ -141,6 +141,25 @@ public class Importador(ApiFootballClient api, ScoutDbContext db, ILogger<Import
         await Revisar([partida], TimeSpan.Zero, ct);
     }
 
+    /// <summary>
+    /// Placar e status de um jogo direto do provedor (sem esperar a atualização diária) e, se terminou, escalações, estatísticas
+    /// e lances. Usado no pós-jogo, logo depois do apito final.
+    /// </summary>
+    public async Task<Partida?> AtualizarPartida(int partidaId, CancellationToken ct)
+    {
+        var partida = await db.Partidas.FirstOrDefaultAsync(p => p.Id == partidaId, ct);
+        if (partida is null) return null;
+        var f = (await api.Consultar("/fixtures", new Dictionary<string, object> { ["id"] = partidaId }, TimeSpan.Zero, ct))
+            .GetProperty("response").EnumerateArray().FirstOrDefault();
+        if (f.ValueKind != JsonValueKind.Object) return partida;
+        partida.Status = Texto(f, "fixture", "status", "short") ?? partida.Status;
+        partida.GolsMandante = Int(f, "goals", "home");
+        partida.GolsVisitante = Int(f, "goals", "away");
+        await db.SaveChangesAsync(ct);
+        if (partida.Encerrada) await Revisar([partida], TimeSpan.Zero, ct);
+        return partida;
+    }
+
     async Task<int> ImportarEscalacoes(List<Partida> pendentes, TimeSpan? validade, CancellationToken ct)
     {
         var feitas = 0;
