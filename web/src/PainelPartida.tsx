@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, type AnalisePartida, type DesempenhoNoJogo, type EventoDaPartida, type LadoDaPartida, type MapaDaPartida, type ResumoPartida, type RoteiroPosJogo } from './api'
-import { cartaoDoJogador, cartoesDaPartida } from './ParaVideo'
+import { GaleriaVideo } from './GaleriaVideo'
+import { cartaoDoJogador, cartoesDaPartida, coletar, recortesDoMapa, type Cartao } from './ParaVideo'
 import { Escudo } from './PainelTime'
 import { CampoDaPartida, DesempenhoNaPartida, Destaques, LinhaDoTempo } from './PartidaVisual'
 
@@ -101,6 +102,8 @@ export function PainelPartida({ partida, gravacao, onFechar }: PainelProps) {
               </section>
             )}
 
+            {p.golsMandante != null && <NoCampo a={a} />}
+
             {a.aspectos.length > 0 && (
               <section>
                 <h3>Quem levou vantagem</h3>
@@ -193,10 +196,11 @@ function PosJogo({ a }: { a: AnalisePartida }) {
     setEstado('escrevendo'); setErro(null)
     try { setRoteiro(await api.gerarPosJogo(id)) } catch (e) { setErro((e as Error).message) } finally { setEstado('') }
   }
+  const [galeria, setGaleria] = useState<Cartao[] | null>(null)
   async function cartoes() {
     setEstado('baixando')
     // o mapa (finalizações e calor) vem de outra fonte e pode não existir (copas, jogo recente): sem ele, saem os 3 primeiros cartões
-    try { await cartoesDaPartida(a, await api.mapa(id).catch(() => null)) } finally { setEstado('') }
+    try { setGaleria(await coletar(async () => cartoesDaPartida(a, await mapaDe(id)))) } finally { setEstado('') }
   }
   async function copiar() {
     if (!roteiro) return
@@ -210,13 +214,35 @@ function PosJogo({ a }: { a: AnalisePartida }) {
         <button className="btn" onClick={escrever} disabled={estado === 'escrevendo'}>
           {estado === 'escrevendo' ? 'Escrevendo…' : roteiro ? 'Escrever de novo' : 'Escrever roteiro'}
         </button>
-        <button className="btn" onClick={cartoes} disabled={estado === 'baixando'} title="Baixa as imagens 1080x1920: placar, onde o jogo foi decidido, destaques e, nas ligas, o mapa de finalizações e de calor">
+        <button className="btn" onClick={cartoes} disabled={estado === 'baixando'} title="Mostra os cartões 1080x1920 (placar, onde o jogo foi decidido, destaques e, nas ligas, o mapa) para ver grande, gravar ou baixar">
           {estado === 'baixando' ? 'Gerando…' : '🎬 Para vídeo'}
         </button>
         {roteiro && <button className="btn" onClick={copiar}>{estado === 'copiado' ? 'Copiado!' : 'Copiar roteiro'}</button>}
       </div>
       {erro && <p className="erro">{erro}</p>}
       {roteiro && <pre className="roteiro">{roteiro.texto}</pre>}
+      {galeria && <GaleriaVideo titulo={`${a.partida.mandante} x ${a.partida.visitante}: para vídeo`} cartoes={galeria} onFechar={() => setGaleria(null)} />}
+    </section>
+  )
+}
+
+/** No campo: onde cada time finalizou e onde o time do canal teve a bola, na própria análise (sem gerar imagem para baixar). */
+function NoCampo({ a }: { a: AnalisePartida }) {
+  const [recortes, setRecortes] = useState<{ finalizacoes: string; calor: string | null } | null>(null)
+  useEffect(() => {
+    let vivo = true
+    mapaDe(a.partida.id).then(async (m) => { if (m && vivo) setRecortes(await recortesDoMapa(a, m)) })
+    return () => { vivo = false }
+  }, [a])
+  if (!recortes) return null
+  return (
+    <section>
+      <h3>No campo</h3>
+      <p className="legenda">Onde cada time finalizou (bolinha maior = chance mais clara) e onde o time teve a bola, do jogo inteiro.</p>
+      <div className="no-campo">
+        <img src={recortes.finalizacoes} alt="Mapa de finalizações" />
+        {recortes.calor && <img src={recortes.calor} alt="Mapa de calor" />}
+      </div>
     </section>
   )
 }
@@ -228,17 +254,21 @@ const mapaDe = (id: number) => {
   return mapas.get(id)!
 }
 
-/** "Mapa dele": baixa o cartão com a mancha de calor e as finalizações do jogador aberto no campinho. */
+/** "Mapa de <nome>": o cartão com a mancha de calor e as finalizações do jogador aberto no campinho, na tela (ver grande, gravar ou baixar). */
 function MapaDoJogador({ a, d }: { a: AnalisePartida; d: DesempenhoNoJogo }) {
   const [estado, setEstado] = useState<'' | 'gerando' | 'sem-mapa'>('')
-  async function baixar() {
+  const [galeria, setGaleria] = useState<Cartao[] | null>(null)
+  async function mostrar() {
     setEstado('gerando')
     const mapa = await mapaDe(a.partida.id)
-    setEstado(mapa && (await cartaoDoJogador(a, mapa, d)) ? '' : 'sem-mapa')
+    const cartoes = mapa ? await coletar(() => cartaoDoJogador(a, mapa, d)) : []
+    setEstado(cartoes.length ? '' : 'sem-mapa')
+    if (cartoes.length) setGaleria(cartoes)
   }
   return (
     <div className="pos-jogo-acoes">
-      <button className="btn para-video" onClick={baixar} disabled={estado === 'gerando'} title="Baixa o cartão 1080x1920 com onde ele teve a bola e as finalizações dele">
+      {galeria && <GaleriaVideo titulo={`Mapa de ${d.nome}`} cartoes={galeria} onFechar={() => setGaleria(null)} />}
+      <button className="btn para-video" onClick={mostrar} disabled={estado === 'gerando'} title="Mostra o cartão 1080x1920 com onde ele teve a bola e as finalizações dele">
         {estado === 'gerando' ? 'Gerando…' : `🎬 Mapa de ${d.nome}`}
       </button>
       {estado === 'sem-mapa' && <span className="card-sub">Sem mapa deste jogador (copa, jogo recente ou nome diferente na fonte).</span>}

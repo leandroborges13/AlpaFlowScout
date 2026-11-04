@@ -355,3 +355,17 @@ button.lt-quad:hover, button.lt-quad:focus-visible { outline: 2px solid var(--in
 .confronto b { font-size: 24px; }
 .lista-jogos { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
 .lista-jogos .card { cursor: default; }
+/* Galeria do "Para vídeo": os cartões na tela e o modo grande para gravar */
+.galeria { max-width: min(1200px, 96vw); }
+.galeria-topo { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.galeria-topo h3 { margin: 0; }
+.galeria-lista { display: flex; gap: 12px; overflow-x: auto; padding: 6px 2px 12px; }
+.galeria-item { flex: none; padding: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #07170f; cursor: zoom-in; }
+.galeria-item img { display: block; height: min(62vh, 560px); width: auto; }
+.galeria-palco { position: fixed; inset: 0; z-index: 60; background: #000; display: grid; place-items: center; }
+.galeria-palco img { height: 100vh; width: auto; max-width: 100vw; object-fit: contain; }
+.galeria-controles { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; align-items: center;
+  flex-wrap: wrap; justify-content: center; background: rgba(20, 28, 25, .88); color: #fff; padding: 8px 12px; border-radius: 14px; }
+/* No campo: o mapa de finalizações e o de calor dentro da análise da partida */
+.no-campo { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+.no-campo img { width: 100%; border-radius: 12px; display: block; }

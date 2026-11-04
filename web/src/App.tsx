@@ -6,7 +6,8 @@ import { PainelAtleta } from './PainelAtleta'
 import { CartaoPartida, PainelPartida } from './PainelPartida'
 import { CartaoTime, PainelTime } from './PainelTime'
 import { CartaoTreinador, PainelTreinador } from './PainelTreinador'
-import { cartaoDaResposta } from './ParaVideo'
+import { GaleriaVideo } from './GaleriaVideo'
+import { cartaoDaResposta, coletar, type Cartao } from './ParaVideo'
 
 const SUGESTOES = [
   'Meu time joga no 3-4-3. Preciso de um zagueiro pela esquerda, bom no jogo aéreo e na saída de bola, até 25 anos',
@@ -45,6 +46,7 @@ function Plataforma({ usuario, onSair }: { usuario: string; onSair: () => void }
   const [treinadorAberto, setTreinadorAberto] = useState<Pick<ResumoTreinador, 'id' | 'nome'> | null>(null)
   const [partidaAberta, setPartidaAberta] = useState<ResumoPartida | null>(null)
   const [gravacao, setGravacao] = useState(lerModoGravacao)
+  const [galeria, setGaleria] = useState<{ titulo: string; cartoes: Cartao[] } | null>(null)
   const fim = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -111,7 +113,8 @@ function Plataforma({ usuario, onSair }: { usuario: string; onSair: () => void }
           <div key={i} className={`msg ${m.papel}`}>
             <div className="balao">{m.texto}</div>
             {m.papel === 'assistant' && i > 0 && !gravacao && !m.texto.startsWith('Não consegui responder') && (
-              <button className="btn para-video" onClick={() => cartaoDaResposta(mensagens[i - 1].texto, m.texto)} title="Baixa a resposta em imagem 1080x1920 para o Short">
+              <button className="btn para-video" title="Mostra a resposta em cartão 1080x1920 para o Short (ver grande, gravar ou baixar)"
+                onClick={async () => setGaleria({ titulo: 'Resposta para vídeo', cartoes: await coletar(() => cartaoDaResposta(mensagens[i - 1].texto, m.texto)) })}>
                 🎬 Para vídeo
               </button>
             )}
@@ -164,6 +167,7 @@ function Plataforma({ usuario, onSair }: { usuario: string; onSair: () => void }
       {treinadorAberto && <PainelTreinador treinador={treinadorAberto} gravacao={gravacao} onFechar={() => setTreinadorAberto(null)}
         onAbrirAtleta={(a) => { setTreinadorAberto(null); setAberto(a) }} />}
       {partidaAberta && <PainelPartida partida={partidaAberta} gravacao={gravacao} onFechar={() => setPartidaAberta(null)} />}
+      {galeria && <GaleriaVideo titulo={galeria.titulo} cartoes={galeria.cartoes} onFechar={() => setGaleria(null)} />}
     </div>
   )
 }

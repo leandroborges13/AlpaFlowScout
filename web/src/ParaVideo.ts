@@ -94,14 +94,31 @@ function moldura(ctx: Ctx, selo: string, titulo: string, tamanhoTitulo = 64) {
   ctx.textAlign = 'left'
 }
 
+/** Um cartão pronto: o nome do arquivo (sem .png) e a imagem. */
+export type Cartao = { nome: string; canvas: HTMLCanvasElement }
+
+// Durante coletar(), os cartões vão para a galeria da tela em vez de baixar
+let coletados: Cartao[] | null = null
+
 async function baixar(c: HTMLCanvasElement, nome: string) {
-  const blob = await new Promise<Blob | null>((ok) => c.toBlob(ok, 'image/png'))
+  if (coletados) { coletados.push({ nome, canvas: c }); return }
+  await baixarCartao({ nome, canvas: c })
+}
+
+export async function baixarCartao({ nome, canvas }: Cartao) {
+  const blob = await new Promise<Blob | null>((ok) => canvas.toBlob(ok, 'image/png'))
   if (!blob) return
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)
   a.download = `${nome}.png`
   a.click()
   setTimeout(() => URL.revokeObjectURL(a.href), 5000)
+}
+
+/** Roda os geradores (cartaoDaResposta, cartoesDaPartida, cartaoDoJogador) e devolve os cartões em vez de baixar. */
+export async function coletar(gerar: () => Promise<unknown>): Promise<Cartao[]> {
+  coletados = []
+  try { await gerar(); return coletados } finally { coletados = null }
 }
 
 const nomeDeArquivo = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase().slice(0, 50)
@@ -311,6 +328,28 @@ export async function cartaoDoJogador(a: AnalisePartida, mapa: MapaDaPartida, d:
   return true
 }
 
+/**
+ * "No campo" do painel da partida: o mapa de finalizações (a janela do 4º cartão) e o de calor (a parte de baixo), recortados
+ * do cartão para a análise na tela. calor é nulo quando a fonte não tem o mapa do time.
+ */
+export async function recortesDoMapa(a: AnalisePartida, mapa: MapaDaPartida): Promise<{ finalizacoes: string; calor: string | null }> {
+  await prontoParaDesenhar()
+  const p = a.partida
+  const [cartao] = await coletar(() => cartaoDoMapa(a, mapa, `${p.mandante} x ${p.visitante}`, 'mapa'))
+  const recorte = (y: number, h: number) => {
+    const c = document.createElement('canvas')
+    c.width = JANELA.w
+    c.height = h
+    c.getContext('2d')!.drawImage(cartao.canvas, JANELA.x, y, JANELA.w, h, 0, 0, JANELA.w, h)
+    return c.toDataURL('image/png')
+  }
+  const foco = p.visitanteId === TIME_DO_CANAL ? p.visitanteId : p.mandanteId
+  return {
+    finalizacoes: recorte(JANELA.y, JANELA.h),
+    calor: mapa.calor.some((t) => t.clubeId === foco && t.celulas.length > 0) ? recorte(JANELA.y + JANELA.h + 5, 700) : null,
+  }
+}
+
 /** O Galo (id 1062 no provedor) é o time do canal: quando joga, é ele que aparece atacando para a direita e no mapa de calor. */
 const TIME_DO_CANAL = 1062
 
@@ -382,7 +421,8 @@ async function cartaoDoMapa(a: AnalisePartida, mapa: MapaDaPartida, jogo: string
   ctx.textAlign = 'right'
   ctx.fillText(`← ${nomeDe(rivalId)} ataca ●`, JANELA.x + JANELA.w - 40, JANELA.y + 45)
   ctx.textAlign = 'left'
-  const g = campo(ctx, JANELA.x + 40, JANELA.y + 80, JANELA.w - 80)
+  // campo um pouco menor que a janela: o resumo e a legenda cabem dentro dela (o recorte do "No campo" e o Short usam só a janela)
+  const g = campo(ctx, JANELA.x + 60, JANELA.y + 75, JANELA.w - 120)
   // chances maiores primeiro, para a bolinha grande ficar por baixo e não esconder as outras
   for (const f of [...mapa.finalizacoes].sort((x, y) => y.xg - x.xg)) {
     const ehFoco = f.clubeId === foco
@@ -394,7 +434,7 @@ async function cartaoDoMapa(a: AnalisePartida, mapa: MapaDaPartida, jogo: string
   }
   const resumo = (fs: FinalizacaoNoMapa[]) =>
     `${fs.length} finalizações · ${fs.filter((f) => f.dentroDaArea).length} da área · ${fs.filter((f) => f.noAlvo).length} no alvo`
-  const yResumo = JANELA.y + 80 + g.h + 18
+  const yResumo = JANELA.y + 75 + g.h + 14
   fonte(ctx, 24, 700)
   ctx.textBaseline = 'top'
   ctx.fillStyle = COR.verde
@@ -405,7 +445,7 @@ async function cartaoDoMapa(a: AnalisePartida, mapa: MapaDaPartida, jogo: string
   ctx.textAlign = 'left'
   fonte(ctx, 20, 600)
   ctx.fillStyle = COR.suave
-  ctx.fillText(`Bolinha maior = chance mais clara · contorno amarelo = gol · dados: ${mapa.fonte}`, JANELA.x + 40, yResumo + 38)
+  ctx.fillText(`Bolinha maior = chance mais clara · contorno amarelo = gol · dados: ${mapa.fonte}`, JANELA.x + 40, yResumo + 34)
 
   // Embaixo da janela: onde o time do canal teve a bola
   const calor = mapa.calor.find((t) => t.clubeId === foco)
