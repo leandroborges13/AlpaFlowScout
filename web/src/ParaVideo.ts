@@ -1,4 +1,4 @@
-import type { AnalisePartida, FinalizacaoNoMapa, MapaDaPartida } from './api'
+import type { AnalisePartida, CalorDoJogador, DesempenhoNoJogo, FinalizacaoNoMapa, MapaDaPartida } from './api'
 
 // "Para vídeo": cartões 1080x1920 (9:16) para os Shorts do canal Futebol em Números, desenhados em canvas e baixados como PNG.
 // O conteúdo fica na janela 1000x735 em (40, 330), a mesma da moldura dos Shorts: o cartão entra direto na montagem.
@@ -223,7 +223,92 @@ export async function cartoesDaPartida(a: AnalisePartida, mapa?: MapaDaPartida |
     await baixar(c, `${nome}-3-destaques`)
   }
 
-  if (mapa) await cartaoDoMapa(a, mapa, jogo, nome)
+  if (mapa) {
+    await cartaoDoMapa(a, mapa, jogo, nome)
+    // 5º: o mapa do destaque do time do canal (a maior nota entre os que a fonte do mapa também tem)
+    const foco = p.visitanteId === TIME_DO_CANAL ? p.visitanteId : p.mandanteId
+    const destaque = (a.desempenhos ?? []).filter((d) => d.clubeId === foco && d.nota != null)
+      .sort((x, y) => y.nota! - x.nota!).find((d) => ligarJogador(d.nome, d.clubeId, mapa))
+    if (destaque) await cartaoDoJogador(a, mapa, destaque, '5-destaque')
+  }
+}
+
+const SEM_PESO = new Set(['de', 'da', 'do', 'dos', 'das', 'jr', 'junior', 'filho', 'neto'])
+const tokens = (nome: string) => nome.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  .split(/[^a-z]+/).filter((t) => t.length >= 3 && !SEM_PESO.has(t))
+function distancia(a: string, b: string) {
+  const d = Array.from({ length: b.length + 1 }, (_, j) => j)
+  for (let i = 1; i <= a.length; i++) {
+    let anterior = d[0]
+    d[0] = i
+    for (let j = 1; j <= b.length; j++) {
+      const guardado = d[j]
+      d[j] = Math.min(d[j] + 1, d[j - 1] + 1, anterior + (a[i - 1] === b[j - 1] ? 0 : 1))
+      anterior = guardado
+    }
+  }
+  return d[b.length]
+}
+const parecidos = (a: string, b: string) => a === b || (Math.min(a.length, b.length) >= 4 && (distancia(a, b) <= 1 || a.startsWith(b) || b.startsWith(a)))
+
+/**
+ * O mapa de calor do nosso atleta na fonte do mapa, que escreve os nomes de outro jeito ("Vitor Hugo" x "Victor Hugo",
+ * "K. Castaño" x "Kevin Castaño"). Só no mesmo time, e só quando todas as partes do nome mais curto batem com o outro.
+ * Empate ou nada parecido: null (melhor não mostrar do que mostrar o mapa de outra pessoa).
+ */
+export function ligarJogador(nome: string, clubeId: number, mapa: MapaDaPartida): CalorDoJogador | null {
+  const nossos = tokens(nome)
+  if (nossos.length === 0) return null
+  const candidatos = (mapa.jogadores ?? []).filter((j) => j.clubeId === clubeId).map((j) => {
+    const deles = tokens(j.nome)
+    const [curto, longo] = nossos.length <= deles.length ? [nossos, deles] : [deles, nossos]
+    const batem = curto.filter((t) => longo.some((o) => parecidos(t, o))).length
+    // parte idêntica vale mais que parecida: o Galo tem "Vitor Hugo" (zagueiro) e "Victor Hugo" (meia), dois jogadores
+    const iguais = curto.filter((t) => longo.includes(t)).length
+    return { j, ok: curto.length > 0 && batem === curto.length, pontos: batem + iguais }
+  }).filter((c) => c.ok).sort((x, y) => y.pontos - x.pontos)
+  if (candidatos.length === 0 || (candidatos.length > 1 && candidatos[1].pontos === candidatos[0].pontos)) return null
+  return candidatos[0].j
+}
+
+/**
+ * Cartão de um jogador: na janela, onde ele teve a bola (mancha de calor, o time dele atacando para a direita) e as finalizações
+ * dele por cima. Devolve false quando a fonte do mapa não tem o jogador (aí não baixa nada).
+ */
+export async function cartaoDoJogador(a: AnalisePartida, mapa: MapaDaPartida, d: DesempenhoNoJogo, sufixo = 'jogador') {
+  const calor = ligarJogador(d.nome, d.clubeId, mapa)
+  if (!calor || calor.celulas.length === 0) return false
+  await prontoParaDesenhar()
+  const p = a.partida
+  const [c, ctx] = novaTela()
+  moldura(ctx, `${p.mandante} ${p.golsMandante ?? ''} x ${p.golsVisitante ?? ''} ${p.visitante}`, `Onde ${d.nome} jogou`)
+  const feitos = [d.gols ? `${d.gols} gol${d.gols > 1 ? 's' : ''}` : '', d.assistencias ? `${d.assistencias} assist.` : ''].filter(Boolean)
+  fonte(ctx, 30, 800)
+  ctx.textBaseline = 'middle'
+  ctx.fillStyle = COR.verde
+  ctx.fillText([d.nota != null ? `Nota ${Math.round(d.nota)} da IA` : '', d.funcao, ...feitos].filter(Boolean).join(' · '), JANELA.x + 40, JANELA.y + 45)
+  const k = mancha(ctx, JANELA.x + 40, JANELA.y + 85, JANELA.w - 80, calor.celulas, d.clubeId !== p.mandanteId)
+  // as finalizações dele (a fonte sempre manda atacando para a direita, como o campo acima)
+  const chutes = mapa.finalizacoes.filter((f) => f.clubeId === d.clubeId && f.jogador === calor.nome)
+  for (const f of chutes) {
+    ctx.beginPath()
+    ctx.arc(k.px(f.x), k.py(f.y), 9 + Math.sqrt(f.xg) * 42, 0, Math.PI * 2)
+    ctx.fillStyle = 'rgba(79,227,160,.75)'
+    ctx.fill()
+    ctx.lineWidth = f.gol ? 5 : 2
+    ctx.strokeStyle = f.gol ? '#ffd166' : '#ffffff'
+    ctx.stroke()
+  }
+  fonte(ctx, 24, 700)
+  ctx.textBaseline = 'top'
+  ctx.fillStyle = COR.texto
+  const finalizacoes = chutes.length ? ` · ${chutes.length} finalizaç${chutes.length > 1 ? 'ões' : 'ão'} (bolinhas)` : ''
+  ctx.fillText(`${calor.acoes} ações com a bola${finalizacoes} · ataca para a direita →`, JANELA.x + 40, JANELA.y + 85 + k.h + 18)
+  fonte(ctx, 20, 600)
+  ctx.fillStyle = COR.suave
+  ctx.fillText(`Quanto mais quente, mais vezes ele teve a bola ali · dados: ${mapa.fonte}`, JANELA.x + 40, JANELA.y + 85 + k.h + 56)
+  await baixar(c, `${nomeDeArquivo(`${p.mandante}-${p.visitante}`)}-${sufixo}-${nomeDeArquivo(d.nome)}`)
+  return true
 }
 
 /** O Galo (id 1062 no provedor) é o time do canal: quando joga, é ele que aparece atacando para a direita e no mapa de calor. */
@@ -242,6 +327,38 @@ function campo(ctx: Ctx, x: number, y: number, w: number, fundo = true) {
   ctx.strokeRect(x, y + (h - ay) / 2, ax, ay)
   ctx.strokeRect(x + w - ax, y + (h - ay) / 2, ax, ay)
   return { h, px: (m: number) => x + (m / 105) * w, py: (m: number) => y + (m / 68) * h }
+}
+
+/**
+ * Campo com a mancha de calor da grade 16x12 ([x, y, ações], mandante atacando para a direita); `espelha` vira o campo para o
+ * visitante também atacar para a direita. A grade numa telinha, ampliada com suavização e desfoque, vira a "mancha".
+ */
+function mancha(ctx: Ctx, x0: number, y0: number, largura: number, celulas: number[][], espelha: boolean) {
+  const k = campo(ctx, x0, y0, largura)
+  const mini = document.createElement('canvas')
+  mini.width = 16
+  mini.height = 12
+  const m = mini.getContext('2d')!
+  // pico pelo percentil 90 (uma célula fora da curva não apaga o resto) e as de pouca ação quase transparentes:
+  // assim aparece onde se concentrou, e não uma mancha uniforme
+  const valores = celulas.map((cel) => cel[2]).sort((x, y) => x - y)
+  const pico = valores[Math.floor(valores.length * 0.9)] || 1
+  for (const [cx, cy, n] of celulas) {
+    const t = Math.min(1, n / pico)
+    m.fillStyle = `rgba(255, ${Math.round(225 - 175 * t)}, 60, ${Math.pow(t, 1.6).toFixed(2)})`
+    m.fillRect(espelha ? 15 - cx : cx, espelha ? 11 - cy : cy, 1, 1)
+  }
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(x0, y0, largura, k.h)
+  ctx.clip()
+  ctx.imageSmoothingEnabled = true
+  ctx.filter = 'blur(16px)'
+  ctx.globalAlpha = 0.95
+  ctx.drawImage(mini, x0, y0, largura, k.h)
+  ctx.restore()
+  campo(ctx, x0, y0, largura, false) // as linhas por cima da mancha
+  return k
 }
 
 /**
@@ -299,32 +416,7 @@ async function cartaoDoMapa(a: AnalisePartida, mapa: MapaDaPartida, jogo: string
     ctx.fillText(`Onde o ${nomeDe(foco)} teve a bola`, L / 2, JANELA.y + JANELA.h + 30)
     ctx.textAlign = 'left'
     const largura = 860, x0 = (L - largura) / 2, y0 = JANELA.y + JANELA.h + 95
-    const k = campo(ctx, x0, y0, largura)
-    // a grade 16x12 numa telinha, ampliada com suavização e desfoque, vira a "mancha" de calor
-    const mini = document.createElement('canvas')
-    mini.width = 16
-    mini.height = 12
-    const m = mini.getContext('2d')!
-    // pico pelo percentil 90 (uma célula fora da curva não apaga o resto) e as de pouca ação quase transparentes:
-    // assim aparece onde o time se concentrou, e não uma mancha uniforme
-    const valores = calor.celulas.map((cel) => cel[2]).sort((x, y) => x - y)
-    const pico = valores[Math.floor(valores.length * 0.9)] || 1
-    const espelha = foco !== p.mandanteId
-    for (const [cx, cy, n] of calor.celulas) {
-      const t = Math.min(1, n / pico)
-      m.fillStyle = `rgba(255, ${Math.round(225 - 175 * t)}, 60, ${Math.pow(t, 1.6).toFixed(2)})`
-      m.fillRect(espelha ? 15 - cx : cx, espelha ? 11 - cy : cy, 1, 1)
-    }
-    ctx.save()
-    ctx.beginPath()
-    ctx.rect(x0, y0, largura, k.h)
-    ctx.clip()
-    ctx.imageSmoothingEnabled = true
-    ctx.filter = 'blur(16px)'
-    ctx.globalAlpha = 0.95
-    ctx.drawImage(mini, x0, y0, largura, k.h)
-    ctx.restore()
-    campo(ctx, x0, y0, largura, false) // as linhas por cima da mancha
+    const k = mancha(ctx, x0, y0, largura, calor.celulas, foco !== p.mandanteId)
     fonte(ctx, 22, 600)
     ctx.fillStyle = COR.suave
     ctx.textAlign = 'center'

@@ -309,7 +309,12 @@ export type FinalizacaoNoMapa = {
   noAlvo: boolean; gol: boolean; dentroDaArea: boolean; situacao?: string | null
 }
 /** Mapa de uma fonte externa: finalizações e grade de calor 16x12 ([x, y, ações]) com o mandante atacando para a direita. */
-export type MapaDaPartida = { finalizacoes: FinalizacaoNoMapa[]; calor: { clubeId: number; acoes: number; celulas: number[][] }[]; fonte: string }
+/** O mapa de um jogador, com o nome da fonte do mapa (pode diferir do nosso; ver ligarJogador). */
+export type CalorDoJogador = { clubeId: number; nome: string; camisa?: number | null; acoes: number; celulas: number[][] }
+export type MapaDaPartida = {
+  finalizacoes: FinalizacaoNoMapa[]; calor: { clubeId: number; acoes: number; celulas: number[][] }[]; fonte: string
+  jogadores?: CalorDoJogador[] | null
+}
 
 /** Roteiro do Short de pós-jogo (canal Futebol em Números), escrito pela IA. */
 export type RoteiroPosJogo = { partidaId: number; texto: string; criadoEm: string; avisadoEm?: string | null }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { api, type AnalisePartida, type DesempenhoNoJogo, type EventoDaPartida, type LadoDaPartida, type ResumoPartida, type RoteiroPosJogo } from './api'
-import { cartoesDaPartida } from './ParaVideo'
+import { api, type AnalisePartida, type DesempenhoNoJogo, type EventoDaPartida, type LadoDaPartida, type MapaDaPartida, type ResumoPartida, type RoteiroPosJogo } from './api'
+import { cartaoDoJogador, cartoesDaPartida } from './ParaVideo'
 import { Escudo } from './PainelTime'
 import { CampoDaPartida, DesempenhoNaPartida, Destaques, LinhaDoTempo } from './PartidaVisual'
 
@@ -97,6 +97,7 @@ export function PainelPartida({ partida, gravacao, onFechar }: PainelProps) {
                   </div>
                 )}
                 {aberto && <DesempenhoNaPartida key={aberto.atletaId} d={aberto} todos={desempenhos} timeNome={timeNome} timeDe={timeDe} onFechar={() => setSelecionado(null)} />}
+                {aberto && !gravacao && p.golsMandante != null && <MapaDoJogador key={`mapa-${aberto.atletaId}`} a={a} d={aberto} />}
               </section>
             )}
 
@@ -217,6 +218,31 @@ function PosJogo({ a }: { a: AnalisePartida }) {
       {erro && <p className="erro">{erro}</p>}
       {roteiro && <pre className="roteiro">{roteiro.texto}</pre>}
     </section>
+  )
+}
+
+// O mapa vem de outra fonte: busca uma vez por partida (cada jogador aberto reaproveita)
+const mapas = new Map<number, Promise<MapaDaPartida | null>>()
+const mapaDe = (id: number) => {
+  if (!mapas.has(id)) mapas.set(id, api.mapa(id).catch(() => null))
+  return mapas.get(id)!
+}
+
+/** "Mapa dele": baixa o cartão com a mancha de calor e as finalizações do jogador aberto no campinho. */
+function MapaDoJogador({ a, d }: { a: AnalisePartida; d: DesempenhoNoJogo }) {
+  const [estado, setEstado] = useState<'' | 'gerando' | 'sem-mapa'>('')
+  async function baixar() {
+    setEstado('gerando')
+    const mapa = await mapaDe(a.partida.id)
+    setEstado(mapa && (await cartaoDoJogador(a, mapa, d)) ? '' : 'sem-mapa')
+  }
+  return (
+    <div className="pos-jogo-acoes">
+      <button className="btn para-video" onClick={baixar} disabled={estado === 'gerando'} title="Baixa o cartão 1080x1920 com onde ele teve a bola e as finalizações dele">
+        {estado === 'gerando' ? 'Gerando…' : `🎬 Mapa de ${d.nome}`}
+      </button>
+      {estado === 'sem-mapa' && <span className="card-sub">Sem mapa deste jogador (copa, jogo recente ou nome diferente na fonte).</span>}
+    </div>
   )
 }
 

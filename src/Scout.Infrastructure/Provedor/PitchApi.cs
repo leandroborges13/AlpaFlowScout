@@ -49,7 +49,15 @@ public class PitchApi(HttpClient http, IConfiguration config, IMemoryCache cache
                     Numero(t, "actions") is { } a ? (int)a : 0,
                     t.GetProperty("cells").EnumerateArray().Select(c => c.EnumerateArray().Select(v => v.GetInt32()).ToArray()).ToList()))
                 .ToList();
-            return finalizacoes.Count == 0 && times.Count == 0 ? null : new MapaDaPartida(finalizacoes, times, "PitchAPI");
+            var jogadores = calor.TryGetProperty("players", out var lista) ? lista.EnumerateArray()
+                .Select(j => new CalorDoJogador(
+                    Texto(j, "side") == "home" ? p.MandanteId : p.VisitanteId,
+                    Texto(j, "player", "name") ?? "?",
+                    Numero(j, "player", "shirt_number") is { } n ? (int)n : null,
+                    Numero(j, "actions") is { } a ? (int)a : 0,
+                    j.GetProperty("cells").EnumerateArray().Select(c => c.EnumerateArray().Select(v => v.GetInt32()).ToArray()).ToList()))
+                .ToList() : [];
+            return finalizacoes.Count == 0 && times.Count == 0 ? null : new MapaDaPartida(finalizacoes, times, "PitchAPI", jogadores);
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
