@@ -58,8 +58,11 @@ public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<Anal
             Treinadores = new { Mandante = a.Mandante.Treinador, Visitante = a.Visitante.Treinador },
             Gols = gols,
             Expulsoes = lances.Where(e => e.Tipo == "Cartão vermelho").Select(e => new { Minuto = Minuto(e), Time = Time(e.ClubeId), e.Jogador }),
-            // Percentil do aspecto: comparação do time com os PRÓPRIOS jogos na temporada (0 a 100)
-            Aspectos = a.Aspectos.Select(x => new { x.Aspecto, x.Vantagem, x.PercentilMandante, x.PercentilVisitante }),
+            // Percentil do aspecto já como frase ("pior que em 89% dos próprios jogos"): com o número cru a IA escreveu
+            // "só 11% do seu melhor desempenho". Com o mapa, finalização se conta pelo mapa e sai daqui (as duas fontes divergem).
+            Aspectos = a.Aspectos
+                .Where(x => mapa is null || !x.Aspecto.Contains("inaliza", StringComparison.OrdinalIgnoreCase))
+                .Select(x => new { x.Aspecto, x.Vantagem, Mandante = Leitura(x.PercentilMandante), Visitante = Leitura(x.PercentilVisitante) }),
             Destaques = (a.Desempenhos ?? []).Where(d => d.Nota is not null).OrderByDescending(d => d.Nota).Take(6)
                 .Select(d => new { d.Nome, Time = Time(d.ClubeId), d.Funcao, Nota = Math.Round(d.Nota!.Value), d.Gols, d.Assistencias }),
             a.Observacoes,
@@ -76,6 +79,11 @@ public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<Anal
         });
     }
 
+    /// <summary>Percentil (0 a 100) como frase: 79 → "melhor que em 79% dos próprios jogos", 11 → "pior que em 89% dos próprios jogos".</summary>
+    public static string? Leitura(double? percentil) => percentil is not { } v ? null
+        : v >= 50 ? $"melhor que em {Math.Round(v)}% dos próprios jogos da temporada"
+        : $"pior que em {Math.Round(100 - v)}% dos próprios jogos da temporada";
+
     const string Instrucoes = """
         Você escreve o roteiro do Short de pós-jogo do canal "Futebol em Números" (YouTube e TikTok), do Leandro, torcedor do Galo
         (Atlético-MG) que analisa futebol com a IA do AlpaFlow Scout. Escreva em português do Brasil, tom de conversa de torcedor que
@@ -88,15 +96,18 @@ public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<Anal
         frase, explique onde o jogo foi ganho ou perdido com 2 ou 3 aspectos, cite 1 ou 2 destaques pela nota da IA e termine com
         "Me segue que no próximo jogo tem mais." Antes dessa frase, cite o próximo jogo do Galo (ou, se o Galo não jogou, do time
         que venceu), pelo ProximoJogo daquele time. Nunca anuncie o próximo jogo do outro time.
-        CARTÕES: 3 linhas curtas com o que mostrar na tela, na ordem da fala (placar, os aspectos, os destaques).
+        CARTÕES: linhas curtas com o que mostrar na tela, na ordem da fala (placar, os aspectos, os destaques e, se houver
+        Finalizacoes, o mapa de finalizações).
         LEGENDA: 2 ou 3 frases para o post, mais 4 ou 5 hashtags (#Galo #Atlético quando o jogo for do Galo, a competição, o adversário).
 
         Regras dos números:
-        - Percentil de aspecto compara o time com os próprios jogos da temporada: diga "finalizou mais que em 85% dos próprios jogos",
-          nunca "85% das finalizações". Não cite números brutos de posse (%) nem de passes. Finalizações, só pelas contagens de Finalizacoes.
-        - "Chances criadas (xG)" também é percentil: nunca diga o valor do xG.
-        - Finalizacoes (quando vier) são contagens reais do jogo: pode dizer "17 finalizações, só 5 de dentro da área". O cartão do
-          mapa mostra onde foi cada uma; cite-o na fala quando ajudar a explicar o resultado ("olha no mapa: quase tudo de fora da área").
+        - Cada aspecto já vem escrito para cada time ("melhor que em 79% dos próprios jogos da temporada", "pior que em 89%...").
+          Use essas frases como estão, nunca transforme em outra porcentagem ("só 11% do melhor desempenho" está errado).
+          Não cite números brutos de posse (%) nem de passes.
+        - "Chances criadas (xG)" também vem como frase: nunca diga um valor de xG.
+        - Quando vier Finalizacoes (contagens reais do jogo, do mapa): a FALA tem de ter uma frase com elas, comparando os dois times
+          ("o Galo finalizou 17 vezes, 13 de dentro da área, e acertou o alvo 9 vezes, igual ao Cruzeiro") e chamando o mapa
+          ("olha no mapa"). Finalização se fala só por essas contagens, nunca por percentil.
         - Percentil não é quantidade: nunca compare os dois times em "o dobro" ou "mais escanteios que o rival" pelos percentis.
         - Nota do jogo vai de 0 a 100 e é da IA: "nota 78 da IA".
         - Se o jogo foi decidido nos pênaltis ou na prorrogação (Desfecho), diga.

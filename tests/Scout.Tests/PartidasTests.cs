@@ -204,4 +204,12 @@ public class PartidasTests
         // e o jogo do outro time no mesmo horário não confunde: só serve se o nome bater
         Assert.Null(Scout.Infrastructure.Provedor.PitchApi.Achar(jogos, deBrasilia with { Mandante = "Bahia", Visitante = "Vitoria" }));
     }
+
+    [Fact]
+    public void Percentil_do_aspecto_vai_para_o_roteiro_ja_como_frase()
+    {
+        Assert.Equal("melhor que em 79% dos próprios jogos da temporada", Scout.Application.Chat.RoteiristaPosJogo.Leitura(79));
+        Assert.Equal("pior que em 89% dos próprios jogos da temporada", Scout.Application.Chat.RoteiristaPosJogo.Leitura(11));
+        Assert.Null(Scout.Application.Chat.RoteiristaPosJogo.Leitura(null));
+    }
 }
