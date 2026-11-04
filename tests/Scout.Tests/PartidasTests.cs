@@ -230,4 +230,37 @@ public class PartidasTests
         var jaTem = "FALA: O Galo finalizou 2 vezes e perdeu. Me segue que no próximo jogo tem mais.\n\nCARTÕES:";
         Assert.Equal(jaTem, Scout.Application.Chat.RoteiristaPosJogo.ComFraseDoMapa(jaTem, frase));
     }
+
+    [Fact]
+    public void Ultimos_jogos_contam_so_os_disputados_e_o_de_hoje_vem_a_parte()
+    {
+        // Flamengo em 04/11/2026: o jogo de hoje com o Grêmio ainda não começou; os 5 anteriores no Brasileirão
+        ResumoPartida J(int id, int dia, string st, string m, string v, int? gm, int? gv) =>
+            new(id, new DateTime(2026, 10, dia, 20, 0, 0), null, 71, "Serie A", 2026, st, m == "Flamengo" ? 1 : id + 100, m, null,
+                v == "Flamengo" ? 1 : id + 100, v, null, gm, gv);
+        var jogos = new List<ResumoPartida>
+        {
+            new(6, new DateTime(2026, 11, 4, 19, 30, 0), null, 71, "Serie A", 2026, "NS", 1, "Flamengo", null, 99, "Gremio", null, null, null),
+            J(5, 29, "FT", "Vasco DA Gama", "Flamengo", 1, 4), J(4, 26, "FT", "Flamengo", "Atletico-MG", 3, 2),
+            J(3, 18, "FT", "Bahia", "Flamengo", 0, 3), J(2, 11, "FT", "Flamengo", "Fluminense", 1, 0), J(1, 8, "FT", "Santos", "Flamengo", 2, 2),
+        };
+        var r = ProcurarPartidasHandler.Organizar(jogos, "Flamengo");
+        Assert.Equal(new ResumoDosJogos(5, 4, 1, 0, 13, 15, 13, 5), r.ResumoDosDisputados);
+        var hoje = Assert.Single(r.NaoDisputados);
+        Assert.Equal("Gremio", hoje.Adversario);
+        Assert.Equal("ainda não disputado", hoje.Situacao);
+        Assert.Null(hoje.Resultado);
+        Assert.Equal("fora", r.Disputados[0].Mando);
+        Assert.Equal("vitória", r.Disputados[0].Resultado);
+        Assert.Equal("empate", r.Disputados[4].Resultado);
+    }
+
+    [Fact]
+    public void O_limite_vale_so_para_jogos_encerrados()
+    {
+        Scout.Domain.Partida P(int id, string st) => new() { Id = id, Status = st };
+        var lista = new List<Scout.Domain.Partida> { P(9, "NS"), P(8, "FT"), P(7, "PST"), P(6, "FT"), P(5, "PEN"), P(4, "FT") };
+        var r = ProcurarPartidasHandler.SoEncerradasNoLimite(lista, 2);
+        Assert.Equal([9, 8, 7, 6], r.Select(p => p.Id));
+    }
 }

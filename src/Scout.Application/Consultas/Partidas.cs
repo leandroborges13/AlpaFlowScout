@@ -66,6 +66,15 @@ public record AnalisePartida(ResumoPartida Partida, LadoDaPartida Mandante, Lado
 
 // ---------- Procurar partidas ----------
 
+/// <summary>Um jogo do ponto de vista do time pedido. `Resultado` só nos encerrados; `Situacao` só nos que não terminaram.</summary>
+public record JogoDoTime(int Id, string Data, string DiaDaSemana, string Competicao, string? Rodada, string Mando, string Adversario,
+    string Mandante, string Visitante, int? GolsMandante, int? GolsVisitante, string? Resultado, string? Situacao);
+
+/// <summary>Só os jogos disputados. Pontos valem como numa liga (3 por vitória, 1 por empate), mesmo que haja jogo de copa na lista.</summary>
+public record ResumoDosJogos(int Jogos, int Vitorias, int Empates, int Derrotas, int Pontos, int PontosPossiveis, int GolsPro, int GolsContra);
+
+public record JogosDoTime(ResumoDosJogos ResumoDosDisputados, IReadOnlyList<JogoDoTime> Disputados, IReadOnlyList<JogoDoTime> NaoDisputados);
+
 /// <summary>"Galo x Santos no sábado": partidas de um time, com o adversário e o período opcionais, da mais recente para a mais antiga.
 /// `Resultado` ("vitoria", "empate", "derrota") e `DiferencaMinima` (gols de diferença no placar) são do ponto de vista do time:
 /// "vitórias por mais de dois gols" = Resultado "vitoria" e DiferencaMinima 3.</summary>
@@ -123,9 +132,58 @@ public class ProcurarPartidasHandler(IScoutDb db) : IQueryHandler<ProcurarPartid
             ? (await consulta.Where(p => p.GolsMandante != null && p.GolsVisitante != null).ToListAsync(ct))
                 .Where(p => p.Encerrada && AtendeResultado(times.Contains(p.MandanteId), p.GolsMandante, p.GolsVisitante, q.Resultado, q.DiferencaMinima))
                 .Take(limite).ToList()
-            : await consulta.Take(limite).ToListAsync(ct);
+            : SoEncerradasNoLimite(await consulta.Take(limite + 10).ToListAsync(ct), limite);
         return await Resumir(db, partidas, ct);
     }
+
+    /// <summary>
+    /// "Os últimos 5 jogos" são 5 jogos já disputados: o limite vale só para os encerrados. Os que ainda não terminaram (o jogo de
+    /// hoje, o de amanhã, um adiado) vêm junto, sem ocupar vaga, para o próximo jogo continuar aparecendo.
+    /// </summary>
+    public static List<Partida> SoEncerradasNoLimite(List<Partida> maisRecentesPrimeiro, int limite)
+    {
+        var encerradas = 0;
+        return maisRecentesPrimeiro.Where(p => !p.Encerrada || encerradas++ < limite).ToList();
+    }
+
+    /// <summary>
+    /// Os jogos do ponto de vista do time pedido, separados em disputados e não disputados, com o resumo já contado (V/E/D, pontos,
+    /// gols): a IA não soma placares nem conta o jogo de hoje como se já tivesse acontecido. O time de cada jogo é o lado cujo nome
+    /// mais se parece com o pedido (com adversário, os dois lados aparecem em todos os jogos).
+    /// </summary>
+    public static JogosDoTime Organizar(IReadOnlyList<ResumoPartida> partidas, string time)
+    {
+        var busca = BuscaPorNome.TraduzirApelido(time);
+        var disputados = new List<JogoDoTime>();
+        var naoDisputados = new List<JogoDoTime>();
+        var gols = new List<(int Pro, int Contra)>();
+        foreach (var p in partidas)
+        {
+            var mandante = BuscaPorNome.Pontuar(busca, p.Mandante) >= BuscaPorNome.Pontuar(busca, p.Visitante);
+            var (pro, contra) = mandante ? (p.GolsMandante, p.GolsVisitante) : (p.GolsVisitante, p.GolsMandante);
+            var encerrada = p.Status is "FT" or "AET" or "PEN" && pro is not null && contra is not null;
+            var resultado = !encerrada ? null
+                : pro > contra ? "vitória" : pro < contra ? "derrota" : p.Status == "PEN" ? "empate (decidido nos pênaltis)" : "empate";
+            var jogo = new JogoDoTime(p.Id, p.Data.ToString("yyyy-MM-dd HH:mm"), p.Data.DayOfWeek.ToString(), p.Competicao, p.Rodada,
+                mandante ? "casa" : "fora", mandante ? p.Visitante : p.Mandante, p.Mandante, p.Visitante,
+                encerrada ? p.GolsMandante : null, encerrada ? p.GolsVisitante : null, resultado, encerrada ? null : StatusEmPortugues(p.Status));
+            if (encerrada) { disputados.Add(jogo); gols.Add((pro!.Value, contra!.Value)); }
+            else naoDisputados.Add(jogo);
+        }
+        int Conta(string r) => disputados.Count(j => j.Resultado!.StartsWith(r));
+        var resumo = new ResumoDosJogos(disputados.Count, Conta("vitória"), Conta("empate"), Conta("derrota"),
+            Conta("vitória") * 3 + Conta("empate"), disputados.Count * 3, gols.Sum(g => g.Pro), gols.Sum(g => g.Contra));
+        return new JogosDoTime(resumo, disputados, naoDisputados);
+    }
+
+    static string StatusEmPortugues(string status) => status switch
+    {
+        "NS" or "TBD" => "ainda não disputado",
+        "PST" => "adiado",
+        "CANC" or "ABD" or "AWD" or "WO" => "cancelado, interrompido ou decidido fora de campo",
+        "1H" or "HT" or "2H" or "ET" or "BT" or "P" or "LIVE" or "INT" or "SUSP" => "em andamento",
+        _ => "não encerrado",
+    };
 
     public static async Task<List<ResumoPartida>> Resumir(IScoutDb db, List<Partida> partidas, CancellationToken ct)
     {

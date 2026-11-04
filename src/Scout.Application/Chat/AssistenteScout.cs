@@ -345,10 +345,12 @@ public class AssistenteScout(
                 {
                     DateOnly? Data(string? s) => DateOnly.TryParse(s, System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : null;
                     var r = await procurarPartidas.Handle(new ProcurarPartidas(time, adversario, Data(de), Data(ate), limite ?? 8, competicao, resultado, diferencaMinima), ct);
-                    return r.Select(p => new { p.Id, Data = p.Data.ToString("yyyy-MM-dd"), DiaDaSemana = p.Data.DayOfWeek.ToString(), p.Competicao, p.Rodada, p.Mandante, p.Visitante, p.GolsMandante, p.GolsVisitante, p.Status });
+                    return ProcurarPartidasHandler.Organizar(r, time);
                 },
                 "procurar_partidas",
-                "Partidas de um time (com o adversário, o período, o resultado e a diferença de gols opcionais), da mais recente para a mais antiga, com o ID para analisar."),
+                "Partidas de um time (com o adversário, o período, o resultado e a diferença de gols opcionais), da mais recente para a mais antiga, com o ID para analisar. " +
+                "O limite conta só jogos já disputados ('últimos 5' = limite 5); os que ainda não terminaram (hoje, amanhã, adiados) vêm à parte em NaoDisputados e nunca entram em resultado, pontos ou gols. " +
+                "Use o ResumoDosDisputados pronto (vitórias, empates, derrotas, pontos, gols pró e contra) em vez de somar placares."),
             AIFunctionFactory.Create(
                 async (int partidaId) =>
                 {
@@ -562,6 +564,8 @@ public class AssistenteScout(
         - "Chances criadas (xG)" também é percentil do time: nunca cite o valor do xG, diga "criou mais chances que em 90% dos próprios jogos".
         - Contar ou listar jogos ("quantas vitórias", "liste os jogos") = procurar_partidas com limite 50, sem competição (todas, salvo se
           citarem uma), e conte só o que veio. Se vierem exatamente 50, diga que podem existir mais e mostre o período coberto.
+        - "Últimos N jogos" / "fase recente" = procurar_partidas com limite N (e a competição, se pedirem só a liga). Use o ResumoDosDisputados
+          como está; jogo em NaoDisputados é o próximo jogo, nunca parte dos últimos.
         - "Ganhou por mais de dois gols", "venceu por 3 ou mais", "goleadas" = DIFERENÇA no placar: resultado "vitoria" e diferencaMinima
           (mais de dois = 3; dois ou mais = 2; goleada = 3). "Perdeu por mais de dois" = resultado "derrota". Só "jogos com mais de dois
           gols" ou "mais de 2,5 gols" é a SOMA dos gols do jogo: aí traga os jogos (limite 50) e conte pelos placares.
