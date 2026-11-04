@@ -26,10 +26,43 @@ public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<Anal
 
         var roteiro = await db.RoteirosPosJogo.FirstOrDefaultAsync(r => r.PartidaId == partidaId, ct);
         if (roteiro is null) db.RoteirosPosJogo.Add(roteiro = new RoteiroPosJogo { PartidaId = partidaId });
-        roteiro.Texto = resposta.Text.Trim();
+        roteiro.Texto = ComFraseDoMapa(resposta.Text.Trim(), FraseDoMapa(a.Partida, mapa));
         roteiro.CriadoEm = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
         return roteiro;
+    }
+
+    const string Fecho = "Me segue que no próximo jogo tem mais.";
+
+    /// <summary>A frase das finalizações do mapa, pronta ("O Atletico-MG finalizou 17 vezes, 13 de dentro da área e 9 no alvo; ...").</summary>
+    public static string? FraseDoMapa(ResumoPartida p, MapaDaPartida? mapa)
+    {
+        if (mapa is null || mapa.Finalizacoes.Count == 0) return null;
+        string Do(int clubeId, string nome, bool primeiro)
+        {
+            var f = mapa.Finalizacoes.Where(x => x.ClubeId == clubeId).ToList();
+            return primeiro
+                ? $"O {nome} finalizou {f.Count} vezes, {f.Count(x => x.DentroDaArea)} de dentro da área e {f.Count(x => x.NoAlvo)} no alvo"
+                : $"o {nome}, {f.Count} vezes, {f.Count(x => x.DentroDaArea)} da área e {f.Count(x => x.NoAlvo)} no alvo";
+        }
+        return $"{Do(p.MandanteId, p.Mandante, true)}; {Do(p.VisitanteId, p.Visitante, false)}. Olha no mapa.";
+    }
+
+    /// <summary>
+    /// Garante a frase do mapa na FALA: a IA às vezes a esquece mesmo com a regra (aconteceu em produção). Se a fala não traz
+    /// o total de finalizações do mandante, a frase entra antes do fecho (ou no fim da fala).
+    /// </summary>
+    public static string ComFraseDoMapa(string texto, string? frase)
+    {
+        if (frase is null) return texto;
+        var total = System.Text.RegularExpressions.Regex.Match(frase, @"finalizou (\d+) vezes").Groups[1].Value;
+        var inicio = texto.IndexOf("FALA:", StringComparison.Ordinal);
+        if (inicio < 0) return texto;
+        var fim = texto.IndexOf("CARTÕES:", inicio, StringComparison.Ordinal);
+        var fala = fim < 0 ? texto[inicio..] : texto[inicio..fim];
+        if (fala.Contains($"{total} vezes") || fala.Contains($"{total} finaliza")) return texto;
+        var novaFala = fala.Contains(Fecho) ? fala.Replace(Fecho, $"{frase} {Fecho}") : $"{fala.TrimEnd()} {frase}\n\n";
+        return texto[..inicio] + novaFala + (fim < 0 ? "" : texto[fim..]);
     }
 
     /// <summary>O que a IA precisa da análise, sem escalações nem indicadores de cada atleta (deixa o pedido curto e focado).</summary>
@@ -67,6 +100,7 @@ public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<Anal
                 .Select(d => new { d.Nome, Time = Time(d.ClubeId), d.Funcao, Nota = Math.Round(d.Nota!.Value), d.Gols, d.Assistencias }),
             a.Observacoes,
             // do mapa de finalizações: contagens por time (o cartão "mapa" do vídeo mostra onde foi cada uma)
+            FraseDoMapa = FraseDoMapa(p, mapa),
             Finalizacoes = mapa is null ? null : new[] { (p.MandanteId, p.Mandante), (p.VisitanteId, p.Visitante) }.ToDictionary(t => t.Item2, t =>
             {
                 var doTime = mapa.Finalizacoes.Where(f => f.ClubeId == t.Item1).ToList();
@@ -105,6 +139,7 @@ public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<Anal
           Use essas frases como estão, nunca transforme em outra porcentagem ("só 11% do melhor desempenho" está errado).
           Não cite números brutos de posse (%) nem de passes.
         - "Chances criadas (xG)" também vem como frase: nunca diga um valor de xG.
+        - Quando vier FraseDoMapa, use-a na FALA (pode ajustar a ordem das palavras, nunca os números). É a frase das finalizações.
         - Quando vier Finalizacoes (contagens reais do jogo, do mapa): a FALA tem de ter uma frase com elas, comparando os dois times
           ("o Galo finalizou 17 vezes, 13 de dentro da área, e acertou o alvo 9 vezes, igual ao Cruzeiro") e chamando o mapa
           ("olha no mapa"). Finalização se fala só por essas contagens, nunca por percentil.

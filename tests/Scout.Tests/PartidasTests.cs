@@ -212,4 +212,22 @@ public class PartidasTests
         Assert.Equal("pior que em 89% dos próprios jogos da temporada", Scout.Application.Chat.RoteiristaPosJogo.Leitura(11));
         Assert.Null(Scout.Application.Chat.RoteiristaPosJogo.Leitura(null));
     }
+
+    [Fact]
+    public void Frase_do_mapa_entra_na_fala_quando_a_IA_esquece()
+    {
+        var p = new ResumoPartida(1, DateTime.UtcNow, null, 71, "Serie A", 2026, "FT", 10, "Galo", null, 20, "Cruzeiro", null, 0, 1);
+        FinalizacaoNoMapa F(int clube, bool area, bool alvo) => new(clube, "X", 10, 90, 34, 0.1, alvo, false, area, null);
+        var mapa = new MapaDaPartida([F(10, true, true), F(10, false, false), F(20, true, false)], [], "PitchAPI");
+        var frase = Scout.Application.Chat.RoteiristaPosJogo.FraseDoMapa(p, mapa);
+        Assert.Equal("O Galo finalizou 2 vezes, 1 de dentro da área e 1 no alvo; o Cruzeiro, 1 vezes, 1 da área e 0 no alvo. Olha no mapa.", frase);
+
+        var semFrase = "TÍTULO: t\n\nFALA: Perdemos. Me segue que no próximo jogo tem mais.\n\nCARTÕES:\nplacar";
+        var com = Scout.Application.Chat.RoteiristaPosJogo.ComFraseDoMapa(semFrase, frase);
+        Assert.Contains("Perdemos. O Galo finalizou 2 vezes", com);
+        Assert.EndsWith("Olha no mapa. Me segue que no próximo jogo tem mais.\n\nCARTÕES:\nplacar", com);
+        // se a IA já citou, não repete
+        var jaTem = "FALA: O Galo finalizou 2 vezes e perdeu. Me segue que no próximo jogo tem mais.\n\nCARTÕES:";
+        Assert.Equal(jaTem, Scout.Application.Chat.RoteiristaPosJogo.ComFraseDoMapa(jaTem, frase));
+    }
 }
