@@ -69,10 +69,13 @@ public class PitchApi(HttpClient http, IConfiguration config, IMemoryCache cache
     /// <summary>O jogo da lista com horário até 3 h do nosso e o mandante ou o visitante com o mesmo nome (sem acento e pontuação).</summary>
     public static (string Id, string? CasaId, string? ForaId)? Achar(JsonElement jogos, ResumoPartida p)
     {
+        // A nossa data vem no horário de Brasília (ProcurarPartidasHandler.Resumir); a da PitchAPI, em UTC
+        var nossa = p.Data.Kind == DateTimeKind.Utc ? p.Data
+            : TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(p.Data, DateTimeKind.Unspecified), ProcurarPartidasHandler.Brasilia);
         foreach (var j in jogos.EnumerateArray())
         {
             if (!DateTime.TryParse(Texto(j, "time_utc"), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var quando)) continue;
-            if (Math.Abs((quando - p.Data).TotalHours) > 3) continue;
+            if (Math.Abs((quando - nossa).TotalHours) > 3) continue;
             if (Nome(Texto(j, "home_team", "name")) != Nome(p.Mandante) && Nome(Texto(j, "away_team", "name")) != Nome(p.Visitante)) continue;
             return (Texto(j, "id")!, Texto(j, "home_team", "id"), Texto(j, "away_team", "id"));
         }

@@ -198,5 +198,10 @@ public class PartidasTests
         Assert.Equal(("m_29YTpa", "t_3K8ET0", "t_3npCjp"), achado);
         Assert.Equal("atleticomg", Scout.Infrastructure.Provedor.PitchApi.Nome("Atlético-MG"));
         Assert.Null(Scout.Infrastructure.Provedor.PitchApi.Achar(jogos, nosso with { Data = nosso.Data.AddDays(1) }));
+        // como a API devolve: 19:30 no horário de Brasília (sem fuso) é o mesmo jogo das 22:30 UTC
+        var deBrasilia = nosso with { Data = new DateTime(2026, 10, 29, 19, 30, 0, DateTimeKind.Unspecified) };
+        Assert.Equal("m_29YTpa", Scout.Infrastructure.Provedor.PitchApi.Achar(jogos, deBrasilia)?.Id);
+        // e o jogo do outro time no mesmo horário não confunde: só serve se o nome bater
+        Assert.Null(Scout.Infrastructure.Provedor.PitchApi.Achar(jogos, deBrasilia with { Mandante = "Bahia", Visitante = "Vitoria" }));
     }
 }
