@@ -169,6 +169,11 @@ export const api = {
     return r.status === 204 ? null : (r.ok ? (r.json() as Promise<RoteiroPosJogo>) : Promise.reject(new Error(`Erro ${r.status}`)))
   },
   gerarPosJogo: (id: number) => pedir<RoteiroPosJogo>(`/api/partidas/${id}/pos-jogo`, { method: 'POST' }),
+  /** Mapa de finalizações e de calor (só ligas e pós-jogo); null quando a fonte não tem o jogo. */
+  mapa: async (id: number) => {
+    const r = await fetch(`/api/partidas/${id}/mapa`, { credentials: 'same-origin' })
+    return r.ok && r.status !== 204 ? (r.json() as Promise<MapaDaPartida>) : null
+  },
 }
 
 // Modo gravação: esconde fotos e escudos (direito de imagem e de marca) para vídeos públicos.
@@ -297,6 +302,14 @@ export type AnalisePartida = {
   /** O jogo seguinte de cada time depois desta partida. */
   jogosSeguintes?: ResumoPartida[] | null
 }
+
+/** Finalização no campo de 105x68 m, sempre atacando para a direita; xg de 0 a 1. */
+export type FinalizacaoNoMapa = {
+  clubeId: number; jogador: string; minuto: number; x: number; y: number; xg: number
+  noAlvo: boolean; gol: boolean; dentroDaArea: boolean; situacao?: string | null
+}
+/** Mapa de uma fonte externa: finalizações e grade de calor 16x12 ([x, y, ações]) com o mandante atacando para a direita. */
+export type MapaDaPartida = { finalizacoes: FinalizacaoNoMapa[]; calor: { clubeId: number; acoes: number; celulas: number[][] }[]; fonte: string }
 
 /** Roteiro do Short de pós-jogo (canal Futebol em Números), escrito pela IA. */
 export type RoteiroPosJogo = { partidaId: number; texto: string; criadoEm: string; avisadoEm?: string | null }

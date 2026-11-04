@@ -194,7 +194,8 @@ function PosJogo({ a }: { a: AnalisePartida }) {
   }
   async function cartoes() {
     setEstado('baixando')
-    try { await cartoesDaPartida(a) } finally { setEstado('') }
+    // o mapa (finalizações e calor) vem de outra fonte e pode não existir (copas, jogo recente): sem ele, saem os 3 primeiros cartões
+    try { await cartoesDaPartida(a, await api.mapa(id).catch(() => null)) } finally { setEstado('') }
   }
   async function copiar() {
     if (!roteiro) return
@@ -208,7 +209,7 @@ function PosJogo({ a }: { a: AnalisePartida }) {
         <button className="btn" onClick={escrever} disabled={estado === 'escrevendo'}>
           {estado === 'escrevendo' ? 'Escrevendo…' : roteiro ? 'Escrever de novo' : 'Escrever roteiro'}
         </button>
-        <button className="btn" onClick={cartoes} disabled={estado === 'baixando'} title="Baixa 3 imagens 1080x1920: placar, onde o jogo foi decidido e destaques">
+        <button className="btn" onClick={cartoes} disabled={estado === 'baixando'} title="Baixa as imagens 1080x1920: placar, onde o jogo foi decidido, destaques e, nas ligas, o mapa de finalizações e de calor">
           {estado === 'baixando' ? 'Gerando…' : '🎬 Para vídeo'}
         </button>
         {roteiro && <button className="btn" onClick={copiar}>{estado === 'copiado' ? 'Copiado!' : 'Copiar roteiro'}</button>}

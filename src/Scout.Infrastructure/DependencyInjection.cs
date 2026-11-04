@@ -30,6 +30,8 @@ public static class DependencyInjection
         services.AddHttpClient<ApiFootballClient>(c => c.BaseAddress = new Uri("https://v3.football.api-sports.io"))
             .AddStandardResilienceHandler(); // novas tentativas e circuit breaker (Polly)
         services.AddScoped<Importador>();
+        // Mapa de finalizações e de calor (PitchAPI); sem PITCHAPI_KEY, o mapa simplesmente não aparece
+        services.AddHttpClient<Scout.Application.Consultas.IMapaDaPartida, PitchApi>(c => { c.BaseAddress = new Uri("https://api.pitchapi.dev"); c.Timeout = TimeSpan.FromSeconds(20); });
         services.AddScoped<Scout.Application.Consultas.IHistoricoDoAtleta, HistoricoDoAtleta>();
         services.AddScoped<Scout.Application.Consultas.ICarreiraDoTreinador, CarreiraDoTreinador>();
         services.AddScoped<Scout.Application.Consultas.IDetalhesDaPartida, DetalhesDaPartida>();

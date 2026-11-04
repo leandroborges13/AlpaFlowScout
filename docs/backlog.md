@@ -29,6 +29,8 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
 
 ## Mapa de calor e finalizações no campo (levantamento de 03/11/2026)
 
+FEITO em 03/11/2026 com a PitchAPI (Série A 2023-2026 confirmada): 4º cartão do "Para vídeo" e contagens de finalização no roteiro.
+
 A API-Football (a nossa) não tem coordenadas de lance. Opções vistas:
 - **PitchAPI** (pitchapi.dev): grátis, chave por cadastro, só pós-jogo. Finalizações com x/y em metros, xG e xGOT, e mapa de calor
   em grade 16x12 por time e atleta. Cita a Série B do Brasil (desde 2024); a Série A não aparece nomeada (conferir em /v1/leagues).

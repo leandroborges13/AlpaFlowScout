@@ -150,6 +150,14 @@ api.MapGet("/partidas/{id:int}", async (int id, IQueryHandler<AnalisarPartida, A
 
 // Pós-jogo do canal: o roteiro guardado (204 se ainda não há) e o pedido para escrever agora.
 // Jogo dos últimos 3 dias é atualizado no provedor antes (placar, estatísticas e lances corrigidos depois do apito).
+// Mapa de finalizações e de calor (fonte externa, só ligas e pós-jogo); 204 quando não há
+api.MapGet("/partidas/{id:int}/mapa", async (int id, IScoutDb db, IMapaDaPartida mapas, CancellationToken ct) =>
+{
+    var p = await db.Partidas.FirstOrDefaultAsync(x => x.Id == id, ct);
+    if (p is null) return Results.NotFound();
+    var resumo = (await ProcurarPartidasHandler.Resumir(db, [p], ct))[0];
+    return await mapas.Obter(resumo, ct) is { } m ? Results.Ok(m) : Results.NoContent();
+});
 api.MapGet("/partidas/{id:int}/pos-jogo", async (int id, IScoutDb db, CancellationToken ct) =>
     await db.RoteirosPosJogo.FirstOrDefaultAsync(r => r.PartidaId == id, ct) is { } r ? Results.Ok(r) : Results.NoContent());
 api.MapPost("/partidas/{id:int}/pos-jogo", async (int id, IScoutDb db, Importador importador, RoteiristaPosJogo roteirista, CancellationToken ct) =>

@@ -1,4 +1,4 @@
-import type { AnalisePartida } from './api'
+import type { AnalisePartida, FinalizacaoNoMapa, MapaDaPartida } from './api'
 
 // "Para vídeo": cartões 1080x1920 (9:16) para os Shorts do canal Futebol em Números, desenhados em canvas e baixados como PNG.
 // O conteúdo fica na janela 1000x735 em (40, 330), a mesma da moldura dos Shorts: o cartão entra direto na montagem.
@@ -119,8 +119,11 @@ export async function cartaoDaResposta(pergunta: string, resposta: string) {
   await baixar(c, `para-video-${nomeDeArquivo(pergunta)}`)
 }
 
-/** Três cartões do jogo, na ordem do roteiro: placar e gols, onde o jogo foi ganho (aspectos) e os destaques pela nota. */
-export async function cartoesDaPartida(a: AnalisePartida) {
+/**
+ * Cartões do jogo, na ordem do roteiro: placar e gols, onde o jogo foi ganho (aspectos), os destaques pela nota e, quando há o
+ * mapa (ligas, pós-jogo), onde cada time finalizou e onde o time do canal teve a bola.
+ */
+export async function cartoesDaPartida(a: AnalisePartida, mapa?: MapaDaPartida | null) {
   await prontoParaDesenhar()
   const p = a.partida
   const jogo = `${p.mandante} ${p.golsMandante ?? ''} x ${p.golsVisitante ?? ''} ${p.visitante}`
@@ -219,4 +222,114 @@ export async function cartoesDaPartida(a: AnalisePartida) {
     ctx.fillText('Nota do jogo de 0 a 100, calculada pela IA do AlpaFlow Scout', JANELA.x + 50, JANELA.y + JANELA.h - 50)
     await baixar(c, `${nome}-3-destaques`)
   }
+
+  if (mapa) await cartaoDoMapa(a, mapa, jogo, nome)
+}
+
+/** O Galo (id 1062 no provedor) é o time do canal: quando joga, é ele que aparece atacando para a direita e no mapa de calor. */
+const TIME_DO_CANAL = 1062
+
+/** Campo deitado (105 x 68 m) com as linhas principais; devolve a altura e a conversão de metros para a tela. */
+function campo(ctx: Ctx, x: number, y: number, w: number, fundo = true) {
+  const h = (w * 68) / 105
+  if (fundo) caixa(ctx, x, y, w, h, 8, '#0f3b27')
+  ctx.strokeStyle = 'rgba(255,255,255,.45)'
+  ctx.lineWidth = 3
+  ctx.strokeRect(x, y, w, h)
+  ctx.beginPath(); ctx.moveTo(x + w / 2, y); ctx.lineTo(x + w / 2, y + h); ctx.stroke()
+  ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2, (9.15 / 105) * w, 0, Math.PI * 2); ctx.stroke()
+  const ax = (16.5 / 105) * w, ay = (40.3 / 68) * h
+  ctx.strokeRect(x, y + (h - ay) / 2, ax, ay)
+  ctx.strokeRect(x + w - ax, y + (h - ay) / 2, ax, ay)
+  return { h, px: (m: number) => x + (m / 105) * w, py: (m: number) => y + (m / 68) * h }
+}
+
+/**
+ * 4º cartão: na janela, onde cada time finalizou (bolinha do tamanho da chance de gol, gol com contorno amarelo); embaixo, onde o
+ * time do canal teve a bola (mapa de calor suavizado). A fonte entrega toda finalização atacando para a direita: a do rival é
+ * espelhada para atacar para a esquerda. No mapa de calor o mandante ataca para a direita.
+ */
+async function cartaoDoMapa(a: AnalisePartida, mapa: MapaDaPartida, jogo: string, nome: string) {
+  const p = a.partida
+  const foco = p.visitanteId === TIME_DO_CANAL ? p.visitanteId : p.mandanteId
+  const rivalId = foco === p.mandanteId ? p.visitanteId : p.mandanteId
+  const nomeDe = (id: number) => (id === p.mandanteId ? p.mandante : p.visitante)
+  const [c, ctx] = novaTela()
+  moldura(ctx, jogo, 'Onde cada time finalizou')
+
+  fonte(ctx, 26, 800)
+  ctx.textBaseline = 'middle'
+  ctx.fillStyle = COR.verde
+  ctx.fillText(`● ${nomeDe(foco)} ataca →`, JANELA.x + 40, JANELA.y + 45)
+  ctx.fillStyle = COR.texto
+  ctx.textAlign = 'right'
+  ctx.fillText(`← ${nomeDe(rivalId)} ataca ●`, JANELA.x + JANELA.w - 40, JANELA.y + 45)
+  ctx.textAlign = 'left'
+  const g = campo(ctx, JANELA.x + 40, JANELA.y + 80, JANELA.w - 80)
+  // chances maiores primeiro, para a bolinha grande ficar por baixo e não esconder as outras
+  for (const f of [...mapa.finalizacoes].sort((x, y) => y.xg - x.xg)) {
+    const ehFoco = f.clubeId === foco
+    ctx.beginPath()
+    ctx.arc(g.px(ehFoco ? f.x : 105 - f.x), g.py(ehFoco ? f.y : 68 - f.y), 9 + Math.sqrt(f.xg) * 42, 0, Math.PI * 2)
+    ctx.fillStyle = ehFoco ? 'rgba(79,227,160,.6)' : 'rgba(255,255,255,.38)'
+    ctx.fill()
+    if (f.gol) { ctx.lineWidth = 5; ctx.strokeStyle = '#ffd166'; ctx.stroke() }
+  }
+  const resumo = (fs: FinalizacaoNoMapa[]) =>
+    `${fs.length} finalizações · ${fs.filter((f) => f.dentroDaArea).length} da área · ${fs.filter((f) => f.noAlvo).length} no alvo`
+  const yResumo = JANELA.y + 80 + g.h + 18
+  fonte(ctx, 24, 700)
+  ctx.textBaseline = 'top'
+  ctx.fillStyle = COR.verde
+  ctx.fillText(resumo(mapa.finalizacoes.filter((f) => f.clubeId === foco)), JANELA.x + 40, yResumo)
+  ctx.fillStyle = COR.texto
+  ctx.textAlign = 'right'
+  ctx.fillText(resumo(mapa.finalizacoes.filter((f) => f.clubeId === rivalId)), JANELA.x + JANELA.w - 40, yResumo)
+  ctx.textAlign = 'left'
+  fonte(ctx, 20, 600)
+  ctx.fillStyle = COR.suave
+  ctx.fillText(`Bolinha maior = chance mais clara · contorno amarelo = gol · dados: ${mapa.fonte}`, JANELA.x + 40, yResumo + 38)
+
+  // Embaixo da janela: onde o time do canal teve a bola
+  const calor = mapa.calor.find((t) => t.clubeId === foco)
+  if (calor && calor.celulas.length > 0) {
+    fonte(ctx, 44, 800)
+    ctx.textAlign = 'center'
+    ctx.fillStyle = COR.texto
+    ctx.fillText(`Onde o ${nomeDe(foco)} teve a bola`, L / 2, JANELA.y + JANELA.h + 30)
+    ctx.textAlign = 'left'
+    const largura = 860, x0 = (L - largura) / 2, y0 = JANELA.y + JANELA.h + 95
+    const k = campo(ctx, x0, y0, largura)
+    // a grade 16x12 numa telinha, ampliada com suavização e desfoque, vira a "mancha" de calor
+    const mini = document.createElement('canvas')
+    mini.width = 16
+    mini.height = 12
+    const m = mini.getContext('2d')!
+    // pico pelo percentil 90 (uma célula fora da curva não apaga o resto) e as de pouca ação quase transparentes:
+    // assim aparece onde o time se concentrou, e não uma mancha uniforme
+    const valores = calor.celulas.map((cel) => cel[2]).sort((x, y) => x - y)
+    const pico = valores[Math.floor(valores.length * 0.9)] || 1
+    const espelha = foco !== p.mandanteId
+    for (const [cx, cy, n] of calor.celulas) {
+      const t = Math.min(1, n / pico)
+      m.fillStyle = `rgba(255, ${Math.round(225 - 175 * t)}, 60, ${Math.pow(t, 1.6).toFixed(2)})`
+      m.fillRect(espelha ? 15 - cx : cx, espelha ? 11 - cy : cy, 1, 1)
+    }
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(x0, y0, largura, k.h)
+    ctx.clip()
+    ctx.imageSmoothingEnabled = true
+    ctx.filter = 'blur(16px)'
+    ctx.globalAlpha = 0.95
+    ctx.drawImage(mini, x0, y0, largura, k.h)
+    ctx.restore()
+    campo(ctx, x0, y0, largura, false) // as linhas por cima da mancha
+    fonte(ctx, 22, 600)
+    ctx.fillStyle = COR.suave
+    ctx.textAlign = 'center'
+    ctx.fillText(`${calor.acoes} ações com a bola · ataca para a direita →`, L / 2, y0 + k.h + 16)
+    ctx.textAlign = 'left'
+  }
+  await baixar(c, `${nome}-4-mapa`)
 }

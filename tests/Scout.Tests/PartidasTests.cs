@@ -181,4 +181,22 @@ public class PartidasTests
         Assert.Equal([1062, 118], Scout.Infrastructure.Provedor.AcompanhamentoPosJogo.Times(" 1062, 118 ,x,"));
         Assert.Empty(Scout.Infrastructure.Provedor.AcompanhamentoPosJogo.Times(null));
     }
+
+    [Fact]
+    public void Jogo_da_PitchAPI_e_achado_pelo_horario_e_pelo_nome_sem_acento()
+    {
+        var nosso = new ResumoPartida(1, new DateTime(2026, 10, 29, 22, 30, 0, DateTimeKind.Utc), null, 71, "Serie A", 2026, "FT",
+            1062, "Atletico-MG", null, 135, "Cruzeiro", null, 0, 1);
+        var jogos = JsonDocument.Parse("""
+            [{"id":"m_outro","time_utc":"2026-10-29T22:30:00Z","home_team":{"id":"t_x","name":"Flamengo"},"away_team":{"id":"t_y","name":"Palmeiras"}},
+             {"id":"m_antes","time_utc":"2026-10-25T22:30:00Z","home_team":{"id":"t_3K8ET0","name":"Atlético-MG"},"away_team":{"id":"t_z","name":"Vasco"}},
+             {"id":"m_29YTpa","time_utc":"2026-10-29T22:30:00Z","home_team":{"id":"t_3K8ET0","name":"Atlético-MG"},"away_team":{"id":"t_3npCjp","name":"Cruzeiro"}}]
+            """).RootElement;
+
+        var achado = Scout.Infrastructure.Provedor.PitchApi.Achar(jogos, nosso);
+
+        Assert.Equal(("m_29YTpa", "t_3K8ET0", "t_3npCjp"), achado);
+        Assert.Equal("atleticomg", Scout.Infrastructure.Provedor.PitchApi.Nome("Atlético-MG"));
+        Assert.Null(Scout.Infrastructure.Provedor.PitchApi.Achar(jogos, nosso with { Data = nosso.Data.AddDays(1) }));
+    }
 }

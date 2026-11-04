@@ -30,6 +30,7 @@ services:
       SCOUT_ATUALIZAR_HORA: ${SCOUT_ATUALIZAR_HORA}
       # Pós-jogo automático do canal (vazio = desligado) e o aviso no WhatsApp pela Evolution API
       SCOUT_POSJOGO_TIMES: ${SCOUT_POSJOGO_TIMES}
+      PITCHAPI_KEY: ${PITCHAPI_KEY}   # mapa de finalizações e de calor (pitchapi.dev)
       SCOUT_WHATSAPP_URL: ${SCOUT_WHATSAPP_URL}
       SCOUT_WHATSAPP_CHAVE: ${SCOUT_WHATSAPP_CHAVE}
       SCOUT_WHATSAPP_INSTANCIA: ${SCOUT_WHATSAPP_INSTANCIA}

@@ -10,17 +10,18 @@ namespace Scout.Application.Chat;
 /// Roteiro do Short de pós-jogo do canal Futebol em Números: título, gancho, a fala de ~40 s (em primeira pessoa, para o Leandro
 /// gravar) e a legenda, escritos pela IA só com a análise da partida. Guarda no banco (um por partida).
 /// </summary>
-public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<AnalisarPartida, AnalisePartida?> analisarPartida)
+public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<AnalisarPartida, AnalisePartida?> analisarPartida, IMapaDaPartida mapas)
 {
     public async Task<RoteiroPosJogo?> Gerar(int partidaId, CancellationToken ct)
     {
         var a = await analisarPartida.Handle(new AnalisarPartida(partidaId), ct);
         if (a is null || a.Partida.GolsMandante is null) return null;
+        var mapa = await mapas.Obter(a.Partida, ct); // sem mapa (copa, fonte fora do ar): o roteiro sai sem as finalizações
 
         var resposta = await chat.GetResponseAsync(
         [
             new(ChatRole.System, Instrucoes),
-            new(ChatRole.User, Dados(a)),
+            new(ChatRole.User, Dados(a, mapa)),
         ], new ChatOptions { Temperature = 0.4f }, ct);
 
         var roteiro = await db.RoteirosPosJogo.FirstOrDefaultAsync(r => r.PartidaId == partidaId, ct);
@@ -32,7 +33,7 @@ public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<Anal
     }
 
     /// <summary>O que a IA precisa da análise, sem escalações nem indicadores de cada atleta (deixa o pedido curto e focado).</summary>
-    public static string Dados(AnalisePartida a)
+    public static string Dados(AnalisePartida a, MapaDaPartida? mapa = null)
     {
         var p = a.Partida;
         string Time(int clubeId) => clubeId == p.MandanteId ? p.Mandante : p.Visitante;
@@ -62,6 +63,12 @@ public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<Anal
             Destaques = (a.Desempenhos ?? []).Where(d => d.Nota is not null).OrderByDescending(d => d.Nota).Take(6)
                 .Select(d => new { d.Nome, Time = Time(d.ClubeId), d.Funcao, Nota = Math.Round(d.Nota!.Value), d.Gols, d.Assistencias }),
             a.Observacoes,
+            // do mapa de finalizações: contagens por time (o cartão "mapa" do vídeo mostra onde foi cada uma)
+            Finalizacoes = mapa is null ? null : new[] { (p.MandanteId, p.Mandante), (p.VisitanteId, p.Visitante) }.ToDictionary(t => t.Item2, t =>
+            {
+                var doTime = mapa.Finalizacoes.Where(f => f.ClubeId == t.Item1).ToList();
+                return new { Total = doTime.Count, DentroDaArea = doTime.Count(f => f.DentroDaArea), NoAlvo = doTime.Count(f => f.NoAlvo) };
+            }),
             // de qual time é cada próximo jogo, para a IA não anunciar o jogo do adversário como se fosse do Galo
             ProximoJogo = new[] { (p.MandanteId, p.Mandante), (p.VisitanteId, p.Visitante) }.ToDictionary(t => t.Item2, t =>
                 a.JogosSeguintes?.Where(j => j.MandanteId == t.Item1 || j.VisitanteId == t.Item1)
@@ -86,8 +93,10 @@ public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<Anal
 
         Regras dos números:
         - Percentil de aspecto compara o time com os próprios jogos da temporada: diga "finalizou mais que em 85% dos próprios jogos",
-          nunca "85% das finalizações". Não cite números brutos (posse em %, total de passes ou de finalizações).
+          nunca "85% das finalizações". Não cite números brutos de posse (%) nem de passes. Finalizações, só pelas contagens de Finalizacoes.
         - "Chances criadas (xG)" também é percentil: nunca diga o valor do xG.
+        - Finalizacoes (quando vier) são contagens reais do jogo: pode dizer "17 finalizações, só 5 de dentro da área". O cartão do
+          mapa mostra onde foi cada uma; cite-o na fala quando ajudar a explicar o resultado ("olha no mapa: quase tudo de fora da área").
         - Percentil não é quantidade: nunca compare os dois times em "o dobro" ou "mais escanteios que o rival" pelos percentis.
         - Nota do jogo vai de 0 a 100 e é da IA: "nota 78 da IA".
         - Se o jogo foi decidido nos pênaltis ou na prorrogação (Desfecho), diga.
