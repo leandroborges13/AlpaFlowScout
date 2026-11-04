@@ -38,12 +38,13 @@ public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<Anal
     public static string? FraseDoMapa(ResumoPartida p, MapaDaPartida? mapa)
     {
         if (mapa is null || mapa.Finalizacoes.Count == 0) return null;
+        static string Vezes(int n) => n == 1 ? "1 vez" : $"{n} vezes";
         string Do(int clubeId, string nome, bool primeiro)
         {
             var f = mapa.Finalizacoes.Where(x => x.ClubeId == clubeId).ToList();
             return primeiro
-                ? $"O {nome} finalizou {f.Count} vezes, {f.Count(x => x.DentroDaArea)} de dentro da área e {f.Count(x => x.NoAlvo)} no alvo"
-                : $"o {nome}, {f.Count} vezes, {f.Count(x => x.DentroDaArea)} da área e {f.Count(x => x.NoAlvo)} no alvo";
+                ? $"O {nome} finalizou {Vezes(f.Count)}, {f.Count(x => x.DentroDaArea)} de dentro da área e {f.Count(x => x.NoAlvo)} no alvo"
+                : $"o {nome}, {Vezes(f.Count)}, {f.Count(x => x.DentroDaArea)} da área e {f.Count(x => x.NoAlvo)} no alvo";
         }
         return $"{Do(p.MandanteId, p.Mandante, true)}; {Do(p.VisitanteId, p.Visitante, false)}. Olha no mapa.";
     }
@@ -55,12 +56,12 @@ public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<Anal
     public static string ComFraseDoMapa(string texto, string? frase)
     {
         if (frase is null) return texto;
-        var total = System.Text.RegularExpressions.Regex.Match(frase, @"finalizou (\d+) vezes").Groups[1].Value;
+        var total = System.Text.RegularExpressions.Regex.Match(frase, @"finalizou (\d+) vez").Groups[1].Value;
         var inicio = texto.IndexOf("FALA:", StringComparison.Ordinal);
         if (inicio < 0) return texto;
         var fim = texto.IndexOf("CARTÕES:", inicio, StringComparison.Ordinal);
         var fala = fim < 0 ? texto[inicio..] : texto[inicio..fim];
-        if (fala.Contains($"{total} vezes") || fala.Contains($"{total} finaliza")) return texto;
+        if (fala.Contains($"{total} vez") || fala.Contains($"{total} finaliza")) return texto;
         var novaFala = fala.Contains(Fecho) ? fala.Replace(Fecho, $"{frase} {Fecho}") : $"{fala.TrimEnd()} {frase}\n\n";
         return texto[..inicio] + novaFala + (fim < 0 ? "" : texto[fim..]);
     }
