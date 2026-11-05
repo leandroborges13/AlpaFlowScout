@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { PranchetaTatica } from './Prancheta'
 import { api, type DetalheTime, type NecessidadeNaFuncao, type ResumoAtleta, type ResumoTime, type ResumoTreinador } from './api'
 import { CartaoAtleta, Medidor } from './Componentes'
 
@@ -57,6 +58,7 @@ type PainelProps = {
 export function PainelTime({ time, gravacao, onFechar, onAbrirAtleta, onAbrirTreinador }: PainelProps) {
   const [detalhe, setDetalhe] = useState<DetalheTime | null>(null)
   const [erro, setErro] = useState<string | null>(null)
+  const [prancheta, setPrancheta] = useState(false)
 
   useEffect(() => {
     setDetalhe(null); setErro(null)
@@ -85,6 +87,10 @@ export function PainelTime({ time, gravacao, onFechar, onAbrirAtleta, onAbrirTre
           </div>
           <NotaDoTime t={t} />
         </div>
+        <div className="prancheta-botoes">
+          <button className="btn" onClick={() => setPrancheta(true)}>🧩 Prancheta: monte a escalação</button>
+        </div>
+        {prancheta && <PranchetaTatica clubeId={t.id} time={t.nome} onFechar={() => setPrancheta(false)} />}
 
         <div className="tiles">
           <Tile valor={`${t.vitorias}V ${t.empates}E ${t.derrotas}D`} rotulo={`em ${t.jogos} jogos`} />

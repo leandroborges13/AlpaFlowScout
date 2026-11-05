@@ -256,6 +256,41 @@ public class PartidasTests
     }
 
     [Fact]
+    public void Prancheta_monta_as_11_vagas_do_esquema()
+    {
+        var v = ObterPranchetaHandler.Vagas("4-2-3-1");
+        Assert.Equal(11, v.Count);
+        Assert.Equal("Goleiro", v[0].Funcao);
+        Assert.Equal("Lateral esquerdo", v[1].Funcao);
+        Assert.Equal("Centroavante", v[^1].Funcao);
+        Assert.True(v[1].X < v[4].X);                 // lateral esquerdo à esquerda do direito
+        Assert.True(ObterPranchetaHandler.Valido("3-5-2"));
+        Assert.False(ObterPranchetaHandler.Valido("4-4-3"));  // 11 na linha
+        Assert.False(ObterPranchetaHandler.Valido("abc"));
+    }
+
+    [Fact]
+    public void Escalacao_provavel_poe_cada_um_na_funcao_em_que_mais_jogou()
+    {
+        ObterPranchetaHandler.Titularidade T(int id, string f, Scout.Domain.Setor s, Scout.Domain.Lado l, bool r = true) => new(id, f, s, l, r);
+        var D = Scout.Domain.Setor.Defesa; var G = Scout.Domain.Setor.Goleiro; var A = Scout.Domain.Setor.Ataque;
+        var E = Scout.Domain.Lado.Esquerda; var C = Scout.Domain.Lado.Centro;
+        var historico = new List<ObterPranchetaHandler.Titularidade>
+        {
+            T(1, "Goleiro", G, C), T(1, "Goleiro", G, C),
+            T(2, "Lateral esquerdo", D, E), T(2, "Lateral esquerdo", D, E),
+            T(3, "Centroavante", A, C), T(3, "Centroavante", A, C),
+            T(4, "Centroavante", A, C, false),                 // reserva do centroavante, jogo antigo
+        };
+        var v = ObterPranchetaHandler.Escalar(ObterPranchetaHandler.Vagas("4-2-3-1"), historico);
+        Assert.Equal(1, v[0].AtletaId);
+        Assert.Equal(2, v[1].AtletaId);
+        Assert.Equal(3, v[^1].AtletaId);
+        Assert.Equal(4, v.Single(x => x.AtletaId == 4) is var r ? r.AtletaId : null); // vai para outra vaga de ataque/meio, não some
+        Assert.DoesNotContain(v.Skip(1), x => x.AtletaId == 1);   // goleiro não joga na linha
+    }
+
+    [Fact]
     public void O_limite_vale_so_para_jogos_encerrados()
     {
         Scout.Domain.Partida P(int id, string st) => new() { Id = id, Status = st };

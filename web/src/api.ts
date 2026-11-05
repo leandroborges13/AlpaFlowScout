@@ -163,6 +163,9 @@ export const api = {
   atletasDoTreinador: (id: number) => pedir<AtletaDoTreinador[]>(`/api/treinadores/${id}/atletas`),
   sugestoesParaTreinador: (id: number) => pedir<SugestoesParaTreinador>(`/api/treinadores/${id}/sugestoes`),
   partida: (id: number) => pedir<AnalisePartida>(`/api/partidas/${id}`),
+  /** Prancheta tática: vagas do esquema com a escalação provável e o elenco (sem esquema, o mais usado nos últimos jogos). */
+  prancheta: (id: number, esquema?: string) =>
+    pedir<Prancheta>(`/api/times/${id}/prancheta${esquema ? `?esquema=${encodeURIComponent(esquema)}` : ''}`),
   /** Roteiro do pós-jogo guardado (null se ainda não há) e o pedido para a IA escrever agora. */
   posJogo: async (id: number) => {
     const r = await fetch(`/api/partidas/${id}/pos-jogo`, { credentials: 'same-origin' })
@@ -174,6 +177,13 @@ export const api = {
     const r = await fetch(`/api/partidas/${id}/mapa`, { credentials: 'same-origin' })
     return r.ok && r.status !== 204 ? (r.json() as Promise<MapaDaPartida>) : null
   },
+}
+
+export type VagaNaPrancheta = { grade: string; funcao: string; x: number; y: number; atletaId: number | null; nome: string | null }
+export type AtletaDaPrancheta = { id: number; nome: string; funcao: string | null; setor: string; titularidades: number; recentes: number }
+export type Prancheta = {
+  clubeId: number; time: string; temporada: number; esquema: string; esquemas: { esquema: string; jogos: number }[]
+  vagas: VagaNaPrancheta[]; elenco: AtletaDaPrancheta[]; explicacao: string
 }
 
 // Modo gravação: esconde fotos e escudos (direito de imagem e de marca) para vídeos públicos.

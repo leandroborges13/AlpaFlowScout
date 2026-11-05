@@ -13,6 +13,7 @@ public static class DependencyInjection
         services.AddScoped<MotorDeAnalise>();
         services.AddScoped<AnaliseDeTimes>();
         services.AddScoped<IQueryHandler<ListarCompeticoes, IReadOnlyList<CompeticaoDisponivel>>, ListarCompeticoesHandler>();
+        services.AddScoped<IQueryHandler<ObterPrancheta, Prancheta?>, ObterPranchetaHandler>();
         services.AddScoped<IQueryHandler<BuscarPorPerfil, ResultadoBusca>, BuscarPorPerfilHandler>();
         services.AddScoped<IQueryHandler<ObterAtleta, DetalheAtleta?>, ObterAtletaHandler>();
         services.AddScoped<IQueryHandler<AtletasParecidos, ResultadoParecidos?>, AtletasParecidosHandler>();

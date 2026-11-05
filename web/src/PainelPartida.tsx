@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, type AnalisePartida, type DesempenhoNoJogo, type EventoDaPartida, type LadoDaPartida, type MapaDaPartida, type ResumoPartida, type RoteiroPosJogo } from './api'
 import { GaleriaVideo } from './GaleriaVideo'
+import { PranchetaTatica } from './Prancheta'
 import { cartaoDoJogador, cartoesDaPartida, coletar, recortesDoMapa, type Cartao } from './ParaVideo'
 import { Escudo } from './PainelTime'
 import { CampoDaPartida, DesempenhoNaPartida, Destaques, LinhaDoTempo } from './PartidaVisual'
@@ -68,6 +69,7 @@ export function PainelPartida({ partida, gravacao, onFechar }: PainelProps) {
   const timeDe = (d: DesempenhoNoJogo) => (d.clubeId === p.mandanteId ? 'casa' : 'fora') as 'casa' | 'fora'
   const timeNome = (d: DesempenhoNoJogo) => (d.clubeId === p.mandanteId ? p.mandante : p.visitante)
   const aberto = selecionado != null ? notas.get(selecionado) : undefined
+  const [prancheta, setPrancheta] = useState<{ id: number; nome: string } | null>(null)
 
   return (
     <div className="fundo" onClick={onFechar}>
@@ -75,6 +77,11 @@ export function PainelPartida({ partida, gravacao, onFechar }: PainelProps) {
         <span className="card-sub">{p.competicao} {p.temporada}{p.rodada ? ` · ${p.rodada.replace('Regular Season - ', 'Rodada ')}` : ''} · {dataDoJogo(p)}</span>
         <Placar p={p} gravacao={gravacao} grande />
         {a?.desfecho && <p className="desfecho">{a.desfecho}</p>}
+        <div className="prancheta-botoes">
+          <button className="btn" onClick={() => setPrancheta({ id: p.mandanteId, nome: p.mandante })}>🧩 Prancheta: {p.mandante}</button>
+          <button className="btn" onClick={() => setPrancheta({ id: p.visitanteId, nome: p.visitante })}>🧩 Prancheta: {p.visitante}</button>
+        </div>
+        {prancheta && <PranchetaTatica clubeId={prancheta.id} time={prancheta.nome} onFechar={() => setPrancheta(null)} />}
 
         {erro && <p className="erro">{erro}</p>}
         {a && !gravacao && p.golsMandante != null && <PosJogo a={a} />}

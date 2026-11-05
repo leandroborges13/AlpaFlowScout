@@ -369,3 +369,38 @@ button.lt-quad:hover, button.lt-quad:focus-visible { outline: 2px solid var(--in
 /* No campo: o mapa de finalizações e o de calor dentro da análise da partida */
 .no-campo { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
 .no-campo img { width: 100%; border-radius: 12px; display: block; }
+
+/* Prancheta tática */
+.prancheta-botoes { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 4px; }
+.prancheta { max-width: min(1100px, 96vw); }
+.prancheta-corpo { display: grid; grid-template-columns: minmax(260px, 420px) 1fr; gap: 20px; align-items: start; margin-top: 10px; }
+.prancheta-svg { width: 100%; height: auto; display: block; border-radius: 12px; touch-action: none; user-select: none; }
+.prancheta-svg .pp.sel circle { filter: drop-shadow(0 0 1.5px #ffd23f); }
+.prancheta-lado { display: grid; gap: 10px; align-content: start; }
+.prancheta-campo-form { display: grid; gap: 4px; font-weight: 600; font-size: 14px; }
+.prancheta-campo-form select, .prancheta-campo-form input, .prancheta-sel input { font: inherit; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--card, transparent); color: inherit; }
+.prancheta-sel { display: grid; gap: 6px; padding: 10px; border-radius: 12px; border: 2px solid #ffd23f; }
+.prancheta-elenco h4 { margin: 8px 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; opacity: .7; }
+.pe-lista { display: flex; flex-wrap: wrap; gap: 6px; }
+.pe-item { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: inherit; cursor: pointer; }
+.pe-item:disabled { cursor: default; opacity: .85; }
+.prancheta-elenco.ativo .pe-item:hover { border-color: #4fe3a0; }
+.pe-item.em-campo { background: rgba(79,227,160,.18); border-color: rgba(79,227,160,.6); }
+@media (max-width: 760px) { .prancheta-corpo { grid-template-columns: 1fr; } }
+/* modo grande: quadro 16:9 ou 9:16 do tamanho da tela, para gravar */
+.prancheta-palco { position: fixed; inset: 0; z-index: 60; background: #000; display: grid; place-items: center; }
+.prancheta-quadro { background: radial-gradient(1200px 800px at 30% 40%, #0b2a1d, #07170f 75%); color: #fff; display: flex; flex-direction: column; padding: 2.5vmin 3vmin; font-family: Inter, sans-serif; }
+.prancheta-quadro.h { width: min(100vw, 177.78vh); height: min(56.25vw, 100vh); }
+.prancheta-quadro.v { width: min(100vw, 56.25vh); height: min(177.78vw, 100vh); }
+.pq-topo h2 { margin: .4em 0 0; font-size: clamp(18px, 4.2vmin, 64px); font-weight: 900; letter-spacing: -.02em; line-height: 1.05; }
+.pq-selo { display: inline-block; background: #0f9d58; font-weight: 800; font-size: clamp(11px, 2vmin, 28px); padding: .3em .9em; border-radius: 99px; }
+.pq-corpo { flex: 1; min-height: 0; display: flex; gap: 3vmin; margin-top: 2vmin; }
+.pq-campo { height: 100%; aspect-ratio: 74 / 111; max-width: 100%; margin: 0 auto; }
+.prancheta-quadro.v .pq-campo { width: 100%; height: auto; max-height: 100%; }
+.pq-campo .prancheta-svg { height: 100%; width: auto; max-width: 100%; }
+.prancheta-quadro.v .pq-campo .prancheta-svg { width: 100%; height: auto; }
+.pq-elenco { flex: 1; overflow: auto; font-size: clamp(11px, 1.6vmin, 22px); }
+.pq-elenco .pe-item { font-size: inherit; color: #fff; border-color: rgba(255,255,255,.25); }
+.pq-elenco h4 { color: #b9e8cf; }
+.pq-rodape { text-align: right; font-weight: 800; font-size: clamp(11px, 2vmin, 30px); color: rgba(255,255,255,.8); margin-top: 1vmin; }
+.pq-rodape b { color: #4fe3a0; }
