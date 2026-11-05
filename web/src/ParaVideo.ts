@@ -384,7 +384,7 @@ export async function cartaoDoJogador(a: AnalisePartida, mapa: MapaDaPartida, d:
   const chutes = mapa.finalizacoes.filter((f) => f.clubeId === d.clubeId && f.jogador === calor.nome)
   for (const f of chutes) {
     ctx.beginPath()
-    ctx.arc(k.px(f.x), k.py(f.y), 9 + Math.sqrt(f.xg) * 42, 0, Math.PI * 2)
+    ctx.arc(k.px(f.x), k.py(68 - f.y), 9 + Math.sqrt(f.xg) * 42, 0, Math.PI * 2) // y alto = esquerda de quem ataca = em cima
     ctx.fillStyle = 'rgba(79,227,160,.75)'
     ctx.fill()
     ctx.lineWidth = f.gol ? 5 : 2
@@ -460,7 +460,9 @@ function mancha(ctx: Ctx, x0: number, y0: number, largura: number, celulas: numb
   for (const [cx, cy, n] of celulas) {
     const t = Math.min(1, n / pico)
     m.fillStyle = `rgba(255, ${Math.round(225 - 175 * t)}, 60, ${Math.pow(t, 1.6).toFixed(2)})`
-    m.fillRect(espelha ? 15 - cx : cx, espelha ? 11 - cy : cy, 1, 1)
+    // Na fonte, o y cresce para a esquerda de quem ataca (o lateral esquerdo fica no y alto): atacando para a direita, a
+    // esquerda do time fica em cima, então o y alto vai para a linha de cima. Espelhado (visitante), o giro de 180° desfaz isso.
+    m.fillRect(espelha ? 15 - cx : cx, espelha ? cy : 11 - cy, 1, 1)
   }
   ctx.save()
   ctx.beginPath()
@@ -502,7 +504,9 @@ async function cartaoDoMapa(a: AnalisePartida, mapa: MapaDaPartida, jogo: string
   for (const f of [...mapa.finalizacoes].sort((x, y) => y.xg - x.xg)) {
     const ehFoco = f.clubeId === foco
     ctx.beginPath()
-    ctx.arc(g.px(ehFoco ? f.x : 105 - f.x), g.py(ehFoco ? f.y : 68 - f.y), 9 + Math.sqrt(f.xg) * 42, 0, Math.PI * 2)
+    // cada time vem atacando para x = 105 e com o y alto à esquerda dele: o do canal ataca para a direita (esquerda em cima),
+    // o rival gira 180° para atacar para a esquerda
+    ctx.arc(g.px(ehFoco ? f.x : 105 - f.x), g.py(ehFoco ? 68 - f.y : f.y), 9 + Math.sqrt(f.xg) * 42, 0, Math.PI * 2)
     ctx.fillStyle = ehFoco ? 'rgba(79,227,160,.6)' : 'rgba(255,255,255,.38)'
     ctx.fill()
     if (f.gol) { ctx.lineWidth = 5; ctx.strokeStyle = '#ffd166'; ctx.stroke() }
