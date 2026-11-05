@@ -240,6 +240,8 @@ export async function cartoesDaPartida(a: AnalisePartida, mapa?: MapaDaPartida |
     await baixar(c, `${nome}-3-destaques`)
   }
 
+  await cartaoDasNotas(a, jogo, nome)
+
   if (mapa) {
     await cartaoDoMapa(a, mapa, jogo, nome)
     // 5º: o mapa do destaque do time do canal (a maior nota entre os que a fonte do mapa também tem)
@@ -248,6 +250,79 @@ export async function cartoesDaPartida(a: AnalisePartida, mapa?: MapaDaPartida |
       .sort((x, y) => y.nota! - x.nota!).find((d) => ligarJogador(d.nome, d.clubeId, mapa))
     if (destaque) await cartaoDoJogador(a, mapa, destaque, '5-destaque')
   }
+}
+
+/** Cor da nota (0 a 100): azul é jogo muito bom, verde bom, amarelo regular, laranja abaixo. */
+export function corDaNota(nota: number | null | undefined) {
+  if (nota == null) return '#5b6b63'
+  return nota >= 70 ? '#2f9bff' : nota >= 55 ? '#1fbf6a' : nota >= 40 ? '#e0b10f' : '#f07a2a'
+}
+
+/**
+ * As notas do time do canal (ou do mandante) no desenho tático: o campo deitado com os titulares, cada um com a nota numa
+ * bolinha colorida e o nome embaixo, uma estrela no melhor do time e, no rodapé da janela, quem entrou com a nota.
+ */
+async function cartaoDasNotas(a: AnalisePartida, jogo: string, nome: string) {
+  const p = a.partida
+  const foco = p.visitanteId === TIME_DO_CANAL ? 'visitante' : 'mandante'
+  const lado = a[foco]
+  const clubeId = foco === 'visitante' ? p.visitanteId : p.mandanteId
+  if (!lado.titulares.some((j) => j.x != null)) return
+  const notas = new Map((a.desempenhos ?? []).map((d) => [d.atletaId, d]))
+  const titulares = new Set(lado.titulares.map((j) => j.id))
+  const entraram = (a.desempenhos ?? []).filter((d) => d.clubeId === clubeId && !titulares.has(d.atletaId))
+  const doTime = (a.desempenhos ?? []).filter((d) => d.clubeId === clubeId && d.nota != null)
+  const melhor = doTime.length ? doTime.reduce((m, d) => (d.nota! > m.nota! ? d : m)).atletaId : null
+
+  const [c, ctx] = novaTela()
+  moldura(ctx, jogo, `As notas do ${lado.time}${lado.esquema ? ` · ${lado.esquema}` : ''}`, 56)
+  // campo deitado: o time ataca para a direita, a esquerda dele fica em cima
+  const cx = JANELA.x + 30, cy = JANELA.y + 24, cw = JANELA.w - 60, ch = JANELA.h - 150
+  caixa(ctx, cx, cy, cw, ch, 18, '#0f3a27')
+  ctx.strokeStyle = 'rgba(255,255,255,.28)'
+  ctx.lineWidth = 3
+  ctx.strokeRect(cx + 10, cy + 10, cw - 20, ch - 20)
+  ctx.beginPath(); ctx.moveTo(cx + cw / 2, cy + 10); ctx.lineTo(cx + cw / 2, cy + ch - 10); ctx.stroke()
+  ctx.beginPath(); ctx.arc(cx + cw / 2, cy + ch / 2, ch * 0.14, 0, Math.PI * 2); ctx.stroke()
+  for (const lx of [cx + 10, cx + cw - 10 - cw * 0.157]) ctx.strokeRect(lx, cy + ch * 0.2, cw * 0.157, ch * 0.6)
+
+  const curto = (n: string) => { const s = n.includes('. ') ? n.slice(n.lastIndexOf('. ') + 2) : n; return s.length > 11 ? s.split(/\s+/).pop()! : s }
+  for (const j of lado.titulares) {
+    if (j.x == null || j.y == null) continue
+    const px = cx + 40 + ((j.y <= 5 ? 2 : j.y) / 92) * (cw - 90)
+    const py = cy + 22 + (j.x / 100) * (ch - 78)
+    const d = j.id != null ? notas.get(j.id) : undefined
+    ctx.beginPath(); ctx.arc(px, py, 28, 0, Math.PI * 2); ctx.fillStyle = corDaNota(d?.nota); ctx.fill()
+    ctx.lineWidth = 4; ctx.strokeStyle = COR.fundo; ctx.stroke()
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    fonte(ctx, 26, 900); ctx.fillStyle = '#fff'
+    ctx.fillText(d?.nota != null ? `${Math.round(d.nota)}` : '–', px, py + 1)
+    if (d && d.atletaId === melhor) { fonte(ctx, 22, 900); ctx.fillText('⭐', px + 26, py - 22) }
+    fonte(ctx, 22, 800)
+    ctx.lineWidth = 6; ctx.strokeStyle = COR.fundo; ctx.strokeText(curto(j.nome), px, py + 44)
+    ctx.fillStyle = '#fff'; ctx.fillText(curto(j.nome), px, py + 44)
+  }
+  // quem entrou
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle'
+  let x = JANELA.x + 40
+  const y = cy + ch + 46
+  fonte(ctx, 26, 800); ctx.fillStyle = COR.suave
+  ctx.fillText('Entraram:', x, y); x += ctx.measureText('Entraram: ').width + 6
+  for (const d of entraram.slice(0, 5)) {
+    const t = curto(d.nome)
+    fonte(ctx, 24, 800)
+    const w = ctx.measureText(t).width + 76
+    if (x + w > JANELA.x + JANELA.w - 30) break
+    caixa(ctx, x, y - 24, w, 48, 24, '#123726')
+    ctx.beginPath(); ctx.arc(x + 24, y, 17, 0, Math.PI * 2); ctx.fillStyle = corDaNota(d.nota); ctx.fill()
+    fonte(ctx, 17, 900); ctx.fillStyle = '#fff'; ctx.textAlign = 'center'
+    ctx.fillText(d.nota != null ? `${Math.round(d.nota)}` : '–', x + 24, y + 1)
+    ctx.textAlign = 'left'; fonte(ctx, 24, 800); ctx.fillText(t, x + 50, y + 1)
+    x += w + 10
+  }
+  fonte(ctx, 22, 600); ctx.fillStyle = COR.suave; ctx.textBaseline = 'top'
+  ctx.fillText('Nota de 0 a 100 pela IA do Scout · ⭐ melhor do time · – menos de 30 min em campo', JANELA.x + 40, JANELA.y + JANELA.h - 40)
+  await baixar(c, `${nome}-3b-notas`)
 }
 
 const SEM_PESO = new Set(['de', 'da', 'do', 'dos', 'das', 'jr', 'junior', 'filho', 'neto'])
