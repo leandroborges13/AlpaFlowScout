@@ -87,3 +87,12 @@ A API-Football (a nossa) não tem coordenadas de lance. Opções vistas:
     - Carga inicial ~700 consultas (34 rodadas x 10 jogos x 2), depois ~20 por rodada; sem cota publicada, só freio de
       excesso (429 com Retry-After): ir devagar.
     - Primeira versão pode sair só com a API-Football (o que já está no banco); a avançada entra depois.
+
+## Fontes de dados para testar
+
+11. **Bzzoiro Sports Data (sports.bzzoiro.com)** — achada em 06/11/2026, grátis e diz não ter cota.
+    - Promete: valor de mercado, contrato e transferências com valores por atleta; xG, xA e mapa de calor por jogo;
+      escalação provável, desfalques e árbitro. Nada disso de mercado existe na API-Football nem na PitchAPI.
+    - Não cita o Brasileirão: testar Série A e Copa do Brasil antes de qualquer coisa, e ler a licença (/docs/api-license/)
+      para ver se permite uso comercial. Chave: o Leandro cria a conta e põe BZZOIRO_KEY no .env.
+    - Evitar endpoints não oficiais de Sofascore e FotMob (termos proíbem).
