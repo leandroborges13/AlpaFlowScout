@@ -66,3 +66,15 @@ A API-Football (a nossa) não tem coordenadas de lance. Opções vistas:
      de copa entre times de fora da Série A. Ao estourar a cota, o Scout para e continua no dia seguinte (já é assim).
    - Ao vencer: trocar no servidor APIFOOTBALL_LIMITE_DIA para 95 e SCOUT_ATUALIZAR para "71:2026,73:2026,13:2026,11:2026".
    - Voltar ao Pro quando as redes faturarem.
+
+## Cartões de atleta
+
+10. **Cartão do atleta para vídeo (por 90 min, percentil e ranking)** — ideia de 06/11/2026, a partir de um "playercard" de outro perfil.
+    - No "Para vídeo" do painel do atleta, no nosso visual (verde, Futebol em Números), 1080x1920.
+    - Blocos com o que a API-Football tem: Passe (passes certos, precisão, passes decisivos, assistências), Defesa (desarmes,
+      interceptações, bloqueios), Duelos (ganhos e %, faltas sofridas), Ataque (finalizações, no alvo, gols, dribles certos e %),
+      Disciplina (faltas, cartões). Cada número por 90 min, com percentil (cor) e "3º de 413" contra atletas com 450+ min
+      (MotorDeAnalise.MinutosMinimos), comparando com o mesmo setor e com todos os de linha.
+    - Fora por falta de dado: passes progressivos, terço final, lançamentos, inversões, passes recebidos e acerto por zona
+      (dados de evento: Opta, StatsBomb, Wyscout). Ver o que a PitchAPI tem antes de descartar.
+    - Não gasta requisição: usa o que já está no banco.
