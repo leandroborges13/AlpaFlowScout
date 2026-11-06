@@ -47,3 +47,22 @@ A API-Football (a nossa) não tem coordenadas de lance. Opções vistas:
    (hoje vale a diferença, regra de 03/11).
 7. **Data relativa nas respostas**: além de 12/08/2026, dizer "há 12 semanas, 21 jogos", que é o que a gente fala no vídeo.
 8. **Banco local desatualizado**: script para trazer os placares mais recentes de produção (ou rodar a coleta) antes de testar.
+
+## Custos
+
+9. **Caber no plano grátis da API-Football (100 requisições/dia)** — FAZER na segunda, 09/11/2026, quando o Pro vencer (15h33).
+   Decisão do Leandro: economizar os US$ 19/mês até o canal faturar. Hoje o Pro (7.500/dia) gasta ~450/dia.
+   - De onde vem o gasto: elenco de cada time de cada competição todo dia (/players por time, 2-3 páginas; só a Copa do Brasil
+     tem 90+ times), mais Série B e Série C, mais 3-4 consultas por jogo e a revisão dos 3 dias seguintes.
+   - Plano:
+     1. SCOUT_ATUALIZAR só com a Série A (71) e as copas: Copa do Brasil (73), Libertadores (13) e Sul-Americana (11).
+        Sai a Série B (72) e a Série C (75).
+     2. Copas sem baixar elenco: o /players do time da Série A já traz as estatísticas dele nas copas (hoje o Importador descarta
+        tudo que não é da liga importada). Guardar as copas a partir dessa mesma resposta.
+     3. Nas copas, detalhes (escalação, estatísticas, lances) só dos jogos com time da Série A; os demais ficam só com o placar.
+     4. Elencos da Série A em rodízio: só os times que jogaram desde a última atualização.
+     5. Prioridade quando a cota apertar: Galo e pós-jogo primeiro (AcompanhamentoPosJogo), depois o resto.
+   - Estimativa: 70-90 em dia de rodada, 10-20 sem jogo. Some do Scout: Série B e C (chat e chances de acesso) e análise de jogo
+     de copa entre times de fora da Série A. Ao estourar a cota, o Scout para e continua no dia seguinte (já é assim).
+   - Ao vencer: trocar no servidor APIFOOTBALL_LIMITE_DIA para 95 e SCOUT_ATUALIZAR para "71:2026,73:2026,13:2026,11:2026".
+   - Voltar ao Pro quando as redes faturarem.
