@@ -66,6 +66,9 @@ A API-Football (a nossa) não tem coordenadas de lance. Opções vistas:
      de copa entre times de fora da Série A. Ao estourar a cota, o Scout para e continua no dia seguinte (já é assim).
    - Ao vencer: trocar no servidor APIFOOTBALL_LIMITE_DIA para 95 e SCOUT_ATUALIZAR para "71:2026,73:2026,13:2026,11:2026".
    - Voltar ao Pro quando as redes faturarem.
+   - Folga extra: a PitchAPI (grátis) tem escalação, lances, estatísticas do time e dos atletas por jogo; dá para buscar lá
+     parte do pós-jogo e gastar menos da API-Football. Ela continua sendo a base (nascimento para a regra dos 18, elencos, tabela),
+     porque a PitchAPI é pequena, sem SLA, e avisa que os dados podem vir incompletos.
 
 ## Cartões de atleta
 
@@ -75,6 +78,12 @@ A API-Football (a nossa) não tem coordenadas de lance. Opções vistas:
       interceptações, bloqueios), Duelos (ganhos e %, faltas sofridas), Ataque (finalizações, no alvo, gols, dribles certos e %),
       Disciplina (faltas, cartões). Cada número por 90 min, com percentil (cor) e "3º de 413" contra atletas com 450+ min
       (MotorDeAnalise.MinutosMinimos), comparando com o mesmo setor e com todos os de linha.
-    - Fora por falta de dado: passes progressivos, terço final, lançamentos, inversões, passes recebidos e acerto por zona
-      (dados de evento: Opta, StatsBomb, Wyscout). Ver o que a PitchAPI tem antes de descartar.
-    - Não gasta requisição: usa o que já está no banco.
+    - PitchAPI tem quase tudo do cartão, POR JOGO (conferido em 06/11 com Botafogo x Galo, m_2KAgmB):
+      /v1/matches/{id}/players (passes certos, passes_into_final_third, long_balls_accurate, touches, recoveries, duelos,
+      xG, xA) e /v1/matches/{id}/advanced/players (progressive_passes, passes_into_box, switches, through_balls, crosses,
+      progressive_carries, carries_into_final_third, take_ons, sca/gca, xag, xg_chain, xt, vaep, tackles, interceptions).
+      Não há total da temporada: somar jogo a jogo numa tabela nova (estatística avançada por partida e atleta), ligando o
+      atleta da PitchAPI ao nosso pelo nome + time (como ligarJogador no ParaVideo.ts).
+    - Carga inicial ~700 consultas (34 rodadas x 10 jogos x 2), depois ~20 por rodada; sem cota publicada, só freio de
+      excesso (429 com Retry-After): ir devagar.
+    - Primeira versão pode sair só com a API-Football (o que já está no banco); a avançada entra depois.
