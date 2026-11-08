@@ -213,9 +213,16 @@ public class ObterCopasDoTimeHandler(IScoutDb db) : IQueryHandler<ObterCopasDoTi
     /// <summary>Placar de um jogo: gols de cada lado por Poisson, com a média dividida pela expectativa do rating.</summary>
     internal static (int, int) Placar(Random rnd, double mandante, double visitante, bool neutro)
     {
+        var (lm, lv) = Medias(mandante, visitante, neutro);
+        return (Poisson(rnd, lm), Poisson(rnd, lv));
+    }
+
+    /// <summary>Gols esperados de cada lado: 2,4 por jogo, divididos pela chance de vitória da força tipo Elo (com mando de campo).</summary>
+    public static (double Mandante, double Visitante) Medias(double mandante, double visitante, bool neutro)
+    {
         const double golsPorJogo = 2.4;
         var e = 1 / (1 + Math.Pow(10, -((mandante - visitante + (neutro ? 0 : MandoDeCampo)) / 400)));
-        return (Poisson(rnd, golsPorJogo * e), Poisson(rnd, golsPorJogo * (1 - e)));
+        return (golsPorJogo * e, golsPorJogo * (1 - e));
     }
 
     static int Poisson(Random rnd, double lambda)

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { api, type AnalisePartida, type DesempenhoNoJogo, type EventoDaPartida, type LadoDaPartida, type MapaDaPartida, type ResumoPartida, type RoteiroPosJogo } from './api'
+import { api, type AnalisePartida, type ResultadoPalpite, type DesempenhoNoJogo, type EventoDaPartida, type LadoDaPartida, type MapaDaPartida, type ResumoPartida, type RoteiroPosJogo } from './api'
 import { GaleriaVideo } from './GaleriaVideo'
 import { PranchetaTatica } from './Prancheta'
-import { cartaoDoJogador, cartoesDaPartida, coletar, ligarJogador, recortesDoMapa, type Cartao } from './ParaVideo'
+import { cartaoDoJogador, cartaoDoPalpite, cartoesDaPartida, coletar, ligarJogador, recortesDoMapa, type Cartao } from './ParaVideo'
+import { coresDoJogo } from './Cores'
 import { Escudo } from './PainelTime'
 import { CampoDaPartida, DesempenhoNaPartida, Destaques, LinhaDoTempo } from './PartidaVisual'
 
@@ -84,6 +85,7 @@ export function PainelPartida({ partida, gravacao, onFechar }: PainelProps) {
         {prancheta && <PranchetaTatica clubeId={prancheta.id} time={prancheta.nome} onFechar={() => setPrancheta(null)} />}
 
         {erro && <p className="erro">{erro}</p>}
+        <PalpiteDoJogo id={p.id} gravacao={gravacao} />
         {a && !gravacao && p.golsMandante != null && <PosJogo a={a} />}
         {!a && !erro && <p className="pensando">Carregando a partida…</p>}
 
@@ -315,5 +317,54 @@ function Escalacao({ lado }: { lado: LadoDaPartida }) {
         {lado.titulares.map((j, i) => <li key={i}>{j.nome}{j.funcao ? <span className="card-sub"> · {j.funcao}</span> : null}</li>)}
       </ol>
     </div>
+  )
+}
+
+/**
+ * Palpite do modelo AlpaFlow (backlog item 4): as três chances em barras com as cores dos clubes, o placar mais provável e, depois
+ * do jogo, se acertou. Some quando não há palpite (jogo que já tinha começado antes de alguém pedir).
+ */
+function PalpiteDoJogo({ id, gravacao }: { id: number; gravacao: boolean }) {
+  const [r, setR] = useState<ResultadoPalpite | null>(null)
+  const [galeria, setGaleria] = useState<Cartao[] | null>(null)
+  useEffect(() => {
+    let vivo = true
+    api.palpite(id).then((x) => { if (vivo) setR(x) }).catch(() => {})
+    return () => { vivo = false }
+  }, [id])
+  const x = r?.palpite
+  if (!x) return null
+  const p = x.partida
+  const [corM, corV] = coresDoJogo(p.mandante, p.visitante)
+  const faixas = [
+    { nome: p.mandante, valor: x.chanceMandante, cor: corM, chave: 'mandante' },
+    { nome: 'Empate', valor: x.chanceEmpate, cor: '#9aa5a0', chave: 'empate' },
+    { nome: p.visitante, valor: x.chanceVisitante, cor: corV, chave: 'visitante' },
+  ]
+  return (
+    <section className="palpite">
+      <h3>
+        Palpite do modelo
+        {x.acertou != null && <span className={`selo-palpite ${x.acertou ? 'certo' : 'errado'}`}>{x.acertou ? '✅ Acertou' : '❌ Errou'}{x.acertouPlacar ? ' até o placar' : ''}</span>}
+      </h3>
+      <div className="palpite-faixas">
+        {faixas.map((f) => (
+          <div key={f.chave} className={`palpite-faixa ${x.favorito === f.chave ? 'favorito' : ''} ${x.resultado === f.chave ? 'aconteceu' : ''}`}>
+            <span>{f.nome}</span>
+            <div className="palpite-barra"><i style={{ width: `${f.valor}%`, background: f.cor }} /></div>
+            <b>{f.valor.toFixed(0)}%</b>
+          </div>
+        ))}
+      </div>
+      <p className="card-sub">
+        Placar mais provável: <b>{x.placarProvavel}</b> ({x.chancePlacar.toFixed(0)}%) · {x.congelado ? 'palpite guardado antes do apito' : 'atualizado até o apito inicial'}
+      </p>
+      {!gravacao && (
+        <div className="pos-jogo-acoes">
+          <button className="btn para-video" onClick={async () => setGaleria(await coletar(() => cartaoDoPalpite(x)))}>🎬 Palpite para vídeo</button>
+        </div>
+      )}
+      {galeria && <GaleriaVideo titulo={`Palpite: ${p.mandante} x ${p.visitante}`} cartoes={galeria} onFechar={() => setGaleria(null)} />}
+    </section>
   )
 }

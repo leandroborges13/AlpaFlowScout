@@ -19,7 +19,9 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
    - Ferramenta do chat: invencibilidade, jogos sem sofrer gol, sequência de vitórias, maior goleada da temporada, "desde X".
    - A base já tem os placares; é conta em cima de procurar_partidas.
 
-4. **Palpite da IA antes do jogo, e "acertou ou errou?" depois**
+4. **Palpite da IA antes do jogo, e "acertou ou errou?" depois** — FEITO em 08/11/2026 (PalpitesHandler: chances exatas pela força
+   Elo + Poisson, guardado em palpites e congelado no apito; ferramentas `palpite` e `historico_palpites` no chat; bloco e cartão
+   "Palpite para vídeo" no painel da partida; o AcompanhamentoPosJogo faz o palpite dos jogos do Galo nas 48 h antes)
    - Chance de vitória, empate e derrota do próximo jogo pela força tipo Elo do modelo de chances da liga.
    - Gera dois vídeos por jogo (véspera e pós-jogo) e um motivo para voltar ao canal. Guardar o palpite para mostrar o histórico de acertos.
 

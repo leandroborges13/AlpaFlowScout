@@ -37,6 +37,8 @@ public class AssistenteScout(
     IQueryHandler<AtletasParaTreinador, ResultadoAtletasParaTreinador?> atletasParaTreinador,
     IQueryHandler<ProcurarPartidas, IReadOnlyList<ResumoPartida>> procurarPartidas,
     IQueryHandler<ObterSequencias, ResultadoSequencias?> sequencias,
+    IQueryHandler<ObterPalpite, ResultadoPalpite?> palpite,
+    IQueryHandler<ObterHistoricoDePalpites, HistoricoDePalpites> historicoPalpites,
     IQueryHandler<AnalisarPartida, AnalisePartida?> analisarPartida,
     IQueryHandler<ObterFichaAtleta, FichaAtleta?> fichaAtleta,
     IQueryHandler<ObterElenco, ElencoDoTime?> elenco,
@@ -368,6 +370,22 @@ public class AssistenteScout(
                 "começou e o que quebrou a anterior; os recordes do período (a maior de cada tipo) e a maior vitória e a maior derrota. " +
                 "Por padrão a temporada inteira, todas as competições."),
             AIFunctionFactory.Create(
+                async ([Description("Nome do time, para o palpite do PRÓXIMO jogo dele")] string? time = null,
+                       [Description("ID da partida, se já souber qual (também serve para ver se o palpite acertou)")] int? partidaId = null) =>
+                {
+                    var r = await palpite.Handle(new ObterPalpite(partidaId, time), ct);
+                    if (r?.Partida is { } p) partidasCitadas[p.Id] = p;
+                    return (object?)r ?? "Jogo não encontrado.";
+                },
+                "palpite",
+                "Palpite do modelo AlpaFlow para um jogo: chance de vitória do mandante, empate e vitória do visitante (em %) e o placar mais " +
+                "provável. Antes do jogo, faz ou atualiza; depois do jogo, devolve o palpite guardado e se acertou (Resultado, Acertou, AcertouPlacar)."),
+            AIFunctionFactory.Create(
+                async ([Description("Nome do time, para só os jogos dele")] string? time = null, int? temporada = null) =>
+                    await historicoPalpites.Handle(new ObterHistoricoDePalpites(time, temporada), ct),
+                "historico_palpites",
+                "Histórico dos palpites do modelo já conferidos: quantos jogos, quantos acertos do resultado e do placar exato, aproveitamento e a lista."),
+            AIFunctionFactory.Create(
                 async (int partidaId) =>
                 {
                     var a = await analisarPartida.Handle(new AnalisarPartida(partidaId), ct);
@@ -584,6 +602,9 @@ public class AssistenteScout(
           sequencias (já contadas, nunca conte você mesmo). Atuais/EmCasa/ForaDeCasa trazem a contagem de TODOS os tipos: use o número
           exato do tipo pedido (0 ou 1 também é resposta: "perdeu o último jogo em casa, para o Cruzeiro"). Cite o jogo que começou
           a sequência e o que a quebrou antes, com data.
+        - "Palpite", "quem ganha", "chance de vencer o jogo de sábado" = palpite (com o time). Diga as três chances, o placar mais provável
+          e que é o modelo AlpaFlow (força tipo Elo). "Acertou?", "como foi o palpite" = palpite com o ID do jogo; "quantos palpites acertou" =
+          historico_palpites. Nunca invente palpite para jogo que já começou: se Palpite vier nulo, diga que não havia palpite guardado.
         - "Últimos N jogos" / "fase recente" = procurar_partidas com limite N (e a competição, se pedirem só a liga). Use o ResumoDosDisputados
           como está; jogo em NaoDisputados é o próximo jogo, nunca parte dos últimos. NaoDisputados traz o próximo jogo
           marcado (seja quando for); vazio = nenhum jogo marcado na base: não diga que o time encerrou a temporada nem que não joga mais.

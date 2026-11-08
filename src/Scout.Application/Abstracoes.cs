@@ -18,6 +18,7 @@ public interface IScoutDb
     DbSet<CobrancaDisputa> CobrancasDisputa { get; }
     DbSet<DesempenhoAvancado> DesempenhosAvancados { get; }
     DbSet<RoteiroPosJogo> RoteirosPosJogo { get; }
+    DbSet<PalpiteDaPartida> Palpites { get; }
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 }
 

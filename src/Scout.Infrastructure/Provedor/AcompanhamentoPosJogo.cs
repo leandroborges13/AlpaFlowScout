@@ -43,6 +43,13 @@ public class AcompanhamentoPosJogo(IServiceScopeFactory escopos, IConfiguration 
         using var escopo = escopos.CreateScope();
         var db = escopo.ServiceProvider.GetRequiredService<ScoutDbContext>();
         var agora = DateTime.UtcNow;
+        // Palpite dos próximos jogos (48 h): refeito a cada volta até o apito inicial, quando congela
+        var palpites = escopo.ServiceProvider.GetRequiredService<Scout.Application.Consultas.PalpitesHandler>();
+        foreach (var proximo in await db.Partidas
+                     .Where(p => (times.Contains(p.MandanteId) || times.Contains(p.VisitanteId)) && p.Data > agora && p.Data <= agora.AddHours(48)
+                                 && (p.Status == "NS" || p.Status == "TBD"))
+                     .ToListAsync(ct))
+            await palpites.Palpitar(proximo, ct);
         var feitos = db.RoteirosPosJogo.Select(r => r.PartidaId);
         var jogos = await db.Partidas
             .Where(p => (times.Contains(p.MandanteId) || times.Contains(p.VisitanteId))

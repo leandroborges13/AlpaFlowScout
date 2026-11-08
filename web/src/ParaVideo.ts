@@ -1,4 +1,4 @@
-import type { AnalisePartida, CartaoDoAtleta, CalorDoJogador, DesempenhoNoJogo, FinalizacaoNoMapa, MapaDaPartida } from './api'
+import type { AnalisePartida, CartaoDoAtleta, Palpite, CalorDoJogador, DesempenhoNoJogo, FinalizacaoNoMapa, MapaDaPartida } from './api'
 import { comAlfa, coresDoClube, coresDoJogo } from './Cores'
 
 // "Para vídeo": cartões 1080x1920 (9:16) para os Shorts do canal Futebol em Números, desenhados em canvas e baixados como PNG.
@@ -612,4 +612,46 @@ export async function cartaoDoAtleta(c: CartaoDoAtleta) {
   fonte(ctx, 20, 600); ctx.fillStyle = COR.suave; ctx.textBaseline = 'top'
   ctx.fillText('Barra = percentil no setor: azul elite · verde bom · amarelo regular · laranja abaixo', x0 + 50, y0 + h - 44)
   await baixar(tela, `cartao-${nomeDeArquivo(a.nome)}`)
+}
+
+/**
+ * Cartão do palpite (item 4): as três chances em barras grandes com as cores dos clubes e o placar mais provável. Depois do jogo,
+ * o mesmo cartão com o resultado e o selo "acertou" ou "errou" (o vídeo de pós-jogo do palpite).
+ */
+export async function cartaoDoPalpite(x: Palpite) {
+  await prontoParaDesenhar()
+  const p = x.partida
+  const [corM, corV] = coresDoJogo(p.mandante, p.visitante)
+  const [tela, ctx] = novaTela()
+  const depois = x.acertou != null
+  moldura(ctx, [p.competicao, p.rodada?.replace('Regular Season - ', 'Rodada ')].filter(Boolean).join(' · '),
+    depois ? `O modelo ${x.acertou ? 'acertou' : 'errou'}?` : `${p.mandante} x ${p.visitante}: quem ganha?`)
+  const faixas = [
+    { nome: p.mandante, valor: x.chanceMandante, cor: corM, chave: 'mandante' },
+    { nome: 'Empate', valor: x.chanceEmpate, cor: '#9aa5a0', chave: 'empate' },
+    { nome: p.visitante, valor: x.chanceVisitante, cor: corV, chave: 'visitante' },
+  ]
+  const x0 = JANELA.x + 50, w = JANELA.w - 100
+  let y = JANELA.y + 60
+  ctx.textBaseline = 'middle'
+  for (const f of faixas) {
+    const favorito = x.favorito === f.chave
+    fonte(ctx, 40, favorito ? 900 : 700); ctx.fillStyle = COR.texto; ctx.textAlign = 'left'
+    ctx.fillText(f.nome + (x.resultado === f.chave ? '  ⚽' : ''), x0, y)
+    fonte(ctx, 64, 900); ctx.textAlign = 'right'; ctx.fillStyle = favorito ? f.cor : COR.suave
+    ctx.fillText(`${Math.round(f.valor)}%`, x0 + w, y)
+    caixa(ctx, x0, y + 42, w, 34, 17, COR.linha)
+    caixa(ctx, x0, y + 42, Math.max(34, (w * f.valor) / 100), 34, 17, f.cor)
+    y += 150
+  }
+  ctx.textAlign = 'center'
+  fonte(ctx, 34, 700); ctx.fillStyle = COR.suave
+  ctx.fillText(`Placar mais provável: ${x.placarProvavel} (${Math.round(x.chancePlacar)}%)`, L / 2, y + 10)
+  if (depois && p.golsMandante != null) {
+    fonte(ctx, 40, 900); ctx.fillStyle = x.acertou ? '#1db954' : '#f0563a'
+    ctx.fillText(`${x.acertou ? '✅ Acertou' : '❌ Errou'}: ${p.mandante} ${p.golsMandante} x ${p.golsVisitante} ${p.visitante}`, L / 2, y + 80)
+  }
+  fonte(ctx, 22, 600); ctx.fillStyle = COR.suave; ctx.textAlign = 'left'
+  ctx.fillText('Modelo AlpaFlow: força tipo Elo pelos resultados da temporada, com mando de campo', JANELA.x + 50, JANELA.y + JANELA.h - 40)
+  await baixar(tela, `palpite-${nomeDeArquivo(`${p.mandante}-${p.visitante}`)}`)
 }

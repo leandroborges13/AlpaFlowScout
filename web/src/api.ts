@@ -179,12 +179,23 @@ export const api = {
     return r.status === 204 ? null : (r.ok ? (r.json() as Promise<RoteiroPosJogo>) : Promise.reject(new Error(`Erro ${r.status}`)))
   },
   gerarPosJogo: (id: number) => pedir<RoteiroPosJogo>(`/api/partidas/${id}/pos-jogo`, { method: 'POST' }),
+  /** Palpite do modelo (feito/atualizado até o apito; depois, o guardado e se acertou). */
+  palpite: (id: number) => pedir<ResultadoPalpite>(`/api/partidas/${id}/palpite`),
+  palpites: (time?: string) => pedir<HistoricoDePalpites>(`/api/palpites${time ? `?time=${encodeURIComponent(time)}` : ''}`),
   /** Mapa de finalizações e de calor (só ligas e pós-jogo); null quando a fonte não tem o jogo. */
   mapa: async (id: number) => {
     const r = await fetch(`/api/partidas/${id}/mapa`, { credentials: 'same-origin' })
     return r.ok && r.status !== 204 ? (r.json() as Promise<MapaDaPartida>) : null
   },
 }
+
+export type Palpite = {
+  partida: ResumoPartida; chanceMandante: number; chanceEmpate: number; chanceVisitante: number; favorito: 'mandante' | 'empate' | 'visitante'
+  placarProvavel: string; chancePlacar: number; feitoEm: string; congelado: boolean
+  resultado: 'mandante' | 'empate' | 'visitante' | null; acertou: boolean | null; acertouPlacar: boolean | null
+}
+export type ResultadoPalpite = { palpite: Palpite | null; partida: ResumoPartida | null; explicacao: string }
+export type HistoricoDePalpites = { time: string | null; jogos: number; acertos: number; acertosDePlacar: number; aproveitamento: number | null; palpites: Palpite[] }
 
 export type VagaNaPrancheta = { grade: string; funcao: string; x: number; y: number; atletaId: number | null; nome: string | null }
 export type AtletaDaPrancheta = { id: number; nome: string; funcao: string | null; setor: string; titularidades: number; recentes: number }

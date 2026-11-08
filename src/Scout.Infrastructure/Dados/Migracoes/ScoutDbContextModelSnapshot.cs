@@ -697,6 +697,54 @@ namespace Scout.Infrastructure.Dados.Migracoes
                     b.ToTable("estatisticas", (string)null);
                 });
 
+            modelBuilder.Entity("Scout.Domain.PalpiteDaPartida", b =>
+                {
+                    b.Property<int>("PartidaId")
+                        .HasColumnType("integer")
+                        .HasColumnName("partida_id");
+
+                    b.Property<double>("ChanceEmpate")
+                        .HasColumnType("double precision")
+                        .HasColumnName("chance_empate");
+
+                    b.Property<double>("ChanceMandante")
+                        .HasColumnType("double precision")
+                        .HasColumnName("chance_mandante");
+
+                    b.Property<double>("ChancePlacar")
+                        .HasColumnType("double precision")
+                        .HasColumnName("chance_placar");
+
+                    b.Property<double>("ChanceVisitante")
+                        .HasColumnType("double precision")
+                        .HasColumnName("chance_visitante");
+
+                    b.Property<DateTime>("FeitoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("feito_em");
+
+                    b.Property<double>("ForcaMandante")
+                        .HasColumnType("double precision")
+                        .HasColumnName("forca_mandante");
+
+                    b.Property<double>("ForcaVisitante")
+                        .HasColumnType("double precision")
+                        .HasColumnName("forca_visitante");
+
+                    b.Property<int>("PlacarMandante")
+                        .HasColumnType("integer")
+                        .HasColumnName("placar_mandante");
+
+                    b.Property<int>("PlacarVisitante")
+                        .HasColumnType("integer")
+                        .HasColumnName("placar_visitante");
+
+                    b.HasKey("PartidaId")
+                        .HasName("pk_palpites");
+
+                    b.ToTable("palpites", (string)null);
+                });
+
             modelBuilder.Entity("Scout.Domain.Partida", b =>
                 {
                     b.Property<int>("Id")

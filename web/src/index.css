@@ -404,3 +404,17 @@ button.lt-quad:hover, button.lt-quad:focus-visible { outline: 2px solid var(--in
 .pq-elenco h4 { color: #b9e8cf; }
 .pq-rodape { text-align: right; font-weight: 800; font-size: clamp(11px, 2vmin, 30px); color: rgba(255,255,255,.8); margin-top: 1vmin; }
 .pq-rodape b { color: #4fe3a0; }
+
+/* Palpite do modelo (item 4) */
+.palpite { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin: 10px 0; }
+.palpite h3 { margin-top: 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.selo-palpite { font-size: 13px; padding: 3px 10px; border-radius: 999px; font-weight: 700; }
+.selo-palpite.certo { background: #1db95422; color: #138a3e; }
+.selo-palpite.errado { background: #f0563a22; color: #c23b20; }
+.palpite-faixas { display: grid; gap: 6px; margin: 6px 0; }
+.palpite-faixa { display: grid; grid-template-columns: minmax(90px, 160px) 1fr 48px; align-items: center; gap: 10px; font-size: 14px; }
+.palpite-faixa.favorito span { font-weight: 800; }
+.palpite-faixa.aconteceu span::after { content: " ⚽"; }
+.palpite-barra { height: 12px; border-radius: 6px; background: var(--line, #e3e8e5); overflow: hidden; }
+.palpite-barra i { display: block; height: 100%; border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
+.palpite-faixa b { text-align: right; }
