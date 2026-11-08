@@ -90,12 +90,21 @@ A API-Football (a nossa) não tem coordenadas de lance. Opções vistas:
 
 ## Fontes de dados para testar
 
-11. **Bzzoiro Sports Data (sports.bzzoiro.com)** — achada em 06/11/2026, grátis e diz não ter cota.
-    - Promete: valor de mercado, contrato e transferências com valores por atleta; xG, xA e mapa de calor por jogo;
-      escalação provável, desfalques e árbitro. Nada disso de mercado existe na API-Football nem na PitchAPI.
-    - Não cita o Brasileirão: testar Série A e Copa do Brasil antes de qualquer coisa, e ler a licença (/docs/api-license/)
-      para ver se permite uso comercial. Chave: o Leandro cria a conta e põe BZZOIRO_KEY no .env.
-    - Evitar endpoints não oficiais de Sofascore e FotMob (termos proíbem).
+11. **Bzzoiro Sports Data (sports.bzzoiro.com)** — TESTADA em 08/11/2026 com a chave (BZZOIRO_KEY no .env local; header
+    `Authorization: Token <chave>`). Cobre o que falta na PitchAPI:
+    - Ligas e copas de 2026: Série A (9), Série B (34), **Copa do Brasil (35), Libertadores (32), Sul-Americana (33)**.
+    - **Elenco por time** (/api/players/?team=155 = Galo, 46 atletas) com **data de nascimento** (Gutte 2008-04-05, igual à
+      ficha do Sub-17), posição, altura, peso, pé, contrato, valor de mercado e transferências.
+    - Jogo (/api/events/{id}/): placar, xG real, treinadores, escalações com nota, desfalques, árbitro, público, confronto.
+      Galo x Grêmio da Copa do Brasil (602319) veio completo.
+    - **Estatística por atleta e jogo** (/api/player-stats/?event={id}): minutos, nota, gols, xA, finalizações, passes, passes
+      decisivos, cruzamentos, bolas longas, toques, dribles, duelos, aéreos, desarmes, cortes, interceptações, recuperações,
+      faltas, cartões, defesas, pênaltis.
+    - Cuidados: há duplicata no cadastro (Gutte aparece duas vezes, com 04 e 05/04/2008); ids próprios (ligar por nome + time,
+      como na PitchAPI); serviço novo e sem garantia, igual à PitchAPI.
+    - **Conclusão:** PitchAPI (ligas: mapas e métricas avançadas) + Bzzoiro (copas, elencos, nascimento, estatística por jogo)
+      cobrem o Scout sem o Pro da API-Football. Próximo passo: ColetaBzzoiro (elencos e nascimento primeiro, depois os jogos de
+      copa) e, em dezembro, um teste de uma semana com o Scout lendo só das duas antes de decidir não renovar.
 
 ## Imagem e direitos (escudos, fotos, cores)
 
