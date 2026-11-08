@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api, type AnalisePartida, type DesempenhoNoJogo, type EventoDaPartida, type LadoDaPartida, type MapaDaPartida, type ResumoPartida, type RoteiroPosJogo } from './api'
 import { GaleriaVideo } from './GaleriaVideo'
 import { PranchetaTatica } from './Prancheta'
-import { cartaoDoJogador, cartoesDaPartida, coletar, recortesDoMapa, type Cartao } from './ParaVideo'
+import { cartaoDoJogador, cartoesDaPartida, coletar, ligarJogador, recortesDoMapa, type Cartao } from './ParaVideo'
 import { Escudo } from './PainelTime'
 import { CampoDaPartida, DesempenhoNaPartida, Destaques, LinhaDoTempo } from './PartidaVisual'
 
@@ -261,24 +261,33 @@ const mapaDe = (id: number) => {
   return mapas.get(id)!
 }
 
-/** "Mapa de <nome>": o cartão com a mancha de calor e as finalizações do jogador aberto no campinho, na tela (ver grande, gravar ou baixar). */
+/**
+ * "Mapa de <nome>": o cartão com a mancha de calor e as finalizações do jogador aberto no campinho, na tela (ver grande, gravar ou
+ * baixar). Só aparece quando a fonte do mapa tem o jogo e o jogador (copas e jogos ainda não processados não têm).
+ */
 function MapaDoJogador({ a, d }: { a: AnalisePartida; d: DesempenhoNoJogo }) {
-  const [estado, setEstado] = useState<'' | 'gerando' | 'sem-mapa'>('')
+  const [mapa, setMapa] = useState<MapaDaPartida | null | undefined>(undefined)
+  const [gerando, setGerando] = useState(false)
   const [galeria, setGaleria] = useState<Cartao[] | null>(null)
+  useEffect(() => {
+    let vivo = true
+    mapaDe(a.partida.id).then((m) => { if (vivo) setMapa(m) })
+    return () => { vivo = false }
+  }, [a.partida.id])
+  if (!mapa || !ligarJogador(d.nome, d.clubeId, mapa)) return null
   async function mostrar() {
-    setEstado('gerando')
-    const mapa = await mapaDe(a.partida.id)
-    const cartoes = mapa ? await coletar(() => cartaoDoJogador(a, mapa, d)) : []
-    setEstado(cartoes.length ? '' : 'sem-mapa')
-    if (cartoes.length) setGaleria(cartoes)
+    setGerando(true)
+    try {
+      const cartoes = await coletar(() => cartaoDoJogador(a, mapa!, d))
+      if (cartoes.length) setGaleria(cartoes)
+    } finally { setGerando(false) }
   }
   return (
     <div className="pos-jogo-acoes">
       {galeria && <GaleriaVideo titulo={`Mapa de ${d.nome}`} cartoes={galeria} onFechar={() => setGaleria(null)} />}
-      <button className="btn para-video" onClick={mostrar} disabled={estado === 'gerando'} title="Mostra o cartão 1080x1920 com onde ele teve a bola e as finalizações dele">
-        {estado === 'gerando' ? 'Gerando…' : `🎬 Mapa de ${d.nome}`}
+      <button className="btn para-video" onClick={mostrar} disabled={gerando} title="Mostra o cartão 1080x1920 com onde ele teve a bola e as finalizações dele">
+        {gerando ? 'Gerando…' : `🎬 Mapa de ${d.nome}`}
       </button>
-      {estado === 'sem-mapa' && <span className="card-sub">Sem mapa deste jogador (copa, jogo recente ou nome diferente na fonte).</span>}
     </div>
   )
 }
