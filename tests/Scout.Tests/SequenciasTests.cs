@@ -21,7 +21,8 @@ public class SequenciasTests
         Assert.Equal(2, invicto.QuebradaEm!.Id);       // depois da derrota fora
         Assert.Equal("Rival 2 1 x 0 Galo", invicto.QuebradaEm.Jogo);
         Assert.Equal(3, r.Atuais.Single(s => s.Tipo == "vitorias").Jogos);
-        Assert.DoesNotContain(r.Atuais, s => s.Tipo == "sem_vencer");
+        Assert.Equal(0, r.Atuais.Single(s => s.Tipo == "sem_vencer").Jogos);
+        Assert.Equal(6, r.Atuais.Single(s => s.Tipo == "sem_vencer").QuebradaEm!.Id); // a vitória mais recente
         Assert.Equal(3, r.MaiorVitoria!.Saldo);
         Assert.Equal(1, r.MaiorDerrota!.Saldo);
     }
@@ -38,6 +39,6 @@ public class SequenciasTests
         Assert.Equal(1, vitorias.Desde!.Id);
         Assert.Equal(4, vitorias.QuebradaEm!.Id);
         Assert.Equal(3, r.Recordes.Single(s => s.Tipo == "sem_sofrer").Jogos);
-        Assert.Empty(r.EmCasa.Where(s => s.Tipo == "invicto")); // em casa o último jogo foi vitória, mas antes perdeu: só 1
+        Assert.Equal(1, r.EmCasa.Single(s => s.Tipo == "invicto").Jogos); // em casa a vitória veio logo depois de uma derrota
     }
 }

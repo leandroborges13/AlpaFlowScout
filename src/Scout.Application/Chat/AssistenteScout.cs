@@ -581,7 +581,9 @@ public class AssistenteScout(
         - Contar ou listar jogos ("quantas vitórias", "liste os jogos") = procurar_partidas com limite 50, sem competição (todas, salvo se
           citarem uma), e conte só o que veio. Se vierem exatamente 50, diga que podem existir mais e mostre o período coberto.
         - Sequência, invencibilidade, "há quantos jogos não perde/não vence/não sofre gol", "maior sequência", "maior goleada" = use
-          sequencias (já contadas, nunca conte você mesmo). Cite o jogo que começou a sequência e o que a quebrou antes, com data.
+          sequencias (já contadas, nunca conte você mesmo). Atuais/EmCasa/ForaDeCasa trazem a contagem de TODOS os tipos: use o número
+          exato do tipo pedido (0 ou 1 também é resposta: "perdeu o último jogo em casa, para o Cruzeiro"). Cite o jogo que começou
+          a sequência e o que a quebrou antes, com data.
         - "Últimos N jogos" / "fase recente" = procurar_partidas com limite N (e a competição, se pedirem só a liga). Use o ResumoDosDisputados
           como está; jogo em NaoDisputados é o próximo jogo, nunca parte dos últimos. NaoDisputados traz o próximo jogo
           marcado (seja quando for); vazio = nenhum jogo marcado na base: não diga que o time encerrou a temporada nem que não joga mais.

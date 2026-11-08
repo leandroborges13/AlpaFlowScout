@@ -15,7 +15,7 @@ public record Sequencia(string Tipo, string Descricao, int Jogos, JogoDaSequenci
 
 public record Goleada(int Saldo, JogoDaSequencia Jogo);
 
-/// <summary>`Atuais`: as que estão valendo (2+ jogos); `EmCasa`/`ForaDeCasa`: as atuais só com jogos naquele mando;
+/// <summary>`Atuais`: a contagem atual de cada tipo (0 = não está valendo; o `QuebradaEm` é o último jogo, que a interrompeu); `EmCasa`/`ForaDeCasa`: as atuais só com jogos naquele mando;
 /// `Recordes`: a maior de cada tipo no período.</summary>
 public record ResultadoSequencias(string Time, string Periodo, int Jogos, IReadOnlyList<Sequencia> Atuais, IReadOnlyList<Sequencia> EmCasa,
     IReadOnlyList<Sequencia> ForaDeCasa, IReadOnlyList<Sequencia> Recordes, Goleada? MaiorVitoria, Goleada? MaiorDerrota);
@@ -98,10 +98,9 @@ public class ObterSequenciasHandler(IScoutDb db) : IQueryHandler<ObterSequencias
         {
             var n = 0;
             for (var i = jogos.Count - 1; i >= 0 && vale(jogos[i]); i--) n++;
-            if (n < 2) continue;
-            var primeiro = jogos[^n];
+            // Todas, mesmo com 0 ou 1 jogo: sem a contagem explícita, a IA "completava" a que faltava (ex.: invicto em casa)
             var antes = jogos.Count > n ? jogos[^(n + 1)] : null;
-            r.Add(new Sequencia(tipo, descricao, n, Citar(primeiro), Citar(jogos[^1]), antes is null ? null : Citar(antes)));
+            r.Add(new Sequencia(tipo, descricao, n, n > 0 ? Citar(jogos[^n]) : null, n > 0 ? Citar(jogos[^1]) : null, antes is null ? null : Citar(antes)));
         }
         return r.OrderByDescending(s => s.Jogos).ToList();
     }
