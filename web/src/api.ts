@@ -57,6 +57,12 @@ export type DetalheAtleta = {
   } | null
 }
 
+export type ItemDoCartao = { chave: string; nome: string; valor: number | null; porcentagem: boolean; percentil: number | null; posicao: number | null; total: number }
+export type CartaoDoAtleta = {
+  resumo: ResumoAtleta; competicao: string; comparacao: string; comparados: number; nota: number | null; posicaoNaNota: number | null
+  blocos: { nome: string; itens: ItemDoCartao[] }[]
+}
+
 export type Parecidos = { referencia: ResumoAtleta; parecidos: { atleta: ResumoAtleta; semelhanca: number }[] }
 
 export type ResumoTime = {
@@ -154,6 +160,7 @@ export const api = {
       body: JSON.stringify({ mensagens: mensagens.map(({ papel, texto }) => ({ papel, texto })) }),
     }),
   atleta: (id: number, temporada: number) => pedir<DetalheAtleta>(`/api/atletas/${id}?temporada=${temporada}`),
+  cartaoDoAtleta: (id: number, temporada: number) => pedir<CartaoDoAtleta>(`/api/atletas/${id}/cartao?temporada=${temporada}`),
   parecidos: (id: number, temporada: number) => pedir<Parecidos>(`/api/atletas/${id}/parecidos?temporada=${temporada}`),
   resumoIa: (id: number, temporada: number) => pedir<{ texto: string }>(`/api/atletas/${id}/resumo-ia?temporada=${temporada}`),
   time: (id: number, competicao: number, temporada: number) =>
@@ -186,7 +193,7 @@ export type Prancheta = {
   vagas: VagaNaPrancheta[]; elenco: AtletaDaPrancheta[]; explicacao: string
 }
 
-// Modo gravação: esconde fotos e escudos (direito de imagem e de marca) para vídeos públicos.
+// Modo gravação: esconde as fotos dos atletas e treinadores (direito de imagem) para vídeos públicos; os escudos ficam.
 const CHAVE_GRAVACAO = 'scout:modo-gravacao'
 export function lerModoGravacao(): boolean {
   try { return localStorage.getItem(CHAVE_GRAVACAO) === '1' } catch { return false }

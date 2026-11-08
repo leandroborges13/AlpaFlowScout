@@ -73,6 +73,8 @@ A API-Football (a nossa) não tem coordenadas de lance. Opções vistas:
 ## Cartões de atleta
 
 10. **Cartão do atleta para vídeo (por 90 min, percentil e ranking)** — ideia de 06/11/2026, a partir de um "playercard" de outro perfil.
+    - **v1 feita em 08/11/2026** (só API-Football): GET /api/atletas/{id}/cartao e botão "Cartão para vídeo" no painel do
+      atleta; ranking contra o mesmo setor na liga. Falta: comparação com todos os de linha e as métricas da PitchAPI.
     - No "Para vídeo" do painel do atleta, no nosso visual (verde, Futebol em Números), 1080x1920.
     - Blocos com o que a API-Football tem: Passe (passes certos, precisão, passes decisivos, assistências), Defesa (desarmes,
       interceptações, bloqueios), Duelos (ganhos e %, faltas sofridas), Ataque (finalizações, no alvo, gols, dribles certos e %),
@@ -100,6 +102,9 @@ A API-Football (a nossa) não tem coordenadas de lance. Opções vistas:
 ## Imagem e direitos (escudos, fotos, cores)
 
 12. **Modo gravação com escudos e cores dos clubes, sem fotos** — conversa de 06/11/2026.
+    - **Feito em 08/11/2026:** escudos aparecem no modo gravação (fotos seguem escondidas); cores por clube em web/src/Cores.ts
+      nos cartões do jogo (placar, barras, destaques, anel das notas, mapas) e nas bolinhas da prancheta. Times de cores
+      parecidas: o segundo fica cinza.
     - Hoje o "Modo gravação" esconde escudos e fotos. Mudar para: escudos aparecem (pequenos, em placar e tabela: uso
       informativo, sem parecer oficial), fotos de atletas continuam escondidas.
     - Cartões do "Para vídeo" e da prancheta com as cores de cada clube (ex.: Grêmio azul e preto) no lugar do verde único.

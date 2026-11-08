@@ -16,27 +16,27 @@ function dataDoJogo(p: ResumoPartida) {
   return new Date(p.data).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-function Placar({ p, gravacao, grande = false }: { p: ResumoPartida; gravacao: boolean; grande?: boolean }) {
+function Placar({ p, grande = false }: { p: ResumoPartida; grande?: boolean }) {
   return (
     <div className={`placar ${grande ? 'grande' : ''}`}>
       <div className="placar-time">
-        <Escudo time={{ nome: p.mandante, escudo: p.escudoMandante }} oculto={gravacao} />
+        <Escudo time={{ nome: p.mandante, escudo: p.escudoMandante }} />
         <span>{p.mandante}</span>
       </div>
       <b>{p.golsMandante ?? '–'} <small>x</small> {p.golsVisitante ?? '–'}</b>
       <div className="placar-time fora">
         <span>{p.visitante}</span>
-        <Escudo time={{ nome: p.visitante, escudo: p.escudoVisitante }} oculto={gravacao} />
+        <Escudo time={{ nome: p.visitante, escudo: p.escudoVisitante }} />
       </div>
     </div>
   )
 }
 
-export function CartaoPartida({ partida: p, gravacao, onAbrir }: { partida: ResumoPartida; gravacao: boolean; onAbrir: () => void }) {
+export function CartaoPartida({ partida: p, onAbrir }: { partida: ResumoPartida; gravacao: boolean; onAbrir: () => void }) {
   return (
     <button className="card" onClick={onAbrir}>
       <span className="card-sub">{p.competicao} {p.temporada}{p.rodada ? ` · ${p.rodada.replace('Regular Season - ', 'Rodada ')}` : ''} · {dataDoJogo(p)}</span>
-      <Placar p={p} gravacao={gravacao} />
+      <Placar p={p} />
     </button>
   )
 }
@@ -75,7 +75,7 @@ export function PainelPartida({ partida, gravacao, onFechar }: PainelProps) {
     <div className="fundo" onClick={onFechar}>
       <div className="painel largo" role="dialog" aria-modal aria-label={`${p.mandante} x ${p.visitante}`} onClick={(e) => e.stopPropagation()}>
         <span className="card-sub">{p.competicao} {p.temporada}{p.rodada ? ` · ${p.rodada.replace('Regular Season - ', 'Rodada ')}` : ''} · {dataDoJogo(p)}</span>
-        <Placar p={p} gravacao={gravacao} grande />
+        <Placar p={p} grande />
         {a?.desfecho && <p className="desfecho">{a.desfecho}</p>}
         <div className="prancheta-botoes">
           <button className="btn" onClick={() => setPrancheta({ id: p.mandanteId, nome: p.mandante })}>🧩 Prancheta: {p.mandante}</button>

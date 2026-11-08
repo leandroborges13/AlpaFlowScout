@@ -1,4 +1,5 @@
-import type { AnalisePartida, CalorDoJogador, DesempenhoNoJogo, FinalizacaoNoMapa, MapaDaPartida } from './api'
+import type { AnalisePartida, CartaoDoAtleta, CalorDoJogador, DesempenhoNoJogo, FinalizacaoNoMapa, MapaDaPartida } from './api'
+import { comAlfa, coresDoClube, coresDoJogo } from './Cores'
 
 // "Para vídeo": cartões 1080x1920 (9:16) para os Shorts do canal Futebol em Números, desenhados em canvas e baixados como PNG.
 // O conteúdo fica na janela 1000x735 em (40, 330), a mesma da moldura dos Shorts: o cartão entra direto na montagem.
@@ -147,6 +148,8 @@ export async function cartoesDaPartida(a: AnalisePartida, mapa?: MapaDaPartida |
   const selo = [p.competicao, p.rodada?.replace('Regular Season - ', 'Rodada ')].filter(Boolean).join(' · ')
   const nome = nomeDeArquivo(`${p.mandante}-${p.visitante}`)
   const time = (clubeId: number) => (clubeId === p.mandanteId ? p.mandante : p.visitante)
+  const [corM, corV] = coresDoJogo(p.mandante, p.visitante)
+  const corDe = (clubeId: number) => (clubeId === p.mandanteId ? corM : corV)
 
   // 1. Placar e gols
   {
@@ -154,8 +157,9 @@ export async function cartoesDaPartida(a: AnalisePartida, mapa?: MapaDaPartida |
     moldura(ctx, selo, 'O jogo')
     ctx.textAlign = 'center'
     fonte(ctx, 44, 800)
-    ctx.fillStyle = COR.suave
+    ctx.fillStyle = corM
     ctx.fillText(p.mandante, L / 2 - 250, JANELA.y + 70)
+    ctx.fillStyle = corV
     ctx.fillText(p.visitante, L / 2 + 250, JANELA.y + 70)
     fonte(ctx, 150, 800)
     ctx.fillStyle = COR.texto
@@ -167,7 +171,7 @@ export async function cartoesDaPartida(a: AnalisePartida, mapa?: MapaDaPartida |
     for (const g of gols.slice(0, 7)) {
       const minuto = g.acrescimo ? `${g.minuto}+${g.acrescimo}'` : `${g.minuto}'`
       fonte(ctx, 34, 800)
-      ctx.fillStyle = COR.verde
+      ctx.fillStyle = corDe(g.clubeId)
       ctx.fillText(minuto, JANELA.x + 60, y)
       fonte(ctx, 34, 600)
       ctx.fillStyle = COR.texto
@@ -186,9 +190,9 @@ export async function cartoesDaPartida(a: AnalisePartida, mapa?: MapaDaPartida |
     const aspectos = a.aspectos.filter((x) => x.percentilMandante != null && x.percentilVisitante != null)
       .sort((x, y) => Number(x.vantagem === 'Equilibrado') - Number(y.vantagem === 'Equilibrado')).slice(0, 5)
     fonte(ctx, 24, 700)
-    ctx.fillStyle = COR.suave
+    ctx.fillStyle = corM
     ctx.fillText(`■ ${p.mandante}`, JANELA.x + 50, JANELA.y + 36)
-    ctx.fillStyle = COR.rival
+    ctx.fillStyle = corV
     ctx.fillText(`■ ${p.visitante}`, JANELA.x + 420, JANELA.y + 36)
     let y = JANELA.y + 90
     const largura = JANELA.w - 100
@@ -196,7 +200,7 @@ export async function cartoesDaPartida(a: AnalisePartida, mapa?: MapaDaPartida |
       fonte(ctx, 30, 700)
       ctx.fillStyle = COR.texto
       ctx.fillText(x.aspecto, JANELA.x + 50, y)
-      for (const [k, valor, cor] of [[0, x.percentilMandante!, COR.verde], [1, x.percentilVisitante!, COR.rival]] as const) {
+      for (const [k, valor, cor] of [[0, x.percentilMandante!, corM], [1, x.percentilVisitante!, corV]] as const) {
         const by = y + 44 + k * 26
         caixa(ctx, JANELA.x + 50, by, largura - 90, 18, 9, COR.linha)
         caixa(ctx, JANELA.x + 50, by, Math.max(18, ((largura - 90) * valor) / 100), 18, 9, cor)
@@ -220,8 +224,9 @@ export async function cartoesDaPartida(a: AnalisePartida, mapa?: MapaDaPartida |
     let y = JANELA.y + 50
     for (const d of destaques) {
       caixa(ctx, JANELA.x + 40, y, JANELA.w - 80, 106, 22, '#123726')
+      caixa(ctx, JANELA.x + 40, y, 12, 106, 6, corDe(d.clubeId)) // faixa com a cor do clube
       fonte(ctx, 64, 800)
-      ctx.fillStyle = COR.verde
+      ctx.fillStyle = corDe(d.clubeId)
       ctx.textAlign = 'center'
       ctx.fillText(`${Math.round(d.nota!)}`, JANELA.x + 130, y + 20)
       ctx.textAlign = 'left'
@@ -272,6 +277,7 @@ async function cartaoDasNotas(a: AnalisePartida, jogo: string, nome: string) {
   const titulares = new Set(lado.titulares.map((j) => j.id))
   const entraram = (a.desempenhos ?? []).filter((d) => d.clubeId === clubeId && !titulares.has(d.atletaId))
   const doTime = (a.desempenhos ?? []).filter((d) => d.clubeId === clubeId && d.nota != null)
+  const corTime = coresDoClube(lado.time).destaque
   const melhor = doTime.length ? doTime.reduce((m, d) => (d.nota! > m.nota! ? d : m)).atletaId : null
 
   const [c, ctx] = novaTela()
@@ -293,7 +299,7 @@ async function cartaoDasNotas(a: AnalisePartida, jogo: string, nome: string) {
     const py = cy + 22 + (j.x / 100) * (ch - 78)
     const d = j.id != null ? notas.get(j.id) : undefined
     ctx.beginPath(); ctx.arc(px, py, 28, 0, Math.PI * 2); ctx.fillStyle = corDaNota(d?.nota); ctx.fill()
-    ctx.lineWidth = 4; ctx.strokeStyle = COR.fundo; ctx.stroke()
+    ctx.lineWidth = 5; ctx.strokeStyle = corTime; ctx.stroke() // anel com a cor do clube
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
     fonte(ctx, 26, 900); ctx.fillStyle = '#fff'
     ctx.fillText(d?.nota != null ? `${Math.round(d.nota)}` : '–', px, py + 1)
@@ -375,9 +381,10 @@ export async function cartaoDoJogador(a: AnalisePartida, mapa: MapaDaPartida, d:
   const [c, ctx] = novaTela()
   moldura(ctx, `${p.mandante} ${p.golsMandante ?? ''} x ${p.golsVisitante ?? ''} ${p.visitante}`, `Onde ${d.nome} jogou`)
   const feitos = [d.gols ? `${d.gols} gol${d.gols > 1 ? 's' : ''}` : '', d.assistencias ? `${d.assistencias} assist.` : ''].filter(Boolean)
+  const cor = coresDoClube(d.clubeId === p.mandanteId ? p.mandante : p.visitante).destaque
   fonte(ctx, 30, 800)
   ctx.textBaseline = 'middle'
-  ctx.fillStyle = COR.verde
+  ctx.fillStyle = cor
   ctx.fillText([d.nota != null ? `Nota ${Math.round(d.nota)} da IA` : '', d.funcao, ...feitos].filter(Boolean).join(' · '), JANELA.x + 40, JANELA.y + 45)
   const k = mancha(ctx, JANELA.x + 40, JANELA.y + 85, JANELA.w - 80, calor.celulas, d.clubeId !== p.mandanteId)
   // as finalizações dele (a fonte sempre manda atacando para a direita, como o campo acima)
@@ -385,7 +392,7 @@ export async function cartaoDoJogador(a: AnalisePartida, mapa: MapaDaPartida, d:
   for (const f of chutes) {
     ctx.beginPath()
     ctx.arc(k.px(f.x), k.py(68 - f.y), 9 + Math.sqrt(f.xg) * 42, 0, Math.PI * 2) // y alto = esquerda de quem ataca = em cima
-    ctx.fillStyle = 'rgba(79,227,160,.75)'
+    ctx.fillStyle = comAlfa(cor, 0.75)
     ctx.fill()
     ctx.lineWidth = f.gol ? 5 : 2
     ctx.strokeStyle = f.gol ? '#ffd166' : '#ffffff'
@@ -487,14 +494,15 @@ async function cartaoDoMapa(a: AnalisePartida, mapa: MapaDaPartida, jogo: string
   const foco = p.visitanteId === TIME_DO_CANAL ? p.visitanteId : p.mandanteId
   const rivalId = foco === p.mandanteId ? p.visitanteId : p.mandanteId
   const nomeDe = (id: number) => (id === p.mandanteId ? p.mandante : p.visitante)
+  const [corFoco, corRival] = coresDoJogo(nomeDe(foco), nomeDe(rivalId))
   const [c, ctx] = novaTela()
   moldura(ctx, jogo, 'Onde cada time finalizou')
 
   fonte(ctx, 26, 800)
   ctx.textBaseline = 'middle'
-  ctx.fillStyle = COR.verde
+  ctx.fillStyle = corFoco
   ctx.fillText(`● ${nomeDe(foco)} ataca →`, JANELA.x + 40, JANELA.y + 45)
-  ctx.fillStyle = COR.texto
+  ctx.fillStyle = corRival
   ctx.textAlign = 'right'
   ctx.fillText(`← ${nomeDe(rivalId)} ataca ●`, JANELA.x + JANELA.w - 40, JANELA.y + 45)
   ctx.textAlign = 'left'
@@ -507,7 +515,7 @@ async function cartaoDoMapa(a: AnalisePartida, mapa: MapaDaPartida, jogo: string
     // cada time vem atacando para x = 105 e com o y alto à esquerda dele: o do canal ataca para a direita (esquerda em cima),
     // o rival gira 180° para atacar para a esquerda
     ctx.arc(g.px(ehFoco ? f.x : 105 - f.x), g.py(ehFoco ? 68 - f.y : f.y), 9 + Math.sqrt(f.xg) * 42, 0, Math.PI * 2)
-    ctx.fillStyle = ehFoco ? 'rgba(79,227,160,.6)' : 'rgba(255,255,255,.38)'
+    ctx.fillStyle = comAlfa(ehFoco ? corFoco : corRival, ehFoco ? 0.6 : 0.45)
     ctx.fill()
     if (f.gol) { ctx.lineWidth = 5; ctx.strokeStyle = '#ffd166'; ctx.stroke() }
   }
@@ -516,9 +524,9 @@ async function cartaoDoMapa(a: AnalisePartida, mapa: MapaDaPartida, jogo: string
   const yResumo = JANELA.y + 75 + g.h + 14
   fonte(ctx, 24, 700)
   ctx.textBaseline = 'top'
-  ctx.fillStyle = COR.verde
+  ctx.fillStyle = corFoco
   ctx.fillText(resumo(mapa.finalizacoes.filter((f) => f.clubeId === foco)), JANELA.x + 40, yResumo)
-  ctx.fillStyle = COR.texto
+  ctx.fillStyle = corRival
   ctx.textAlign = 'right'
   ctx.fillText(resumo(mapa.finalizacoes.filter((f) => f.clubeId === rivalId)), JANELA.x + JANELA.w - 40, yResumo)
   ctx.textAlign = 'left'
@@ -543,4 +551,65 @@ async function cartaoDoMapa(a: AnalisePartida, mapa: MapaDaPartida, jogo: string
     ctx.textAlign = 'left'
   }
   await baixar(c, `${nome}-4-mapa`)
+}
+
+/**
+ * Cartão do atleta (item 10 do backlog): cada número por 90 min (ou %), a barra do percentil no setor e a posição no ranking
+ * ("3º de 41") contra os do mesmo setor na liga com 450+ min. Usa a janela e o espaço abaixo dela (cartão inteiro, sem rosto).
+ */
+export async function cartaoDoAtleta(c: CartaoDoAtleta) {
+  await prontoParaDesenhar()
+  const a = c.resumo
+  const cor = coresDoClube(a.clube).destaque
+  const [tela, ctx] = novaTela()
+  moldura(ctx, `${a.clube} · ${c.competicao} ${a.temporada}`, a.nome, 64)
+  // a janela cresce até perto da marca do rodapé
+  const x0 = JANELA.x, y0 = JANELA.y, w = JANELA.w, h = A - 200 - JANELA.y
+  caixa(ctx, x0, y0, w, h, 32, COR.painel)
+  caixa(ctx, x0, y0, 14, h, 7, cor)
+
+  // cabeçalho: função, minutos e a nota com a posição no setor
+  ctx.textBaseline = 'top'
+  fonte(ctx, 30, 800); ctx.fillStyle = COR.texto
+  ctx.fillText([a.funcao, `${a.idade} anos`].filter(Boolean).join(' · '), x0 + 50, y0 + 34)
+  fonte(ctx, 24, 600); ctx.fillStyle = COR.suave
+  ctx.fillText(`${a.jogos} jogos · ${a.minutos} min · ${a.gols} gols · ${a.assistencias} assist.`, x0 + 50, y0 + 78)
+  ctx.fillText(`Por 90 min · comparado com ${c.comparados} ${c.comparacao} com 450+ min`, x0 + 50, y0 + 114)
+  if (c.nota != null) {
+    ctx.beginPath(); ctx.arc(x0 + w - 100, y0 + 88, 62, 0, Math.PI * 2); ctx.fillStyle = corDaNota(c.nota); ctx.fill()
+    ctx.lineWidth = 6; ctx.strokeStyle = cor; ctx.stroke()
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    fonte(ctx, 60, 900); ctx.fillStyle = '#fff'; ctx.fillText(`${Math.round(c.nota)}`, x0 + w - 100, y0 + 84)
+    if (c.posicaoNaNota) { fonte(ctx, 22, 800); ctx.fillStyle = COR.suave; ctx.fillText(`${c.posicaoNaNota}º de ${c.comparados}`, x0 + w - 100, y0 + 172) }
+    ctx.textAlign = 'left'
+  }
+
+  const itens = c.blocos.reduce((n, b) => n + b.itens.length, 0)
+  const disponivel = h - 230 - 60
+  const passo = Math.min(56, (disponivel - c.blocos.length * 58) / itens)
+  let y = y0 + 210
+  const colValor = x0 + 470, barraX = x0 + 590, barraW = 230, colRank = x0 + w - 40
+  for (const b of c.blocos) {
+    fonte(ctx, 26, 900); ctx.fillStyle = cor; ctx.textBaseline = 'middle'
+    ctx.fillText(b.nome.toUpperCase(), x0 + 50, y + 22)
+    ctx.fillStyle = COR.linha; ctx.fillRect(x0 + 50 + ctx.measureText(b.nome.toUpperCase()).width + 18, y + 22, w - 140 - ctx.measureText(b.nome.toUpperCase()).width, 2)
+    y += 58
+    for (const i of b.itens) {
+      const meio = y + passo / 2
+      fonte(ctx, 27, 700); ctx.fillStyle = COR.texto; ctx.textAlign = 'left'
+      ctx.fillText(i.nome, x0 + 50, meio)
+      fonte(ctx, 28, 900); ctx.textAlign = 'right'
+      ctx.fillText(i.valor == null ? '–' : i.porcentagem ? `${Math.round(i.valor)}%` : i.valor.toFixed(i.valor >= 10 ? 1 : 2).replace('.', ','), colValor + 80, meio)
+      caixa(ctx, barraX, meio - 9, barraW, 18, 9, COR.linha)
+      if (i.percentil != null) caixa(ctx, barraX, meio - 9, Math.max(18, (barraW * i.percentil) / 100), 18, 9, corDaNota(i.percentil))
+      fonte(ctx, 24, 800); ctx.fillStyle = i.posicao != null && i.posicao <= 3 ? '#ffd166' : COR.suave
+      ctx.fillText(i.posicao != null ? `${i.posicao}º de ${i.total}` : '', colRank, meio)
+      ctx.textAlign = 'left'
+      y += passo
+    }
+    y += 6
+  }
+  fonte(ctx, 20, 600); ctx.fillStyle = COR.suave; ctx.textBaseline = 'top'
+  ctx.fillText('Barra = percentil no setor: azul elite · verde bom · amarelo regular · laranja abaixo', x0 + 50, y0 + h - 44)
+  await baixar(tela, `cartao-${nomeDeArquivo(a.nome)}`)
 }

@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { api, type DetalheAtleta, type JogoNaLinhaDoTempo, type Parecidos, type ResumoAtleta, type ResumoTime, type TimesParaAtleta } from './api'
 import { BarraDeEstilo, CampoDePosicoes } from './Campo'
 import { CartaoAtleta, Medidor, Retrato } from './Componentes'
+import { GaleriaVideo } from './GaleriaVideo'
 import { CartaoTime } from './PainelTime'
+import { cartaoDoAtleta, coletar, type Cartao } from './ParaVideo'
 
 type Props = {
   atleta: ResumoAtleta
@@ -18,6 +20,15 @@ export function PainelAtleta({ atleta, gravacao, onFechar, onAbrir, onAbrirTime 
   const [parecidos, setParecidos] = useState<Parecidos | null>(null)
   const [encaixes, setEncaixes] = useState<TimesParaAtleta | null>(null)
   const [erro, setErro] = useState<string | null>(null)
+  const [galeria, setGaleria] = useState<Cartao[] | null>(null)
+  const [gerando, setGerando] = useState(false)
+
+  async function paraVideo() {
+    setGerando(true)
+    try { const c = await api.cartaoDoAtleta(atleta.id, atleta.temporada); setGaleria(await coletar(() => cartaoDoAtleta(c))) }
+    catch (e) { setErro(e instanceof Error ? e.message : 'Não deu para gerar o cartão.') }
+    finally { setGerando(false) }
+  }
 
   useEffect(() => {
     setDetalhe(null); setResumoIa(null); setParecidos(null); setEncaixes(null); setErro(null)
@@ -46,13 +57,19 @@ export function PainelAtleta({ atleta, gravacao, onFechar, onAbrir, onAbrirTime 
               {a.idade} anos{a.alturaCm ? ` · ${a.alturaCm} cm` : ''}{a.nacionalidade ? ` · ${a.nacionalidade}` : ''}
             </div>
             <div className="clube-linha">
-              {!gravacao && detalhe?.escudoClube && <img src={detalhe.escudoClube} alt="" width={20} height={20} />}
+              {detalhe?.escudoClube && <img src={detalhe.escudoClube} alt="" width={20} height={20} />}
               <span>{a.clube} · {a.competicao} {a.temporada}</span>
             </div>
             {a.funcao && <span className="funcao">{a.funcao}{a.esquemaMaisComum ? ` · ${a.esquemaMaisComum}` : ''}</span>}
           </div>
           {a.nota != null && <div className="nota"><b>{Math.round(a.nota)}</b><span>nota geral</span></div>}
         </div>
+        {a.nota != null && (
+          <div className="prancheta-botoes">
+            <button className="botao-prancheta" onClick={paraVideo} disabled={gerando}>{gerando ? 'Gerando…' : '🎬 Cartão para vídeo'}</button>
+          </div>
+        )}
+        {galeria && <GaleriaVideo titulo={`${a.nome}: para vídeo`} cartoes={galeria} onFechar={() => setGaleria(null)} />}
 
         <section className="resumo-ia">
           <h3>Resumo do analista</h3>
@@ -147,7 +164,7 @@ export function PainelAtleta({ atleta, gravacao, onFechar, onAbrir, onAbrirTime 
                 <ol className="trajetoria">
                   {detalhe.trajetoria.clubes.map((c) => (
                     <li key={c.clube}>
-                      {!gravacao && c.escudo ? <img src={c.escudo} alt="" width={22} height={22} /> : <i aria-hidden className="ponto" />}
+                      {c.escudo ? <img src={c.escudo} alt="" width={22} height={22} /> : <i aria-hidden className="ponto" />}
                       <span className="t-clube">{c.clube}</span>
                       <span className="card-sub">{Faixa(c.temporadas)}</span>
                     </li>

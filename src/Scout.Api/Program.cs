@@ -124,6 +124,9 @@ api.MapGet("/atletas/{id:int}/resumo-ia", async (int id, int? temporada, IQueryH
         ? Results.Ok(new { texto = await assistente.ResumirAtleta(d, ct) })
         : Results.NotFound());
 
+api.MapGet("/atletas/{id:int}/cartao", async (int id, int? temporada, IQueryHandler<ObterCartaoDoAtleta, CartaoDoAtleta?> h, CancellationToken ct) =>
+    await h.Handle(new ObterCartaoDoAtleta(id, temporada), ct) is { } c ? Results.Ok(c) : Results.NotFound());
+
 api.MapGet("/atletas/{id:int}/parecidos", async (int id, int? temporada, int? idadeMax, IQueryHandler<AtletasParecidos, ResultadoParecidos?> h, CancellationToken ct) =>
     await h.Handle(new AtletasParecidos(id, temporada, idadeMax), ct) is { } r ? Results.Ok(r) : Results.NotFound());
 

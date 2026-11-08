@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { coresDoClube, type CoresDoClube } from './Cores'
 import { createPortal } from 'react-dom'
 import { api, type AtletaDaPrancheta, type Prancheta as Dados } from './api'
 import { baixarCartao } from './ParaVideo'
@@ -91,7 +92,7 @@ function Tela({ clubeId, time, onFechar }: { clubeId: number; time: string; onFe
   const emCampo = useMemo(() => new Set(pecas.map((p) => p.atletaId).filter((x) => x !== null)), [pecas])
   const titulo2 = `${esquema ?? ''}`
 
-  const campo = <CampoPrancheta pecas={pecas} sel={sel} onClicar={clicarPeca} onMover={(i, x, y) => setPecas((ps) => ps.map((p, k) => (k === i ? { ...p, x, y } : p)))} />
+  const campo = <CampoPrancheta cores={coresDoClube(time)} pecas={pecas} sel={sel} onClicar={clicarPeca} onMover={(i, x, y) => setPecas((ps) => ps.map((p, k) => (k === i ? { ...p, x, y } : p)))} />
   const elenco = dados && (
     <Elenco elenco={dados.elenco} emCampo={emCampo} ativo={sel !== null} onEscolher={escolherDoElenco} />
   )
@@ -112,7 +113,7 @@ function Tela({ clubeId, time, onFechar }: { clubeId: number; time: string; onFe
             <button className="btn" onClick={() => setFormato(formato === 'h' ? 'v' : 'h')}>{formato === 'h' ? '▯ Vertical (Short)' : '▭ Horizontal'}</button>
             <button className="btn" onClick={telaCheia} title="Tela cheia (F)">⛶ Tela cheia</button>
             <button className="btn" onClick={() => setSemBotoes(true)} title="Esconde os botões para gravar (H mostra de novo)">Esconder botões</button>
-            <button className="btn" onClick={() => baixarImagem(pecas, titulo, titulo2, formato)}>Baixar imagem</button>
+            <button className="btn" onClick={() => baixarImagem(pecas, titulo, titulo2, formato, coresDoClube(time))}>Baixar imagem</button>
             <button className="btn" onClick={() => setGrande(false)}>Voltar</button>
           </div>
         )}
@@ -167,8 +168,8 @@ function Tela({ clubeId, time, onFechar }: { clubeId: number; time: string; onFe
   )
 }
 
-function CampoPrancheta({ pecas, sel, onClicar, onMover }: {
-  pecas: Peca[]; sel: number | null; onClicar: (i: number) => void; onMover: (i: number, x: number, y: number) => void
+function CampoPrancheta({ cores, pecas, sel, onClicar, onMover }: {
+  cores: CoresDoClube; pecas: Peca[]; sel: number | null; onClicar: (i: number) => void; onMover: (i: number, x: number, y: number) => void
 }) {
   const svg = useRef<SVGSVGElement>(null)
   const arrasto = useRef<{ i: number; moveu: boolean; x0: number; y0: number } | null>(null)
@@ -197,7 +198,7 @@ function CampoPrancheta({ pecas, sel, onClicar, onMover }: {
         return (
           <g key={p.grade} className={`pp ${sel === i ? 'sel' : ''}`} style={{ cursor: 'grab' }}
             onPointerDown={(e) => { (e.target as Element).setPointerCapture?.(e.pointerId); arrasto.current = { i, moveu: false, x0: e.clientX, y0: e.clientY } }}>
-            <circle cx={cx} cy={cy} r={3.3} fill={sel === i ? '#ffd23f' : '#4fe3a0'} stroke="#07170f" strokeWidth={0.6} />
+            <circle cx={cx} cy={cy} r={3.3} fill={sel === i ? '#ffd23f' : cores.camisa} stroke={cores.detalhe} strokeWidth={0.7} />
             <text x={cx} y={ty} textAnchor="middle" fontSize={2.5} fontWeight={800} fill="#fff" stroke="#07170f" strokeWidth={0.7}
               paintOrder="stroke" fontFamily="Inter, Arial, sans-serif">{curto(p.nome) || '?'}</text>
           </g>
@@ -269,7 +270,7 @@ function curto(nome: string) {
 }
 
 /** O quadro em PNG: 1920x1080 (campo à esquerda, título à direita) ou 1080x1920 (título em cima, campo embaixo). */
-async function baixarImagem(pecas: Peca[], titulo: string, esquema: string, formato: 'h' | 'v') {
+async function baixarImagem(pecas: Peca[], titulo: string, esquema: string, formato: 'h' | 'v', cores: CoresDoClube) {
   const [W, H] = formato === 'h' ? [1920, 1080] : [1080, 1920]
   const c = document.createElement('canvas')
   c.width = W; c.height = H
@@ -290,8 +291,9 @@ async function baixarImagem(pecas: Peca[], titulo: string, esquema: string, form
   const acima = rotulosAcima(pecas)
   for (const [i, p] of pecas.entries()) {
     const cx = X((p.x / 100) * L), cy = Y((p.y / 100) * C), ty = cy + (acima.has(i) ? -4.6 : 6.2) * sy
-    g.beginPath(); g.arc(cx, cy, 3.3 * sx, 0, Math.PI * 2); g.fillStyle = '#4fe3a0'; g.fill()
-    g.lineWidth = 5; g.strokeStyle = '#07170f'; g.stroke()
+    g.beginPath(); g.arc(cx, cy, 3.3 * sx, 0, Math.PI * 2); g.fillStyle = cores.camisa; g.fill()
+    g.lineWidth = 6; g.strokeStyle = cores.detalhe; g.stroke()
+    g.strokeStyle = '#07170f'
     g.font = `800 ${Math.round(2.5 * sx)}px Inter, Arial, sans-serif`; g.textAlign = 'center'
     g.lineWidth = 8; g.strokeText(curto(p.nome) || '?', cx, ty); g.fillStyle = '#fff'; g.fillText(curto(p.nome) || '?', cx, ty)
   }

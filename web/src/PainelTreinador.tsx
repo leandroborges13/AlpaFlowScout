@@ -80,7 +80,7 @@ export function PainelTreinador({ treinador, gravacao, onFechar, onAbrirAtleta }
         {erro && <p className="erro">{erro}</p>}
         {!detalhe && !erro && <p className="pensando">Carregando perfil do treinador…</p>}
 
-        {detalhe?.passagens.map((p) => <Passagem key={`${p.passagem.clubeId}-${p.passagem.competicaoId}-${p.passagem.temporada}`} p={p} gravacao={gravacao} />)}
+        {detalhe?.passagens.map((p) => <Passagem key={`${p.passagem.clubeId}-${p.passagem.competicaoId}-${p.passagem.temporada}`} p={p} />)}
 
         {atletas && atletas.length > 0 && (
           <section>
@@ -128,7 +128,7 @@ export function PainelTreinador({ treinador, gravacao, onFechar, onAbrirAtleta }
             <ol className="trajetoria">
               {carreira.passagens.slice(0, 12).map((c, i) => (
                 <li key={i}>
-                  {!gravacao && c.escudo ? <img src={c.escudo} alt="" width={22} height={22} /> : <i aria-hidden className="ponto" />}
+                  {c.escudo ? <img src={c.escudo} alt="" width={22} height={22} /> : <i aria-hidden className="ponto" />}
                   <span className="t-clube">{c.clube}</span>
                   <span className="card-sub">{Anos(c.inicio, c.fim)}</span>
                 </li>
@@ -152,12 +152,12 @@ export function PainelTreinador({ treinador, gravacao, onFechar, onAbrirAtleta }
   )
 }
 
-function Passagem({ p, gravacao }: { p: PassagemDetalhada; gravacao: boolean }) {
+function Passagem({ p }: { p: PassagemDetalhada }) {
   const t = p.passagem
   return (
     <section className="passagem">
       <div className="clube-linha">
-        <Escudo time={{ nome: t.clube, escudo: t.escudo }} oculto={gravacao} />
+        <Escudo time={{ nome: t.clube, escudo: t.escudo }} />
         <div>
           <b>{t.clube}</b> <span className="card-sub">· {t.competicao} {t.temporada} · {Periodo(t.inicio, t.fim, t.noCargo)}</span>
         </div>

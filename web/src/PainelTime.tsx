@@ -3,23 +3,23 @@ import { PranchetaTatica } from './Prancheta'
 import { api, type DetalheTime, type NecessidadeNaFuncao, type ResumoAtleta, type ResumoTime, type ResumoTreinador } from './api'
 import { CartaoAtleta, Medidor } from './Componentes'
 
-/** Escudo do time, ou as iniciais no modo gravação (marca do clube fora de vídeos públicos). */
-export function Escudo({ time, grande = false, oculto = false }: { time: Pick<ResumoTime, 'nome' | 'escudo'>; grande?: boolean; oculto?: boolean }) {
+/** Escudo do time (pequeno, uso informativo: aparece também no modo gravação), ou as iniciais quando não há escudo. */
+export function Escudo({ time, grande = false }: { time: Pick<ResumoTime, 'nome' | 'escudo'>; grande?: boolean }) {
   const iniciais = time.nome.split(/\s+/).filter((p) => p.length > 2 || /^[A-Z]/.test(p)).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('')
   return (
     <div className={`retrato escudo ${grande ? 'grande' : ''}`} aria-hidden>
-      {time.escudo && !oculto ? <img src={time.escudo} alt="" loading="lazy" /> : <span>{iniciais}</span>}
+      {time.escudo ? <img src={time.escudo} alt="" loading="lazy" /> : <span>{iniciais}</span>}
     </div>
   )
 }
 
 type CartaoProps = { time: ResumoTime; gravacao: boolean; onAbrir: () => void; detalhe?: React.ReactNode }
 
-export function CartaoTime({ time: t, gravacao, onAbrir, detalhe }: CartaoProps) {
+export function CartaoTime({ time: t, onAbrir, detalhe }: CartaoProps) {
   return (
     <button className="card" onClick={onAbrir}>
       <div className="card-topo">
-        <Escudo time={t} oculto={gravacao} />
+        <Escudo time={t} />
         <div className="card-id">
           <div className="card-nome">{t.nome}</div>
           <div className="card-sub">{t.copa ? '' : `${t.posicao}º · `}{t.competicao} {t.temporada}</div>
@@ -79,7 +79,7 @@ export function PainelTime({ time, gravacao, onFechar, onAbrirAtleta, onAbrirTre
     <div className="fundo" onClick={onFechar}>
       <div className="painel" role="dialog" aria-modal aria-label={t.nome} onClick={(e) => e.stopPropagation()}>
         <div className="perfil-topo">
-          <Escudo time={t} grande oculto={gravacao} />
+          <Escudo time={t} grande />
           <div className="perfil-id">
             <h2>{t.nome}</h2>
             <div className="card-sub">{t.competicao} {t.temporada}{t.copa ? '' : ` · ${t.posicao}º colocado`}</div>
