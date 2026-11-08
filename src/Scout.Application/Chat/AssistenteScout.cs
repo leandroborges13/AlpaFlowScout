@@ -36,6 +36,7 @@ public class AssistenteScout(
     IQueryHandler<AtletasDoTreinador, IReadOnlyList<AtletaDoTreinador>> atletasDoTreinador,
     IQueryHandler<AtletasParaTreinador, ResultadoAtletasParaTreinador?> atletasParaTreinador,
     IQueryHandler<ProcurarPartidas, IReadOnlyList<ResumoPartida>> procurarPartidas,
+    IQueryHandler<ObterSequencias, ResultadoSequencias?> sequencias,
     IQueryHandler<AnalisarPartida, AnalisePartida?> analisarPartida,
     IQueryHandler<ObterFichaAtleta, FichaAtleta?> fichaAtleta,
     IQueryHandler<ObterElenco, ElencoDoTime?> elenco,
@@ -352,6 +353,21 @@ public class AssistenteScout(
                 "O limite conta só jogos já disputados ('últimos 5' = limite 5); os que ainda não terminaram (o próximo jogo marcado, adiados) vêm à parte em NaoDisputados e nunca entram em resultado, pontos ou gols. " +
                 "Use o ResumoDosDisputados pronto (vitórias, empates, derrotas, pontos, gols pró e contra) em vez de somar placares."),
             AIFunctionFactory.Create(
+                async ([Description("Nome do time (oficial ou apelido, ex.: 'Galo')")] string time,
+                       [Description("Data inicial (aaaa-mm-dd), para 'desde X' (ex.: desde a chegada de um treinador); omita para a temporada")] string? de = null,
+                       [Description("Data final (aaaa-mm-dd)")] string? ate = null,
+                       [Description("ID da competição, se pedirem só uma (ex.: 71 Série A)")] int? competicao = null,
+                       int? temporada = null) =>
+                {
+                    DateOnly? Data(string? s) => DateOnly.TryParse(s, System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : null;
+                    return (object?)await sequencias.Handle(new ObterSequencias(time, Data(de), Data(ate), competicao, temporada), ct) ?? "Time não encontrado.";
+                },
+                "sequencias",
+                "Sequências e marcas de um time, já contadas: as que estão valendo (invicto há N jogos, vitórias seguidas, sem vencer, " +
+                "derrotas seguidas, marcando gol, sem sofrer gol, sem marcar, sofrendo gol), também só em casa e só fora, com o jogo que " +
+                "começou e o que quebrou a anterior; os recordes do período (a maior de cada tipo) e a maior vitória e a maior derrota. " +
+                "Por padrão a temporada inteira, todas as competições."),
+            AIFunctionFactory.Create(
                 async (int partidaId) =>
                 {
                     var a = await analisarPartida.Handle(new AnalisarPartida(partidaId), ct);
@@ -564,6 +580,8 @@ public class AssistenteScout(
         - "Chances criadas (xG)" também é percentil do time: nunca cite o valor do xG, diga "criou mais chances que em 90% dos próprios jogos".
         - Contar ou listar jogos ("quantas vitórias", "liste os jogos") = procurar_partidas com limite 50, sem competição (todas, salvo se
           citarem uma), e conte só o que veio. Se vierem exatamente 50, diga que podem existir mais e mostre o período coberto.
+        - Sequência, invencibilidade, "há quantos jogos não perde/não vence/não sofre gol", "maior sequência", "maior goleada" = use
+          sequencias (já contadas, nunca conte você mesmo). Cite o jogo que começou a sequência e o que a quebrou antes, com data.
         - "Últimos N jogos" / "fase recente" = procurar_partidas com limite N (e a competição, se pedirem só a liga). Use o ResumoDosDisputados
           como está; jogo em NaoDisputados é o próximo jogo, nunca parte dos últimos. NaoDisputados traz o próximo jogo
           marcado (seja quando for); vazio = nenhum jogo marcado na base: não diga que o time encerrou a temporada nem que não joga mais.

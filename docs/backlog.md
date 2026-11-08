@@ -15,7 +15,7 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
    - Gera a resposta em 1080x1920, com letra grande, os números em destaque e o escudo, pronta para o Short.
    - Hoje a resposta é gravada da tela do computador e ampliada na edição: o texto fica pequeno e às vezes cortado.
 
-3. **Sequências e marcas** (gancho de título: "o Galo não perde há 7 jogos")
+3. **Sequências e marcas** — FEITO em 08/11/2026 (ferramenta `sequencias` do chat, ObterSequenciasHandler) (gancho de título: "o Galo não perde há 7 jogos")
    - Ferramenta do chat: invencibilidade, jogos sem sofrer gol, sequência de vitórias, maior goleada da temporada, "desde X".
    - A base já tem os placares; é conta em cima de procurar_partidas.
 
