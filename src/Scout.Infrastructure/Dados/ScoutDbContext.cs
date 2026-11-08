@@ -41,6 +41,7 @@ public class ScoutDbContext(DbContextOptions<ScoutDbContext> options) : DbContex
     public DbSet<Treinador> Treinadores => Set<Treinador>();
     public DbSet<TreinadorNaPartida> TreinadoresNaPartida => Set<TreinadorNaPartida>();
     public DbSet<CobrancaDisputa> CobrancasDisputa => Set<CobrancaDisputa>();
+    public DbSet<DesempenhoAvancado> DesempenhosAvancados => Set<DesempenhoAvancado>();
     public DbSet<RoteiroPosJogo> RoteirosPosJogo => Set<RoteiroPosJogo>();
     public DbSet<RespostaProvedor> RespostasProvedor => Set<RespostaProvedor>();
     public DbSet<ConsultaDiaria> ConsultasDiarias => Set<ConsultaDiaria>();
@@ -77,6 +78,11 @@ public class ScoutDbContext(DbContextOptions<ScoutDbContext> options) : DbContex
 
         b.Entity<CobrancaDisputa>().HasIndex(c => c.PartidaId);
         b.Entity<CobrancaDisputa>().HasIndex(c => c.AtletaId);
+
+        b.Entity<DesempenhoAvancado>().HasIndex(d => new { d.PartidaId, d.PitchJogadorId }).IsUnique();
+        b.Entity<DesempenhoAvancado>().HasIndex(d => d.AtletaId);
+        b.Entity<DesempenhoAvancado>().Property(d => d.Bruto).HasColumnType("jsonb");
+        b.Entity<Partida>().Property(p => p.PitchId).HasMaxLength(20);
 
         b.Entity<RoteiroPosJogo>().HasKey(r => r.PartidaId);
         b.Entity<RoteiroPosJogo>().Property(r => r.PartidaId).ValueGeneratedNever();

@@ -17,7 +17,7 @@ namespace Scout.Infrastructure.Provedor;
 public class PitchApi(HttpClient http, IConfiguration config, IMemoryCache cache, ILogger<PitchApi> log) : IMapaDaPartida
 {
     /// <summary>Nossas competições (ids da API-Football) e as ligas correspondentes na PitchAPI.</summary>
-    static readonly Dictionary<int, string> Ligas = new() { [71] = "l_1D8Xrl", [72] = "l_3qUkB8" };
+    public static readonly IReadOnlyDictionary<int, string> Ligas = new Dictionary<int, string> { [71] = "l_1D8Xrl", [72] = "l_3qUkB8" };
 
     public async Task<MapaDaPartida?> Obter(ResumoPartida p, CancellationToken ct)
     {

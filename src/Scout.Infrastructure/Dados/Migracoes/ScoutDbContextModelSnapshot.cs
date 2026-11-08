@@ -168,6 +168,223 @@ namespace Scout.Infrastructure.Dados.Migracoes
                     b.ToTable("competicoes", (string)null);
                 });
 
+            modelBuilder.Entity("Scout.Domain.DesempenhoAvancado", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("Aereos")
+                        .HasColumnType("integer")
+                        .HasColumnName("aereos");
+
+                    b.Property<int>("AereosGanhos")
+                        .HasColumnType("integer")
+                        .HasColumnName("aereos_ganhos");
+
+                    b.Property<int>("Assistencias")
+                        .HasColumnType("integer")
+                        .HasColumnName("assistencias");
+
+                    b.Property<int?>("AtletaId")
+                        .HasColumnType("integer")
+                        .HasColumnName("atleta_id");
+
+                    b.Property<int>("BolasLongas")
+                        .HasColumnType("integer")
+                        .HasColumnName("bolas_longas");
+
+                    b.Property<int>("BolasLongasCertas")
+                        .HasColumnType("integer")
+                        .HasColumnName("bolas_longas_certas");
+
+                    b.Property<string>("Bruto")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("bruto");
+
+                    b.Property<int>("ChancesCriadas")
+                        .HasColumnType("integer")
+                        .HasColumnName("chances_criadas");
+
+                    b.Property<int>("ClubeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("clube_id");
+
+                    b.Property<int>("ConducoesProgressivas")
+                        .HasColumnType("integer")
+                        .HasColumnName("conducoes_progressivas");
+
+                    b.Property<int>("ConducoesTercoFinal")
+                        .HasColumnType("integer")
+                        .HasColumnName("conducoes_terco_final");
+
+                    b.Property<int>("Cortes")
+                        .HasColumnType("integer")
+                        .HasColumnName("cortes");
+
+                    b.Property<int>("Cruzamentos")
+                        .HasColumnType("integer")
+                        .HasColumnName("cruzamentos");
+
+                    b.Property<int>("CruzamentosCertos")
+                        .HasColumnType("integer")
+                        .HasColumnName("cruzamentos_certos");
+
+                    b.Property<int>("Defesas")
+                        .HasColumnType("integer")
+                        .HasColumnName("defesas");
+
+                    b.Property<int>("Desarmes")
+                        .HasColumnType("integer")
+                        .HasColumnName("desarmes");
+
+                    b.Property<int>("Dribles")
+                        .HasColumnType("integer")
+                        .HasColumnName("dribles");
+
+                    b.Property<int>("DriblesCertos")
+                        .HasColumnType("integer")
+                        .HasColumnName("dribles_certos");
+
+                    b.Property<int>("DuelosGanhos")
+                        .HasColumnType("integer")
+                        .HasColumnName("duelos_ganhos");
+
+                    b.Property<int>("DuelosPerdidos")
+                        .HasColumnType("integer")
+                        .HasColumnName("duelos_perdidos");
+
+                    b.Property<int>("FaltasCometidas")
+                        .HasColumnType("integer")
+                        .HasColumnName("faltas_cometidas");
+
+                    b.Property<int>("FaltasSofridas")
+                        .HasColumnType("integer")
+                        .HasColumnName("faltas_sofridas");
+
+                    b.Property<int>("Finalizacoes")
+                        .HasColumnType("integer")
+                        .HasColumnName("finalizacoes");
+
+                    b.Property<int>("FinalizacoesNoAlvo")
+                        .HasColumnType("integer")
+                        .HasColumnName("finalizacoes_no_alvo");
+
+                    b.Property<int>("Gca")
+                        .HasColumnType("integer")
+                        .HasColumnName("gca");
+
+                    b.Property<int>("Gols")
+                        .HasColumnType("integer")
+                        .HasColumnName("gols");
+
+                    b.Property<double?>("GolsEvitados")
+                        .HasColumnType("double precision")
+                        .HasColumnName("gols_evitados");
+
+                    b.Property<int>("Interceptacoes")
+                        .HasColumnType("integer")
+                        .HasColumnName("interceptacoes");
+
+                    b.Property<int>("Minutos")
+                        .HasColumnType("integer")
+                        .HasColumnName("minutos");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("nome");
+
+                    b.Property<double?>("Nota")
+                        .HasColumnType("double precision")
+                        .HasColumnName("nota");
+
+                    b.Property<int>("PartidaId")
+                        .HasColumnType("integer")
+                        .HasColumnName("partida_id");
+
+                    b.Property<int>("Passes")
+                        .HasColumnType("integer")
+                        .HasColumnName("passes");
+
+                    b.Property<int>("PassesCertos")
+                        .HasColumnType("integer")
+                        .HasColumnName("passes_certos");
+
+                    b.Property<int>("PassesNaArea")
+                        .HasColumnType("integer")
+                        .HasColumnName("passes_na_area");
+
+                    b.Property<int>("PassesProgressivos")
+                        .HasColumnType("integer")
+                        .HasColumnName("passes_progressivos");
+
+                    b.Property<int>("PassesTercoFinal")
+                        .HasColumnType("integer")
+                        .HasColumnName("passes_terco_final");
+
+                    b.Property<int>("PerdasDePosse")
+                        .HasColumnType("integer")
+                        .HasColumnName("perdas_de_posse");
+
+                    b.Property<string>("PitchJogadorId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("pitch_jogador_id");
+
+                    b.Property<int>("Recuperacoes")
+                        .HasColumnType("integer")
+                        .HasColumnName("recuperacoes");
+
+                    b.Property<int>("Sca")
+                        .HasColumnType("integer")
+                        .HasColumnName("sca");
+
+                    b.Property<int>("Toques")
+                        .HasColumnType("integer")
+                        .HasColumnName("toques");
+
+                    b.Property<int>("ToquesNaArea")
+                        .HasColumnType("integer")
+                        .HasColumnName("toques_na_area");
+
+                    b.Property<double?>("Vaep")
+                        .HasColumnType("double precision")
+                        .HasColumnName("vaep");
+
+                    b.Property<double?>("Xa")
+                        .HasColumnType("double precision")
+                        .HasColumnName("xa");
+
+                    b.Property<double?>("Xg")
+                        .HasColumnType("double precision")
+                        .HasColumnName("xg");
+
+                    b.Property<double?>("XgChain")
+                        .HasColumnType("double precision")
+                        .HasColumnName("xg_chain");
+
+                    b.Property<double?>("Xt")
+                        .HasColumnType("double precision")
+                        .HasColumnName("xt");
+
+                    b.HasKey("Id")
+                        .HasName("pk_desempenhos_avancados");
+
+                    b.HasIndex("AtletaId")
+                        .HasDatabaseName("ix_desempenhos_avancados_atleta_id");
+
+                    b.HasIndex("PartidaId", "PitchJogadorId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_desempenhos_avancados_partida_id_pitch_jogador_id");
+
+                    b.ToTable("desempenhos_avancados", (string)null);
+                });
+
             modelBuilder.Entity("Scout.Domain.Escalacao", b =>
                 {
                     b.Property<long>("Id")
@@ -509,6 +726,15 @@ namespace Scout.Infrastructure.Dados.Migracoes
                     b.Property<int>("MandanteId")
                         .HasColumnType("integer")
                         .HasColumnName("mandante_id");
+
+                    b.Property<string>("PitchId")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("pitch_id");
+
+                    b.Property<bool>("PitchImportada")
+                        .HasColumnType("boolean")
+                        .HasColumnName("pitch_importada");
 
                     b.Property<string>("Rodada")
                         .HasColumnType("text")

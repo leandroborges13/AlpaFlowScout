@@ -50,25 +50,23 @@ A API-Football (a nossa) não tem coordenadas de lance. Opções vistas:
 
 ## Custos
 
-9. **Caber no plano grátis da API-Football (100 requisições/dia)** — FAZER na segunda, 09/11/2026, quando o Pro vencer (15h33).
-   Decisão do Leandro: economizar os US$ 19/mês até o canal faturar. Hoje o Pro (7.500/dia) gasta ~450/dia.
-   - De onde vem o gasto: elenco de cada time de cada competição todo dia (/players por time, 2-3 páginas; só a Copa do Brasil
-     tem 90+ times), mais Série B e Série C, mais 3-4 consultas por jogo e a revisão dos 3 dias seguintes.
-   - Plano:
-     1. SCOUT_ATUALIZAR só com a Série A (71) e as copas: Copa do Brasil (73), Libertadores (13) e Sul-Americana (11).
-        Sai a Série B (72) e a Série C (75).
-     2. Copas sem baixar elenco: o /players do time da Série A já traz as estatísticas dele nas copas (hoje o Importador descarta
-        tudo que não é da liga importada). Guardar as copas a partir dessa mesma resposta.
-     3. Nas copas, detalhes (escalação, estatísticas, lances) só dos jogos com time da Série A; os demais ficam só com o placar.
-     4. Elencos da Série A em rodízio: só os times que jogaram desde a última atualização.
-     5. Prioridade quando a cota apertar: Galo e pós-jogo primeiro (AcompanhamentoPosJogo), depois o resto.
-   - Estimativa: 70-90 em dia de rodada, 10-20 sem jogo. Some do Scout: Série B e C (chat e chances de acesso) e análise de jogo
-     de copa entre times de fora da Série A. Ao estourar a cota, o Scout para e continua no dia seguinte (já é assim).
-   - Ao vencer: trocar no servidor APIFOOTBALL_LIMITE_DIA para 95 e SCOUT_ATUALIZAR para "71:2026,73:2026,13:2026,11:2026".
-   - Voltar ao Pro quando as redes faturarem.
-   - Folga extra: a PitchAPI (grátis) tem escalação, lances, estatísticas do time e dos atletas por jogo; dá para buscar lá
-     parte do pós-jogo e gastar menos da API-Football. Ela continua sendo a base (nascimento para a regra dos 18, elencos, tabela),
-     porque a PitchAPI é pequena, sem SLA, e avisa que os dados podem vir incompletos.
+9. **Sair do Pro da API-Football (US$ 19/mês)** — revisto em 08/11/2026.
+   - **Descoberta:** o plano grátis só libera as temporadas 2022 a 2024 (temporada atual devolve "Free plans do not have access
+     to this season"). Cortar para 100 requisições/dia NÃO resolve: no grátis o Scout não recebe nada de 2026.
+   - **Decisão do Leandro (08/11):** renovar o Pro por mais 1 mês para fechar a temporada 2026 com o Scout completo e, nesse mês,
+     construir a coleta pela PitchAPI (grátis) para 2027 não depender do Pro.
+   - Plano da migração:
+     1. Tabela nova de estatística por partida e atleta, vinda da PitchAPI (/v1/matches/{id}/players e /advanced/players),
+        ligando o atleta da PitchAPI ao nosso por nome + time (como ligarJogador no ParaVideo.ts). Serve também ao item 10 v2.
+        **FEITO em 08/11/2026:** tabela desempenhos_avancados (ColetaPitch + LigarNomes), roda na AtualizacaoDiaria depois da
+        API-Football (até 150 jogos/dia) e pelo comando `pitch <liga> <temporada> [max]` do Scout.Coleta. Teste local: 10 jogos,
+        250 de 254 atletas ligados ao cadastro (os 4 restantes ficam sem ligação de propósito, na dúvida não liga).
+     2. Placar, escalação, lances e estatísticas do time por jogo pela PitchAPI, no lugar das 3-4 consultas por jogo.
+     3. Somar a temporada a partir dos jogos (hoje vem pronta do /players da API-Football).
+     4. O que a PitchAPI não tem (conferido em 08/11): copas (Copa do Brasil, Libertadores, Sul-Americana; no Brasil só tem
+        Série A, Série B e Paulistão), data de nascimento (regra dos 18) e elenco do time (/teams/{id}/squad dá 404).
+        Testar a Bzzoiro (item 11) e o ESPN para isso.
+   - Antes de vencer o mês renovado: decidir se 2027 começa só com a PitchAPI ou se renova de novo.
 
 ## Cartões de atleta
 

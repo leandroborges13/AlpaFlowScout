@@ -8,6 +8,7 @@
 //   dotnet run --project src/Scout.Coleta -- sem-nascimento   (atletas com 450+ min na liga sem data de nascimento)
 //   dotnet run --project src/Scout.Coleta -- nascimento <id> <aaaa-mm-dd> <fonte>   (data de fonte pública, ex.: "site do clube")
 //   dotnet run --project src/Scout.Coleta -- atleta <nome>   (o que a base tem do atleta)
+//   dotnet run --project src/Scout.Coleta -- pitch <liga> <temporada> [max]   (desempenho avançado jogo a jogo pela PitchAPI)
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -44,6 +45,13 @@ try
             var r = await sp.GetRequiredService<Importador>().Importar(liga, temporada, !args.Contains("--sem-escalacoes"), cts.Token);
             Console.WriteLine($"{r.Competicao} {r.Temporada}: {r.Clubes} clubes, {r.Atletas} atletas, {r.Partidas} partidas ({r.PartidasComEscalacao} com escalação)");
             Console.WriteLine($"Consultas hoje: {await sp.GetRequiredService<ApiFootballClient>().UsadasHoje(cts.Token)}");
+            break;
+
+        case "pitch" when args.Length >= 3 && int.TryParse(args[1], out var ligaP) && int.TryParse(args[2], out var temporadaP):
+            await sp.GetRequiredService<ScoutDbContext>().Database.MigrateAsync(cts.Token);
+            var maxP = args.Length >= 4 && int.TryParse(args[3], out var m) ? m : 400;
+            var rp = await sp.GetRequiredService<ColetaPitch>().Coletar(ligaP, temporadaP, maxP, cts.Token);
+            Console.WriteLine($"PitchAPI: {rp.Jogos} jogos, {rp.Ligados}/{rp.Atletas} atletas ligados ao cadastro, {rp.SemPar} jogos sem par na base");
             break;
 
         case "atleta" when args.Length >= 2:

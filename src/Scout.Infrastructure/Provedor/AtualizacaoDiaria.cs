@@ -49,6 +49,19 @@ public class AtualizacaoDiaria(IServiceScopeFactory escopos, IConfiguration conf
                     log.LogError(e, "Falha ao atualizar a liga {Liga}/{Temporada}", liga, temporada);
                 }
             }
+            // Depois da API-Football, o desempenho avançado na PitchAPI (só ligas que ela cobre; até 150 jogos por dia, ~300 consultas)
+            foreach (var (liga, temporada) in competicoes.Where(c => PitchApi.Ligas.ContainsKey(c.Liga)))
+            {
+                try
+                {
+                    using var escopo = escopos.CreateScope();
+                    await escopo.ServiceProvider.GetRequiredService<ColetaPitch>().Coletar(liga, temporada, 150, ct);
+                }
+                catch (Exception e) when (e is not OperationCanceledException)
+                {
+                    log.LogError(e, "Falha na coleta da PitchAPI {Liga}/{Temporada}", liga, temporada);
+                }
+            }
         }
     }
 }
