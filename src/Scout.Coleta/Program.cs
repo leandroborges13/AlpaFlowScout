@@ -10,6 +10,7 @@
 //   dotnet run --project src/Scout.Coleta -- atleta <nome>   (o que a base tem do atleta)
 //   dotnet run --project src/Scout.Coleta -- pitch <liga> <temporada> [max]   (desempenho avançado jogo a jogo pela PitchAPI)
 //   dotnet run --project src/Scout.Coleta -- nascimentos-bzzoiro <temporada>   (data de nascimento de quem está sem, pela Bzzoiro)
+//   dotnet run --project src/Scout.Coleta -- copas-bzzoiro <temporada> [max]   (desempenho dos atletas nos jogos de copa, pela Bzzoiro)
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -58,6 +59,13 @@ try
         case "nascimentos-bzzoiro" when args.Length >= 2 && int.TryParse(args[1], out var temporadaB):
             var rb = await sp.GetRequiredService<ColetaBzzoiro>().PreencherNascimentos(temporadaB, cts.Token);
             Console.WriteLine($"Bzzoiro: {rb.Preenchidos} de {rb.SemData} atletas sem data preenchidos; {rb.ClubesLigados}/{rb.Clubes} clubes ligados; {rb.Duvidosos} com datas conflitantes");
+            break;
+
+        case "copas-bzzoiro" when args.Length >= 2 && int.TryParse(args[1], out var temporadaC):
+            await sp.GetRequiredService<ScoutDbContext>().Database.MigrateAsync(cts.Token);
+            var maxC = args.Length >= 3 && int.TryParse(args[2], out var mc) ? mc : 200;
+            var rc = await sp.GetRequiredService<ColetaBzzoiro>().ColetarCopas(temporadaC, maxC, cts.Token);
+            Console.WriteLine($"Bzzoiro copas: {rc.Jogos} jogos, {rc.Ligados}/{rc.Atletas} atletas ligados ao cadastro, {rc.SemPar} jogos sem par na base");
             break;
 
         case "atleta" when args.Length >= 2:

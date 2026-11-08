@@ -79,7 +79,8 @@ public class ScoutDbContext(DbContextOptions<ScoutDbContext> options) : DbContex
         b.Entity<CobrancaDisputa>().HasIndex(c => c.PartidaId);
         b.Entity<CobrancaDisputa>().HasIndex(c => c.AtletaId);
 
-        b.Entity<DesempenhoAvancado>().HasIndex(d => new { d.PartidaId, d.PitchJogadorId }).IsUnique();
+        b.Entity<DesempenhoAvancado>().HasIndex(d => new { d.PartidaId, d.Fonte, d.JogadorFonteId }).IsUnique();
+        b.Entity<DesempenhoAvancado>().Property(d => d.Fonte).HasMaxLength(10).HasDefaultValue("PitchAPI");
         b.Entity<DesempenhoAvancado>().HasIndex(d => d.AtletaId);
         b.Entity<DesempenhoAvancado>().Property(d => d.Bruto).HasColumnType("jsonb");
         b.Entity<Partida>().Property(p => p.PitchId).HasMaxLength(20);

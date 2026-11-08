@@ -80,6 +80,106 @@ public class ColetaBzzoiro(HttpClient http, ScoutDbContext db, IConfiguration co
         return new(semData.Count, ligados, total, preenchidos, duvidosos);
     }
 
+    /// <summary>Copas na Bzzoiro → nossas competições (ids da API-Football): Copa do Brasil, Libertadores e Sul-Americana.</summary>
+    static readonly Dictionary<int, int> Copas = new() { [35] = 73, [32] = 13, [33] = 11 };
+
+    /// <summary>
+    /// Desempenho dos atletas nos jogos de copa (que a PitchAPI não tem): /api/player-stats/?event={id}, uma consulta por jogo.
+    /// Só jogos com time da Série A (o foco do Scout) e que já estão na nossa base; ligados pela data e pelo nome dos times.
+    /// </summary>
+    public async Task<ResultadoColetaPitch> ColetarCopas(int temporada, int maxJogos, CancellationToken ct)
+    {
+        var chave = config["BZZOIRO_KEY"];
+        if (string.IsNullOrWhiteSpace(chave)) return new(0, 0, 0, 0);
+
+        var clubes = await db.Clubes.AsNoTracking().ToDictionaryAsync(c => c.Id, c => c.Nome, ct);
+        var daSerieA = (await db.Estatisticas.Where(e => e.CompeticaoId == 71 && e.Temporada == temporada).Select(e => e.ClubeId).Distinct().ToListAsync(ct)).ToHashSet();
+        var nossas = Copas.Values.ToList();
+        var partidas = await db.Partidas.Where(p => nossas.Contains(p.CompeticaoId) && p.Temporada == temporada).ToListAsync(ct);
+
+        int jogos = 0, atletas = 0, ligados = 0, semPar = 0;
+        var de = $"{temporada}-01-01";
+        var ate = DateTime.UtcNow.AddDays(1).ToString("yyyy-MM-dd");
+        foreach (var (ligaBz, competicao) in Copas)
+        {
+            var eventos = (await TodasAsPaginas($"/api/events/?league={ligaBz}&date_from={de}&date_to={ate}", chave, ct))
+                .Where(e => Texto(e, "status") == "finished")
+                .OrderByDescending(e => Texto(e, "event_date"));
+            foreach (var ev in eventos)
+            {
+                if (jogos >= maxJogos) break;
+                if (!DateTime.TryParse(Texto(ev, "event_date"), System.Globalization.CultureInfo.InvariantCulture,
+                        System.Globalization.DateTimeStyles.AdjustToUniversal, out var quando) || Int(ev, "id") is not { } idBz) continue;
+                var casa = Texto(ev, "home_team") ?? "";
+                var fora = Texto(ev, "away_team") ?? "";
+                var partida = partidas.FirstOrDefault(p => p.CompeticaoId == competicao && Math.Abs((p.Data - quando).TotalHours) <= 3
+                    && (MesmoClube(clubes.GetValueOrDefault(p.MandanteId, ""), casa, null) || MesmoClube(clubes.GetValueOrDefault(p.VisitanteId, ""), fora, null)));
+                if (partida is null) { semPar++; continue; }
+                if (partida.BzzoiroImportada || !partida.Encerrada || !(daSerieA.Contains(partida.MandanteId) || daSerieA.Contains(partida.VisitanteId))) continue;
+
+                var stats = await TodasAsPaginas($"/api/player-stats/?event={idBz}", chave, ct);
+                if (stats.Count == 0) continue; // jogo sem números por atleta (ou freio da Bzzoiro): tenta de novo amanhã
+                var (n, l) = await GravarCopa(partida, stats, clubes, ct);
+                partida.BzzoiroId = idBz;
+                partida.BzzoiroImportada = true;
+                await db.SaveChangesAsync(ct);
+                jogos++; atletas += n; ligados += l;
+            }
+        }
+        log.LogInformation("Bzzoiro copas {Temporada}: {Jogos} jogos novos, {Ligados}/{Atletas} atletas ligados, {SemPar} jogos sem par na nossa base",
+            temporada, jogos, ligados, atletas, semPar);
+        return new(jogos, atletas, ligados, semPar);
+    }
+
+    async Task<(int Atletas, int Ligados)> GravarCopa(Domain.Partida partida, List<JsonElement> stats, Dictionary<int, string> clubes, CancellationToken ct)
+    {
+        int? Clube(string? time) =>
+            time is null ? null
+            : MesmoClube(clubes.GetValueOrDefault(partida.MandanteId, ""), time, null) ? partida.MandanteId
+            : MesmoClube(clubes.GetValueOrDefault(partida.VisitanteId, ""), time, null) ? partida.VisitanteId
+            : null;
+        var ids = new[] { partida.MandanteId, partida.VisitanteId };
+        var candidatos = (await db.Estatisticas.Where(e => ids.Contains(e.ClubeId) && e.Temporada == partida.Temporada)
+                .Select(e => new { e.ClubeId, e.AtletaId, e.Atleta.Nome, e.Atleta.NomeCompleto }).ToListAsync(ct))
+            .GroupBy(c => c.ClubeId)
+            .ToDictionary(g => g.Key, g => g.Select(c => (c.AtletaId, c.Nome, c.NomeCompleto)).Distinct().ToList());
+
+        await db.DesempenhosAvancados.Where(d => d.PartidaId == partida.Id && d.Fonte == "Bzzoiro").ExecuteDeleteAsync(ct);
+        int n = 0, ligados = 0;
+        var vistos = new HashSet<string>();
+        foreach (var s in stats)
+        {
+            if (!s.TryGetProperty("player", out var p) || Int(p, "id") is not { } pid || !vistos.Add(pid.ToString())) continue;
+            if (Clube(Texto(p, "team")) is not { } clubeId) continue;
+            var minutos = (int)(Num(s, "minutes_played") ?? 0);
+            if (minutos <= 0) continue;
+            var nome = Texto(p, "name") ?? "?";
+            var atletaId = candidatos.TryGetValue(clubeId, out var lista)
+                ? LigarNomes.Ligar(nome, lista) ?? LigarNomes.Ligar(Texto(p, "short_name") ?? "", lista)
+                : null;
+            int I(string k) => (int)Math.Round(Num(s, k) ?? 0);
+            db.DesempenhosAvancados.Add(new Domain.DesempenhoAvancado
+            {
+                PartidaId = partida.Id, ClubeId = clubeId, AtletaId = atletaId, Fonte = "Bzzoiro", JogadorFonteId = pid.ToString(), Nome = nome,
+                Minutos = minutos, Nota = Num(s, "rating"), Gols = I("goals"), Assistencias = I("goal_assist"),
+                Xg = Num(s, "expected_goals"), Xa = Num(s, "expected_assists"),
+                Finalizacoes = I("total_shots"), FinalizacoesNoAlvo = I("shots_on_target"), Toques = I("touches"),
+                Passes = I("total_pass"), PassesCertos = I("accurate_pass"), ChancesCriadas = I("key_pass"),
+                BolasLongas = I("total_long_balls"), BolasLongasCertas = I("accurate_long_balls"),
+                Cruzamentos = I("total_cross"), CruzamentosCertos = I("accurate_cross"),
+                Dribles = I("dribble_attempted"), DriblesCertos = I("dribble_won"),
+                Desarmes = I("total_tackle"), Interceptacoes = I("interception"), Recuperacoes = I("ball_recovery"), Cortes = I("total_clearance"),
+                DuelosGanhos = I("duel_won"), DuelosPerdidos = I("duel_lost"),
+                Aereos = I("aerial_won") + I("aerial_lost"), AereosGanhos = I("aerial_won"),
+                FaltasCometidas = I("fouls"), FaltasSofridas = I("was_fouled"), PerdasDePosse = I("dispossessed"), Defesas = I("saves"),
+                Bruto = s.GetRawText(),
+            });
+            n++;
+            if (atletaId is not null) ligados++;
+        }
+        return (n, ligados);
+    }
+
     /// <summary>"Atletico-MG" = "Atlético Mineiro"/"Atlético-MG"; "RB Bragantino" = "Red Bull Bragantino"/"Bragantino".</summary>
     public static bool MesmoClube(string nosso, string nome, string? curto)
     {
@@ -129,5 +229,6 @@ public class ColetaBzzoiro(HttpClient http, ScoutDbContext db, IConfiguration co
     }
 
     static string? Texto(JsonElement e, string p) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(p, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+    static double? Num(JsonElement e, string p) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(p, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : null;
     static int? Int(JsonElement e, string p) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(p, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt32() : null;
 }

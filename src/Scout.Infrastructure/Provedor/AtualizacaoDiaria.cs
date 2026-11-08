@@ -67,10 +67,12 @@ public class AtualizacaoDiaria(IServiceScopeFactory escopos, IConfiguration conf
             {
                 using var escopo = escopos.CreateScope();
                 await escopo.ServiceProvider.GetRequiredService<ColetaBzzoiro>().PreencherNascimentos(competicoes.Max(c => c.Temporada), ct);
+                // e o desempenho dos atletas nos jogos de copa (até 40 por dia)
+                await escopo.ServiceProvider.GetRequiredService<ColetaBzzoiro>().ColetarCopas(competicoes.Max(c => c.Temporada), 40, ct);
             }
             catch (Exception e) when (e is not OperationCanceledException)
             {
-                log.LogError(e, "Falha nos nascimentos pela Bzzoiro");
+                log.LogError(e, "Falha na coleta da Bzzoiro");
             }
         }
     }

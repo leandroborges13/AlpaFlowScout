@@ -274,6 +274,14 @@ namespace Scout.Infrastructure.Dados.Migracoes
                         .HasColumnType("integer")
                         .HasColumnName("finalizacoes_no_alvo");
 
+                    b.Property<string>("Fonte")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("PitchAPI")
+                        .HasColumnName("fonte");
+
                     b.Property<int>("Gca")
                         .HasColumnType("integer")
                         .HasColumnName("gca");
@@ -289,6 +297,11 @@ namespace Scout.Infrastructure.Dados.Migracoes
                     b.Property<int>("Interceptacoes")
                         .HasColumnType("integer")
                         .HasColumnName("interceptacoes");
+
+                    b.Property<string>("JogadorFonteId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("jogador_fonte_id");
 
                     b.Property<int>("Minutos")
                         .HasColumnType("integer")
@@ -330,11 +343,6 @@ namespace Scout.Infrastructure.Dados.Migracoes
                     b.Property<int>("PerdasDePosse")
                         .HasColumnType("integer")
                         .HasColumnName("perdas_de_posse");
-
-                    b.Property<string>("PitchJogadorId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("pitch_jogador_id");
 
                     b.Property<int>("Recuperacoes")
                         .HasColumnType("integer")
@@ -378,9 +386,9 @@ namespace Scout.Infrastructure.Dados.Migracoes
                     b.HasIndex("AtletaId")
                         .HasDatabaseName("ix_desempenhos_avancados_atleta_id");
 
-                    b.HasIndex("PartidaId", "PitchJogadorId")
+                    b.HasIndex("PartidaId", "Fonte", "JogadorFonteId")
                         .IsUnique()
-                        .HasDatabaseName("ix_desempenhos_avancados_partida_id_pitch_jogador_id");
+                        .HasDatabaseName("ix_desempenhos_avancados_partida_id_fonte_jogador_fonte_id");
 
                     b.ToTable("desempenhos_avancados", (string)null);
                 });
@@ -694,6 +702,14 @@ namespace Scout.Infrastructure.Dados.Migracoes
                     b.Property<int>("Id")
                         .HasColumnType("integer")
                         .HasColumnName("id");
+
+                    b.Property<int?>("BzzoiroId")
+                        .HasColumnType("integer")
+                        .HasColumnName("bzzoiro_id");
+
+                    b.Property<bool>("BzzoiroImportada")
+                        .HasColumnType("boolean")
+                        .HasColumnName("bzzoiro_importada");
 
                     b.Property<int>("CompeticaoId")
                         .HasColumnType("integer")

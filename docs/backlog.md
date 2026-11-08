@@ -108,7 +108,12 @@ A API-Football (a nossa) não tem coordenadas de lance. Opções vistas:
     - **Nascimentos FEITO em 08/11/2026** (ColetaBzzoiro.PreencherNascimentos; roda na AtualizacaoDiaria e pelo comando
       `nascimentos-bzzoiro <temporada>`): só preenche quem está sem data, ignora 1º de janeiro (data de quem só sabe o ano) e
       duplicatas com datas diferentes. Teste local: 141 de 516 atletas sem data (41 de 110 clubes ligados; os demais são de
-      competições que a Bzzoiro não tem). Falta: jogos de copa (escalação e estatística por atleta).
+      competições que a Bzzoiro não tem).
+    - **Jogos de copa FEITO em 08/11/2026** (ColetaBzzoiro.ColetarCopas; até 40 jogos/dia e comando `copas-bzzoiro <temporada>
+      [max]`): desempenho por atleta nos jogos de Copa do Brasil, Libertadores e Sul-Americana com time da Série A, na mesma
+      tabela da PitchAPI (desempenhos_avancados, coluna fonte). Teste local: 15 jogos, 390 de 398 atletas ligados.
+    - Falta para 2027 sem o Pro: criar a partida a partir da Bzzoiro/PitchAPI quando a API-Football não tiver o jogo (hoje a
+      coleta só complementa jogos que já estão na base) e montar escalação, placar e estatística do time a partir delas.
 
 ## Imagem e direitos (escudos, fotos, cores)
 

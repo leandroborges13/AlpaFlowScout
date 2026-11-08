@@ -91,7 +91,7 @@ public class ColetaPitch(HttpClient http, ScoutDbContext db, IConfiguration conf
             .GroupBy(c => c.ClubeId)
             .ToDictionary(g => g.Key, g => g.Select(c => (c.AtletaId, c.Nome, c.NomeCompleto)).Distinct().ToList());
 
-        await db.DesempenhosAvancados.Where(d => d.PartidaId == partida.Id).ExecuteDeleteAsync(ct);
+        await db.DesempenhosAvancados.Where(d => d.PartidaId == partida.Id && d.Fonte == "PitchAPI").ExecuteDeleteAsync(ct);
         int n = 0, ligados = 0;
         foreach (var item in basico.EnumerateArray())
         {
@@ -105,7 +105,7 @@ public class ColetaPitch(HttpClient http, ScoutDbContext db, IConfiguration conf
             var atletaId = candidatos.TryGetValue(clubeId, out var lista) ? LigarNomes.Ligar(nome, lista) : null;
             var d = new DesempenhoAvancado
             {
-                PartidaId = partida.Id, ClubeId = clubeId, AtletaId = atletaId, PitchJogadorId = pid, Nome = nome, Minutos = minutos,
+                PartidaId = partida.Id, ClubeId = clubeId, AtletaId = atletaId, Fonte = "PitchAPI", JogadorFonteId = pid, Nome = nome, Minutos = minutos,
                 Nota = Numero(s, "rating_title"), Gols = Inteiro(s, "goals"), Assistencias = Inteiro(s, "assists"),
                 Xg = Numero(s, "expected_goals"), Xa = Numero(s, "expected_assists"),
                 Finalizacoes = Inteiro(s, "total_shots"), FinalizacoesNoAlvo = Inteiro(s, "ShotsOnTarget"),

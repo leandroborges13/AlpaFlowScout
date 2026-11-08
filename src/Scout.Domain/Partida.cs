@@ -25,6 +25,9 @@ public class Partida
     /// <summary>Id do jogo na PitchAPI (achado por data e nome dos times) e se o desempenho avançado dos atletas já foi baixado.</summary>
     public string? PitchId { get; set; }
     public bool PitchImportada { get; set; }
+    /// <summary>Id do jogo na Bzzoiro (copas) e se o desempenho dos atletas já foi baixado de lá.</summary>
+    public int? BzzoiroId { get; set; }
+    public bool BzzoiroImportada { get; set; }
 
     public bool Encerrada => Status is "FT" or "AET" or "PEN";
 }
@@ -101,10 +104,10 @@ public class TreinadorNaPartida
 }
 
 /// <summary>
-/// Desempenho de um atleta num jogo, vindo da PitchAPI (/players e /advanced/players): o que a API-Football não tem (xG, xA,
-/// passes progressivos, ações que geram chute, VAEP...). Primeiro passo da coleta sem o Pro da API-Football (backlog item 9) e
-/// base do cartão do atleta com métricas avançadas (item 10). `AtletaId` nulo = não deu para ligar o nome ao nosso cadastro.
-/// `Bruto` guarda as duas respostas do atleta inteiras, para usar campos novos sem baixar de novo.
+/// Desempenho de um atleta num jogo, de uma fonte grátis: PitchAPI nas ligas (/players e /advanced/players: xG, xA, passes
+/// progressivos, ações que geram chute, VAEP...) e Bzzoiro nas copas (/player-stats). Base da coleta sem o Pro da API-Football
+/// (backlog itens 9 e 11) e do cartão do atleta com métricas avançadas (item 10). `AtletaId` nulo = não deu para ligar o nome
+/// ao nosso cadastro. `JogadorFonteId` é o id do atleta na fonte. `Bruto` guarda a resposta do atleta inteira.
 /// </summary>
 public class DesempenhoAvancado
 {
@@ -112,7 +115,9 @@ public class DesempenhoAvancado
     public int PartidaId { get; set; }
     public int ClubeId { get; set; }
     public int? AtletaId { get; set; }
-    public string PitchJogadorId { get; set; } = "";
+    /// <summary>"PitchAPI" ou "Bzzoiro".</summary>
+    public string Fonte { get; set; } = "PitchAPI";
+    public string JogadorFonteId { get; set; } = "";
     public string Nome { get; set; } = "";
     public int Minutos { get; set; }
     public double? Nota { get; set; }
