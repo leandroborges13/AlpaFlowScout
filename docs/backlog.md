@@ -96,3 +96,16 @@ A API-Football (a nossa) não tem coordenadas de lance. Opções vistas:
     - Não cita o Brasileirão: testar Série A e Copa do Brasil antes de qualquer coisa, e ler a licença (/docs/api-license/)
       para ver se permite uso comercial. Chave: o Leandro cria a conta e põe BZZOIRO_KEY no .env.
     - Evitar endpoints não oficiais de Sofascore e FotMob (termos proíbem).
+
+## Imagem e direitos (escudos, fotos, cores)
+
+12. **Modo gravação com escudos e cores dos clubes, sem fotos** — conversa de 06/11/2026.
+    - Hoje o "Modo gravação" esconde escudos e fotos. Mudar para: escudos aparecem (pequenos, em placar e tabela: uso
+      informativo, sem parecer oficial), fotos de atletas continuam escondidas.
+    - Cartões do "Para vídeo" e da prancheta com as cores de cada clube (ex.: Grêmio azul e preto) no lugar do verde único.
+      Cor sozinha não é protegida.
+    - Fotos nos vídeos: só de divulgação do clube para a imprensa, sempre com crédito ("Foto: Atlético/divulgação"), ou com
+      licença livre (Wikimedia Commons). Evitar foto de agência (Getty, AGIF, Reuters): é de onde vêm as denúncias de direito
+      autoral (3 derrubam o canal). Menor de 18: só foto de divulgação, nunca de rede social pessoal.
+    - Nunca imagem de transmissão (direito de arena): o maior risco de bloqueio.
+    - Quando o canal monetizar ou o Scout for vendido a clubes: consultar advogado de direito desportivo.
