@@ -34,6 +34,8 @@ public static class DependencyInjection
         services.AddHttpClient<Scout.Application.Consultas.IMapaDaPartida, PitchApi>(c => { c.BaseAddress = new Uri("https://api.pitchapi.dev"); c.Timeout = TimeSpan.FromSeconds(20); });
         // Desempenho avançado jogo a jogo (PitchAPI), base para sair do Pro da API-Football
         services.AddHttpClient<ColetaPitch>(c => { c.BaseAddress = new Uri("https://api.pitchapi.dev"); c.Timeout = TimeSpan.FromSeconds(30); });
+        // Copas, elencos e nascimento (Bzzoiro); sem BZZOIRO_KEY, não faz nada
+        services.AddHttpClient<ColetaBzzoiro>(c => { c.BaseAddress = new Uri("https://sports.bzzoiro.com"); c.Timeout = TimeSpan.FromSeconds(30); });
         services.AddScoped<Scout.Application.Consultas.IHistoricoDoAtleta, HistoricoDoAtleta>();
         services.AddScoped<Scout.Application.Consultas.ICarreiraDoTreinador, CarreiraDoTreinador>();
         services.AddScoped<Scout.Application.Consultas.IDetalhesDaPartida, DetalhesDaPartida>();

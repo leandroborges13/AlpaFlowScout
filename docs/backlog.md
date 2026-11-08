@@ -105,6 +105,10 @@ A API-Football (a nossa) não tem coordenadas de lance. Opções vistas:
     - **Conclusão:** PitchAPI (ligas: mapas e métricas avançadas) + Bzzoiro (copas, elencos, nascimento, estatística por jogo)
       cobrem o Scout sem o Pro da API-Football. Próximo passo: ColetaBzzoiro (elencos e nascimento primeiro, depois os jogos de
       copa) e, em dezembro, um teste de uma semana com o Scout lendo só das duas antes de decidir não renovar.
+    - **Nascimentos FEITO em 08/11/2026** (ColetaBzzoiro.PreencherNascimentos; roda na AtualizacaoDiaria e pelo comando
+      `nascimentos-bzzoiro <temporada>`): só preenche quem está sem data, ignora 1º de janeiro (data de quem só sabe o ano) e
+      duplicatas com datas diferentes. Teste local: 141 de 516 atletas sem data (41 de 110 clubes ligados; os demais são de
+      competições que a Bzzoiro não tem). Falta: jogos de copa (escalação e estatística por atleta).
 
 ## Imagem e direitos (escudos, fotos, cores)
 

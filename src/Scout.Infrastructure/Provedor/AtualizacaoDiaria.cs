@@ -62,6 +62,16 @@ public class AtualizacaoDiaria(IServiceScopeFactory escopos, IConfiguration conf
                     log.LogError(e, "Falha na coleta da PitchAPI {Liga}/{Temporada}", liga, temporada);
                 }
             }
+            // Datas de nascimento que faltaram (Bzzoiro): sem data, o atleta fica fora das análises
+            try
+            {
+                using var escopo = escopos.CreateScope();
+                await escopo.ServiceProvider.GetRequiredService<ColetaBzzoiro>().PreencherNascimentos(competicoes.Max(c => c.Temporada), ct);
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                log.LogError(e, "Falha nos nascimentos pela Bzzoiro");
+            }
         }
     }
 }

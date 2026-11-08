@@ -9,6 +9,7 @@
 //   dotnet run --project src/Scout.Coleta -- nascimento <id> <aaaa-mm-dd> <fonte>   (data de fonte pública, ex.: "site do clube")
 //   dotnet run --project src/Scout.Coleta -- atleta <nome>   (o que a base tem do atleta)
 //   dotnet run --project src/Scout.Coleta -- pitch <liga> <temporada> [max]   (desempenho avançado jogo a jogo pela PitchAPI)
+//   dotnet run --project src/Scout.Coleta -- nascimentos-bzzoiro <temporada>   (data de nascimento de quem está sem, pela Bzzoiro)
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -52,6 +53,11 @@ try
             var maxP = args.Length >= 4 && int.TryParse(args[3], out var m) ? m : 400;
             var rp = await sp.GetRequiredService<ColetaPitch>().Coletar(ligaP, temporadaP, maxP, cts.Token);
             Console.WriteLine($"PitchAPI: {rp.Jogos} jogos, {rp.Ligados}/{rp.Atletas} atletas ligados ao cadastro, {rp.SemPar} jogos sem par na base");
+            break;
+
+        case "nascimentos-bzzoiro" when args.Length >= 2 && int.TryParse(args[1], out var temporadaB):
+            var rb = await sp.GetRequiredService<ColetaBzzoiro>().PreencherNascimentos(temporadaB, cts.Token);
+            Console.WriteLine($"Bzzoiro: {rb.Preenchidos} de {rb.SemData} atletas sem data preenchidos; {rb.ClubesLigados}/{rb.Clubes} clubes ligados; {rb.Duvidosos} com datas conflitantes");
             break;
 
         case "atleta" when args.Length >= 2:
