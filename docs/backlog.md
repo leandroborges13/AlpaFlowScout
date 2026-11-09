@@ -25,7 +25,9 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
    - Chance de vitória, empate e derrota do próximo jogo pela força tipo Elo do modelo de chances da liga.
    - Gera dois vídeos por jogo (véspera e pós-jogo) e um motivo para voltar ao canal. Guardar o palpite para mostrar o histórico de acertos.
 
-5. **Página pública de cada análise** (link da bio)
+5. **Página pública de cada análise** (link da bio) — FEITO em 09/11/2026: scout.alpaflow.tec.br/jogo/<id> sem login (placar, gols,
+   onde o jogo foi decidido, destaques e palpite; sem foto de atleta nem menor de 18; nunca consulta o provedor), botão
+   "🔗 Link público" no painel da partida. Falta: prévia bonita ao compartilhar no WhatsApp (meta tags do servidor).
    - scout.alpaflow.tec.br/a/<id> com a resposta e os cartões, sem login, e um botão "pergunte você também" (cadastro).
    - Transforma quem vem do vídeo em usuário da plataforma.
 

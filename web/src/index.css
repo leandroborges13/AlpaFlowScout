@@ -418,3 +418,41 @@ button.lt-quad:hover, button.lt-quad:focus-visible { outline: 2px solid var(--in
 .palpite-barra { height: 12px; border-radius: 6px; background: var(--line, #e3e8e5); overflow: hidden; }
 .palpite-barra i { display: block; height: 100%; border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
 .palpite-faixa b { text-align: right; }
+
+/* Página pública do jogo (/jogo/<id>), no visual dos cartões do canal */
+.pj { min-height: 100%; background: radial-gradient(1000px 700px at 50% 0%, #0f3a27, #07170f 70%) fixed; color: #fff;
+  font-family: Inter, system-ui, sans-serif; padding: 20px 16px 40px; max-width: 760px; margin: 0 auto; }
+body:has(.pj) { background: #07170f; }
+.pj-marca { display: block; text-align: center; font-weight: 900; font-size: 22px; color: #fff; text-decoration: none; margin-bottom: 14px; }
+.pj-marca span, .pj h2 b { color: #4fe3a0; }
+.pj-aviso { text-align: center; color: #b9e8cf; margin: 40px 0; }
+.pj-placar { text-align: center; background: rgba(255,255,255,.05); border-radius: 22px; padding: 18px 12px; }
+.pj-selo { display: inline-block; background: #0f9d58; border-radius: 999px; padding: 4px 14px; font-weight: 800; font-size: 13px; }
+.pj-times { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; margin: 16px 0 10px; }
+.pj-time { display: grid; justify-items: center; gap: 6px; font-weight: 800; font-size: 15px; }
+.pj-sem-escudo { width: 56px; height: 56px; border-radius: 50%; border: 4px solid; }
+.pj-gols { font-size: 46px; font-weight: 900; letter-spacing: -1px; }
+.pj-data { display: block; color: #b9e8cf; font-size: 13px; text-transform: capitalize; }
+.pj-bloco { background: rgba(255,255,255,.05); border-radius: 18px; padding: 14px 16px; margin-top: 14px; }
+.pj h2 { font-size: 17px; margin: 0 0 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.pj-resultado { font-size: 13px; border-radius: 999px; padding: 3px 10px; }
+.pj-resultado.certo { background: #1db95433; color: #6ff0a3; }
+.pj-resultado.errado { background: #f0563a33; color: #ff9b85; }
+.pj-faixa { display: grid; grid-template-columns: minmax(80px, 150px) 1fr; gap: 10px; align-items: center; margin: 6px 0; font-size: 14px; }
+.pj-faixa.favorito span { font-weight: 900; }
+.pj-barra { display: grid; grid-template-columns: 1fr 34px; gap: 8px; align-items: center; }
+.pj-barra i { display: block; height: 12px; border-radius: 6px; }
+.pj-barra b { font-size: 13px; text-align: right; }
+.pj-barra { background: none; }
+.pj-aspecto { margin: 10px 0; font-size: 14px; display: grid; gap: 4px; }
+.pj-legenda { color: #b9e8cf; font-size: 12px; line-height: 1.5; }
+.pj-legenda i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin: 0 4px 0 8px; }
+.pj-gol { display: grid; grid-template-columns: 48px 1fr; gap: 2px 10px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 14px; }
+.pj-gol small { grid-column: 2; color: #b9e8cf; }
+.pj-destaque { display: flex; gap: 12px; align-items: center; padding: 6px 0; }
+.pj-destaque > b { min-width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-weight: 900; }
+.pj-destaque strong { display: block; }
+.pj-destaque small { color: #b9e8cf; }
+.pj-chamada { text-align: center; margin-top: 24px; display: grid; gap: 10px; justify-items: center; }
+.pj-botao { background: #ff2d2d; color: #fff; font-weight: 900; text-decoration: none; padding: 12px 22px; border-radius: 999px; }
+.pj-chamada small { color: #b9e8cf; }

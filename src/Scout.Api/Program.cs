@@ -49,6 +49,9 @@ if (builder.Configuration["SCOUT_CHAVES_DIR"] is { Length: > 0 } pastaChaves)
 builder.Services.AddRateLimiter(o =>
 {
     o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    // Página pública de jogo (sem login): 60 por minuto por IP, contra robô raspando
+    o.AddPolicy("publico", c => RateLimitPartition.GetFixedWindowLimiter(c.Connection.RemoteIpAddress?.ToString() ?? "?",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 60, Window = TimeSpan.FromMinutes(1) }));
     o.AddPolicy("login", c => RateLimitPartition.GetFixedWindowLimiter(c.Connection.RemoteIpAddress?.ToString() ?? "?",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(1) }));
 });
@@ -105,6 +108,16 @@ app.MapPost("/api/logout", async (HttpContext http) =>
 
 app.MapGet("/api/sessao", (ClaimsPrincipal u) => Results.Ok(new { nome = u.Identity?.Name }))
     .RequireAuthorization();
+
+// ---------- Página pública de cada jogo (sem login: link da bio e da descrição dos vídeos) ----------
+app.MapGet("/api/publico/jogos/{id:int}", async (int id, IQueryHandler<ObterPaginaPublica, PaginaPublica?> h,
+        Microsoft.Extensions.Caching.Memory.IMemoryCache cache, HttpContext http, CancellationToken ct) =>
+{
+    // 10 min em memória: link compartilhado não refaz a análise a cada visita
+    var pagina = await Microsoft.Extensions.Caching.Memory.CacheExtensions.GetOrCreateAsync(cache, $"publico:jogo:{id}", e => { e.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10); return h.Handle(new ObterPaginaPublica(id), ct); });
+    http.Response.Headers.CacheControl = "public, max-age=300";
+    return pagina is null ? Results.NotFound() : Results.Ok(pagina);
+}).RequireRateLimiting("publico");
 
 // ---------- Análises (todas exigem login) ----------
 

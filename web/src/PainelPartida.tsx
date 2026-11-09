@@ -81,6 +81,7 @@ export function PainelPartida({ partida, gravacao, onFechar }: PainelProps) {
         <div className="prancheta-botoes">
           <button className="btn" onClick={() => setPrancheta({ id: p.mandanteId, nome: p.mandante })}>🧩 Prancheta: {p.mandante}</button>
           <button className="btn" onClick={() => setPrancheta({ id: p.visitanteId, nome: p.visitante })}>🧩 Prancheta: {p.visitante}</button>
+          <LinkPublico id={p.id} />
         </div>
         {prancheta && <PranchetaTatica clubeId={prancheta.id} time={prancheta.nome} onFechar={() => setPrancheta(null)} />}
 
@@ -366,5 +367,18 @@ function PalpiteDoJogo({ id, gravacao }: { id: number; gravacao: boolean }) {
       )}
       {galeria && <GaleriaVideo titulo={`Palpite: ${p.mandante} x ${p.visitante}`} cartoes={galeria} onFechar={() => setGaleria(null)} />}
     </section>
+  )
+}
+
+/** Copia o link da página pública do jogo (/jogo/<id>, sem login), para a bio e a descrição dos vídeos. */
+function LinkPublico({ id }: { id: number }) {
+  const [copiado, setCopiado] = useState(false)
+  const url = `${location.origin}/jogo/${id}`
+  return (
+    <button className="btn" title={url} onClick={async () => {
+      try { await navigator.clipboard.writeText(url); setCopiado(true); setTimeout(() => setCopiado(false), 2000) } catch { window.open(url, '_blank') }
+    }}>
+      {copiado ? '✅ Link copiado' : '🔗 Link público'}
+    </button>
   )
 }
