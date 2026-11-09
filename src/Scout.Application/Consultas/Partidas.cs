@@ -67,8 +67,10 @@ public record AnalisePartida(ResumoPartida Partida, LadoDaPartida Mandante, Lado
 // ---------- Procurar partidas ----------
 
 /// <summary>Um jogo do ponto de vista do time pedido. `Resultado` só nos encerrados; `Situacao` só nos que não terminaram.</summary>
+/// <summary>`Quando`: a data dita como no vídeo ("há 3 semanas", "daqui a 6 dias"). `JogosDepois`: quantos jogos da lista o time fez
+/// depois deste (0 = o último), para "há 12 semanas, 21 jogos".</summary>
 public record JogoDoTime(int Id, string Data, string DiaDaSemana, string Competicao, string? Rodada, string Mando, string Adversario,
-    string Mandante, string Visitante, int? GolsMandante, int? GolsVisitante, string? Resultado, string? Situacao);
+    string Mandante, string Visitante, int? GolsMandante, int? GolsVisitante, string? Resultado, string? Situacao, string Quando, int? JogosDepois = null);
 
 /// <summary>Só os jogos disputados. Pontos valem como numa liga (3 por vitória, 1 por empate), mesmo que haja jogo de copa na lista.</summary>
 public record ResumoDosJogos(int Jogos, int Vitorias, int Empates, int Derrotas, int Pontos, int PontosPossiveis, int GolsPro, int GolsContra);
@@ -77,9 +79,10 @@ public record JogosDoTime(ResumoDosJogos ResumoDosDisputados, IReadOnlyList<Jogo
 
 /// <summary>"Galo x Santos no sábado": partidas de um time, com o adversário e o período opcionais, da mais recente para a mais antiga.
 /// `Resultado` ("vitoria", "empate", "derrota") e `DiferencaMinima` (gols de diferença no placar) são do ponto de vista do time:
-/// "vitórias por mais de dois gols" = Resultado "vitoria" e DiferencaMinima 3.</summary>
+/// "vitórias por mais de dois gols" = Resultado "vitoria" e DiferencaMinima 3.
+/// `GolsNoJogoMinimo` é a SOMA dos gols do jogo ("jogos com mais de dois gols" = 3).</summary>
 public record ProcurarPartidas(string Time, string? Adversario = null, DateOnly? De = null, DateOnly? Ate = null, int Limite = 8, int? CompeticaoId = null,
-    string? Resultado = null, int? DiferencaMinima = null) : IQuery<IReadOnlyList<ResumoPartida>>;
+    string? Resultado = null, int? DiferencaMinima = null, int? GolsNoJogoMinimo = null) : IQuery<IReadOnlyList<ResumoPartida>>;
 
 public class ProcurarPartidasHandler(IScoutDb db) : IQueryHandler<ProcurarPartidas, IReadOnlyList<ResumoPartida>>
 {
@@ -89,8 +92,9 @@ public class ProcurarPartidasHandler(IScoutDb db) : IQueryHandler<ProcurarPartid
     public const int LimiteMaximo = 50;
 
     /// <summary>O jogo encerrado bate com o resultado e a diferença de gols pedidos, do ponto de vista do time (sem banco, para testar).</summary>
-    public static bool AtendeResultado(bool timeEhMandante, int? golsMandante, int? golsVisitante, string? resultado, int? diferencaMinima)
+    public static bool AtendeResultado(bool timeEhMandante, int? golsMandante, int? golsVisitante, string? resultado, int? diferencaMinima, int? golsNoJogoMinimo = null)
     {
+        if (golsNoJogoMinimo is { } soma && (golsMandante ?? 0) + (golsVisitante ?? 0) < soma) return false;
         if (golsMandante is not { } gm || golsVisitante is not { } gv) return false;
         var saldo = timeEhMandante ? gm - gv : gv - gm;
         var porResultado = string.Join(" ", BuscaPorNome.Palavras(resultado ?? "")) switch
@@ -126,7 +130,7 @@ public class ProcurarPartidasHandler(IScoutDb db) : IQueryHandler<ProcurarPartid
         if (q.Ate is { } ate) { var fim = InicioDoDiaEmUtc(ate.AddDays(1)); consulta = consulta.Where(p => p.Data < fim); }
         var corte = DateTime.UtcNow.AddDays(1);
         var limite = Math.Clamp(q.Limite, 1, LimiteMaximo);
-        var filtraResultado = !string.IsNullOrWhiteSpace(q.Resultado) || q.DiferencaMinima is not null;
+        var filtraResultado = !string.IsNullOrWhiteSpace(q.Resultado) || q.DiferencaMinima is not null || q.GolsNoJogoMinimo is not null;
         // O próximo jogo, seja quando for (sem ele a IA concluía "o Palmeiras não joga mais"): só quando o período chega até hoje
         var proximo = filtraResultado || (q.Ate is { } a && InicioDoDiaEmUtc(a.AddDays(1)) <= corte) ? null
             : await consulta.Where(p => p.Data > corte && (p.Status == "NS" || p.Status == "TBD")).OrderBy(p => p.Data).FirstOrDefaultAsync(ct);
@@ -134,7 +138,7 @@ public class ProcurarPartidasHandler(IScoutDb db) : IQueryHandler<ProcurarPartid
         // Com filtro de resultado, a conta do placar é feita aqui (só jogos encerrados) e o limite vale depois do filtro
         var partidas = filtraResultado
             ? (await consulta.Where(p => p.GolsMandante != null && p.GolsVisitante != null).ToListAsync(ct))
-                .Where(p => p.Encerrada && AtendeResultado(times.Contains(p.MandanteId), p.GolsMandante, p.GolsVisitante, q.Resultado, q.DiferencaMinima))
+                .Where(p => p.Encerrada && AtendeResultado(times.Contains(p.MandanteId), p.GolsMandante, p.GolsVisitante, q.Resultado, q.DiferencaMinima, q.GolsNoJogoMinimo))
                 .Take(limite).ToList()
             : SoEncerradasNoLimite(await consulta.Take(limite + 10).ToListAsync(ct), limite);
         if (proximo is not null) partidas.Insert(0, proximo);
@@ -156,8 +160,26 @@ public class ProcurarPartidasHandler(IScoutDb db) : IQueryHandler<ProcurarPartid
     /// gols): a IA não soma placares nem conta o jogo de hoje como se já tivesse acontecido. O time de cada jogo é o lado cujo nome
     /// mais se parece com o pedido (com adversário, os dois lados aparecem em todos os jogos).
     /// </summary>
-    public static JogosDoTime Organizar(IReadOnlyList<ResumoPartida> partidas, string time)
+    /// <summary>"hoje", "ontem", "há 5 dias", "há 3 semanas", "há 4 meses", "amanhã", "daqui a 6 dias" (datas no horário de Brasília).</summary>
+    public static string Relativo(DateTime data, DateTime hoje)
     {
+        var dias = (hoje.Date - data.Date).Days;
+        return dias switch
+        {
+            0 => "hoje",
+            1 => "ontem",
+            -1 => "amanhã",
+            < -1 => $"daqui a {-dias} dias",
+            < 14 => $"há {dias} dias",
+            < 60 => $"há {dias / 7} semanas",
+            < 365 => $"há {dias / 30} meses",
+            _ => dias / 365 == 1 ? "há 1 ano" : $"há {dias / 365} anos",
+        };
+    }
+
+    public static JogosDoTime Organizar(IReadOnlyList<ResumoPartida> partidas, string time, DateTime? hojeEmBrasilia = null)
+    {
+        var hoje = hojeEmBrasilia ?? TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, Brasilia);
         var busca = BuscaPorNome.TraduzirApelido(time);
         var disputados = new List<JogoDoTime>();
         var naoDisputados = new List<JogoDoTime>();
@@ -171,8 +193,9 @@ public class ProcurarPartidasHandler(IScoutDb db) : IQueryHandler<ProcurarPartid
                 : pro > contra ? "vitória" : pro < contra ? "derrota" : p.Status == "PEN" ? "empate (decidido nos pênaltis)" : "empate";
             var jogo = new JogoDoTime(p.Id, p.Data.ToString("yyyy-MM-dd HH:mm"), p.Data.DayOfWeek.ToString(), p.Competicao, p.Rodada,
                 mandante ? "casa" : "fora", mandante ? p.Visitante : p.Mandante, p.Mandante, p.Visitante,
-                encerrada ? p.GolsMandante : null, encerrada ? p.GolsVisitante : null, resultado, encerrada ? null : StatusEmPortugues(p.Status));
-            if (encerrada) { disputados.Add(jogo); gols.Add((pro!.Value, contra!.Value)); }
+                encerrada ? p.GolsMandante : null, encerrada ? p.GolsVisitante : null, resultado, encerrada ? null : StatusEmPortugues(p.Status),
+                Relativo(p.Data, hoje));
+            if (encerrada) { disputados.Add(jogo with { JogosDepois = disputados.Count }); gols.Add((pro!.Value, contra!.Value)); }
             else naoDisputados.Add(jogo);
         }
         int Conta(string r) => disputados.Count(j => j.Resultado!.StartsWith(r));

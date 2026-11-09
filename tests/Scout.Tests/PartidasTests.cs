@@ -298,4 +298,27 @@ public class PartidasTests
         var r = ProcurarPartidasHandler.SoEncerradasNoLimite(lista, 2);
         Assert.Equal([9, 8, 7, 6], r.Select(p => p.Id));
     }
+
+    [Theory]
+    [InlineData(0, "hoje")]
+    [InlineData(1, "ontem")]
+    [InlineData(5, "há 5 dias")]
+    [InlineData(84, "há 2 meses")]
+    [InlineData(20, "há 2 semanas")]
+    [InlineData(-6, "daqui a 6 dias")]
+    [InlineData(-1, "amanhã")]
+    public void Data_relativa_como_no_video(int diasAtras, string esperado)
+    {
+        var hoje = new DateTime(2026, 11, 8, 15, 0, 0);
+        Assert.Equal(esperado, ProcurarPartidasHandler.Relativo(hoje.AddDays(-diasAtras).AddHours(5), hoje));
+    }
+
+    [Fact]
+    public void Soma_de_gols_e_diferenca_sao_filtros_diferentes()
+    {
+        // Galo 2 x 2: 4 gols no jogo, mas não venceu por 3
+        Assert.True(ProcurarPartidasHandler.AtendeResultado(true, 2, 2, null, null, golsNoJogoMinimo: 3));
+        Assert.False(ProcurarPartidasHandler.AtendeResultado(true, 2, 2, "vitoria", 3));
+        Assert.False(ProcurarPartidasHandler.AtendeResultado(true, 1, 1, null, null, golsNoJogoMinimo: 3));
+    }
 }

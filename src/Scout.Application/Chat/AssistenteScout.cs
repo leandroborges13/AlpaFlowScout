@@ -344,10 +344,11 @@ public class AssistenteScout(
                        [Description("ID da competição, se citada (ex.: Libertadores)")] int? competicao = null,
                        [Description("Só jogos com este resultado do time: 'vitoria', 'empate' ou 'derrota'")] string? resultado = null,
                        [Description("Diferença mínima de gols no placar (ex.: 'vitórias por mais de dois gols' = 3)")] int? diferencaMinima = null,
+                       [Description("SOMA mínima de gols no jogo, dos dois times (ex.: 'jogos com mais de dois gols' = 3)")] int? golsNoJogoMinimo = null,
                        [Description("Quantos jogos trazer (padrão 8, máximo 50). Para contar ou listar jogos de um período, use 50.")] int? limite = null) =>
                 {
                     DateOnly? Data(string? s) => DateOnly.TryParse(s, System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : null;
-                    var r = await procurarPartidas.Handle(new ProcurarPartidas(time, adversario, Data(de), Data(ate), limite ?? 8, competicao, resultado, diferencaMinima), ct);
+                    var r = await procurarPartidas.Handle(new ProcurarPartidas(time, adversario, Data(de), Data(ate), limite ?? 8, competicao, resultado, diferencaMinima, golsNoJogoMinimo), ct);
                     return ProcurarPartidasHandler.Organizar(r, time);
                 },
                 "procurar_partidas",
@@ -598,6 +599,8 @@ public class AssistenteScout(
         - "Chances criadas (xG)" também é percentil do time: nunca cite o valor do xG, diga "criou mais chances que em 90% dos próprios jogos".
         - Contar ou listar jogos ("quantas vitórias", "liste os jogos") = procurar_partidas com limite 50, sem competição (todas, salvo se
           citarem uma), e conte só o que veio. Se vierem exatamente 50, diga que podem existir mais e mostre o período coberto.
+        - Datas passadas e futuras: junto da data, diga como no vídeo, pelo campo Quando ("12/08/2026, há 12 semanas"). Em "desde X",
+          diga também quantos jogos foram desde então (JogosDepois do jogo de referência + 1, ou o total do ResumoDosDisputados).
         - Sequência, invencibilidade, "há quantos jogos não perde/não vence/não sofre gol", "maior sequência", "maior goleada" = use
           sequencias (já contadas, nunca conte você mesmo). Atuais/EmCasa/ForaDeCasa trazem a contagem de TODOS os tipos: use o número
           exato do tipo pedido (0 ou 1 também é resposta: "perdeu o último jogo em casa, para o Cruzeiro"). Cite o jogo que começou
@@ -609,8 +612,11 @@ public class AssistenteScout(
           como está; jogo em NaoDisputados é o próximo jogo, nunca parte dos últimos. NaoDisputados traz o próximo jogo
           marcado (seja quando for); vazio = nenhum jogo marcado na base: não diga que o time encerrou a temporada nem que não joga mais.
         - "Ganhou por mais de dois gols", "venceu por 3 ou mais", "goleadas" = DIFERENÇA no placar: resultado "vitoria" e diferencaMinima
-          (mais de dois = 3; dois ou mais = 2; goleada = 3). "Perdeu por mais de dois" = resultado "derrota". Só "jogos com mais de dois
-          gols" ou "mais de 2,5 gols" é a SOMA dos gols do jogo: aí traga os jogos (limite 50) e conte pelos placares.
+          (mais de dois = 3; dois ou mais = 2; goleada = 3). "Perdeu por mais de dois" = resultado "derrota". "Jogos com mais de dois
+          gols", "mais de 2,5 gols", "jogos movimentados" = SOMA dos gols do jogo: golsNoJogoMinimo (mais de dois = 3).
+        - Pergunta que pode ser as duas coisas ("o Galo fez mais de dois gols em quantos jogos?", "jogos com 3 ou mais gols do Galo"):
+          busque as duas leituras e responda as duas em uma linha cada, dizendo qual é qual ("Marcando 3+ gols: 4 jogos. Jogos com 3+
+          gols somando os dois times: 9."). Não escolha uma leitura sozinho.
         - "Desde a chegada do técnico X" / "com o técnico X": pegue no analisar_treinador o início da passagem dele no clube e use como "de".
           Diga a data de início e o critério na resposta ("desde 12/08/2026, todas as competições: 4 vitórias por 3 gols ou mais").
         - Se perguntarem do histórico entre os times, use o Confronto (V/E/D do lado do mandante, só com os jogos da base; diga desde que ano)

@@ -5,7 +5,7 @@ namespace Scout.Application.Consultas;
 // ---------- Sequências e marcas (backlog item 3: gancho de título, "o Galo não perde há 7 jogos") ----------
 
 /// <summary>Um jogo citado numa sequência, do ponto de vista de quem lê: "Galo 3 x 0 Grêmio", data de Brasília.</summary>
-public record JogoDaSequencia(int Id, DateOnly Data, string Jogo, string Competicao, bool EmCasa);
+public record JogoDaSequencia(int Id, DateOnly Data, string Jogo, string Competicao, bool EmCasa, string Quando);
 
 /// <summary>
 /// Uma sequência. Na atual: `Jogos` seguidos até o último jogo, `Desde` = o primeiro deles e `QuebradaEm` = o jogo anterior,
@@ -123,6 +123,7 @@ public class ObterSequenciasHandler(IScoutDb db) : IQueryHandler<ObterSequencias
     {
         var data = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(j.Data, DateTimeKind.Utc), ProcurarPartidasHandler.Brasilia));
         var jogo = j.EmCasa ? $"{j.Time} {j.GolsPro} x {j.GolsContra} {j.Adversario}" : $"{j.Adversario} {j.GolsContra} x {j.GolsPro} {j.Time}";
-        return new JogoDaSequencia(j.Id, data, jogo, j.Competicao, j.EmCasa);
+        var hoje = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ProcurarPartidasHandler.Brasilia);
+        return new JogoDaSequencia(j.Id, data, jogo, j.Competicao, j.EmCasa, ProcurarPartidasHandler.Relativo(data.ToDateTime(TimeOnly.MinValue), hoje));
     }
 }

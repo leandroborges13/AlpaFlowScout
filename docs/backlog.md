@@ -45,10 +45,10 @@ A API-Football (a nossa) não tem coordenadas de lance. Opções vistas:
 
 ## Para a ferramenta
 
-6. **"Mais de dois gols" ambíguo**: quando a pergunta puder ser soma ou diferença, responder as duas leituras em uma linha
+6. **"Mais de dois gols" ambíguo** — FEITO em 09/11/2026 (golsNoJogoMinimo no procurar_partidas; na dúvida, as duas leituras): quando a pergunta puder ser soma ou diferença, responder as duas leituras em uma linha
    (hoje vale a diferença, regra de 03/11).
-7. **Data relativa nas respostas**: além de 12/08/2026, dizer "há 12 semanas, 21 jogos", que é o que a gente fala no vídeo.
-8. **Banco local desatualizado**: script para trazer os placares mais recentes de produção (ou rodar a coleta) antes de testar.
+7. **Data relativa nas respostas** — FEITO em 09/11/2026 (campos Quando e JogosDepois): além de 12/08/2026, dizer "há 12 semanas, 21 jogos", que é o que a gente fala no vídeo.
+8. **Banco local desatualizado** — FEITO em 09/11/2026 (`deploy/banco-local.sh usuario@servidor`): script para trazer os placares mais recentes de produção (ou rodar a coleta) antes de testar.
 
 ## Custos
 
