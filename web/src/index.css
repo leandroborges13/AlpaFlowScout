@@ -456,3 +456,7 @@ body:has(.pj) { background: #07170f; }
 .pj-chamada { text-align: center; margin-top: 24px; display: grid; gap: 10px; justify-items: center; }
 .pj-botao { background: #ff2d2d; color: #fff; font-weight: 900; text-decoration: none; padding: 12px 22px; border-radius: 999px; }
 .pj-chamada small { color: #b9e8cf; }
+
+/* Prancheta: setas e adversário */
+.prancheta-setas { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.prancheta-setas label.botao-prancheta { display: inline-flex; gap: 6px; align-items: center; }

@@ -45,6 +45,10 @@ A API-Football (a nossa) não tem coordenadas de lance. Opções vistas:
 - **Hudl StatsBomb**: o dado de verdade (eventos com posição e 360), preço sob consulta, para clubes (Galo e Cruzeiro são clientes).
 - **SofaScore / FotMob**: têm mapa de calor, mas sem API oficial; raspar viola os termos. Fora, ainda mais num canal público.
 
+- **Prancheta: setas e os dois times** — FEITO em 09/11/2026: modo seta (movimento amarelo, passe branco tracejado; clique apaga),
+  "Mostrar o adversário" quando aberta de um jogo (escalação provável dele espelhada, cores dele ou cinza se parecerem), selo com
+  os dois esquemas; tudo também no modo grande e na imagem baixada.
+
 ## Para a ferramenta
 
 6. **"Mais de dois gols" ambíguo** — FEITO em 09/11/2026 (golsNoJogoMinimo no procurar_partidas; na dúvida, as duas leituras): quando a pergunta puder ser soma ou diferença, responder as duas leituras em uma linha

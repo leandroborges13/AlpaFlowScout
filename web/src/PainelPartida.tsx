@@ -83,7 +83,8 @@ export function PainelPartida({ partida, gravacao, onFechar }: PainelProps) {
           <button className="btn" onClick={() => setPrancheta({ id: p.visitanteId, nome: p.visitante })}>🧩 Prancheta: {p.visitante}</button>
           <LinkPublico id={p.id} />
         </div>
-        {prancheta && <PranchetaTatica clubeId={prancheta.id} time={prancheta.nome} onFechar={() => setPrancheta(null)} />}
+        {prancheta && <PranchetaTatica clubeId={prancheta.id} time={prancheta.nome} onFechar={() => setPrancheta(null)}
+          adversario={prancheta.id === p.mandanteId ? { id: p.visitanteId, nome: p.visitante } : { id: p.mandanteId, nome: p.mandante }} />}
 
         {erro && <p className="erro">{erro}</p>}
         <PalpiteDoJogo id={p.id} gravacao={gravacao} />
