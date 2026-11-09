@@ -80,20 +80,23 @@ public record JogosDoTime(ResumoDosJogos ResumoDosDisputados, IReadOnlyList<Jogo
 /// <summary>"Galo x Santos no sábado": partidas de um time, com o adversário e o período opcionais, da mais recente para a mais antiga.
 /// `Resultado` ("vitoria", "empate", "derrota") e `DiferencaMinima` (gols de diferença no placar) são do ponto de vista do time:
 /// "vitórias por mais de dois gols" = Resultado "vitoria" e DiferencaMinima 3.
-/// `GolsNoJogoMinimo` é a SOMA dos gols do jogo ("jogos com mais de dois gols" = 3).</summary>
+/// `GolsNoJogoMinimo` é a SOMA dos gols do jogo ("jogos com mais de dois gols" = 3); `GolsDoTimeMinimo`, os gols que o time
+/// marcou ("o Galo fez mais de dois gols" = 3).</summary>
 public record ProcurarPartidas(string Time, string? Adversario = null, DateOnly? De = null, DateOnly? Ate = null, int Limite = 8, int? CompeticaoId = null,
-    string? Resultado = null, int? DiferencaMinima = null, int? GolsNoJogoMinimo = null) : IQuery<IReadOnlyList<ResumoPartida>>;
+    string? Resultado = null, int? DiferencaMinima = null, int? GolsNoJogoMinimo = null, int? GolsDoTimeMinimo = null) : IQuery<IReadOnlyList<ResumoPartida>>;
 
 public class ProcurarPartidasHandler(IScoutDb db) : IQueryHandler<ProcurarPartidas, IReadOnlyList<ResumoPartida>>
 {
     /// <summary>O banco guarda UTC; datas de jogo são lidas e mostradas no horário de Brasília (jogo das 21h30 de sábado é sábado).</summary>
     public static readonly TimeZoneInfo Brasilia = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
 
-    public const int LimiteMaximo = 50;
+    public const int LimiteMaximo = 80; // uma temporada inteira com copas (o Galo passa de 50 jogos)
 
     /// <summary>O jogo encerrado bate com o resultado e a diferença de gols pedidos, do ponto de vista do time (sem banco, para testar).</summary>
-    public static bool AtendeResultado(bool timeEhMandante, int? golsMandante, int? golsVisitante, string? resultado, int? diferencaMinima, int? golsNoJogoMinimo = null)
+    public static bool AtendeResultado(bool timeEhMandante, int? golsMandante, int? golsVisitante, string? resultado, int? diferencaMinima,
+        int? golsNoJogoMinimo = null, int? golsDoTimeMinimo = null)
     {
+        if (golsDoTimeMinimo is { } pro && ((timeEhMandante ? golsMandante : golsVisitante) ?? 0) < pro) return false;
         if (golsNoJogoMinimo is { } soma && (golsMandante ?? 0) + (golsVisitante ?? 0) < soma) return false;
         if (golsMandante is not { } gm || golsVisitante is not { } gv) return false;
         var saldo = timeEhMandante ? gm - gv : gv - gm;
@@ -130,7 +133,7 @@ public class ProcurarPartidasHandler(IScoutDb db) : IQueryHandler<ProcurarPartid
         if (q.Ate is { } ate) { var fim = InicioDoDiaEmUtc(ate.AddDays(1)); consulta = consulta.Where(p => p.Data < fim); }
         var corte = DateTime.UtcNow.AddDays(1);
         var limite = Math.Clamp(q.Limite, 1, LimiteMaximo);
-        var filtraResultado = !string.IsNullOrWhiteSpace(q.Resultado) || q.DiferencaMinima is not null || q.GolsNoJogoMinimo is not null;
+        var filtraResultado = !string.IsNullOrWhiteSpace(q.Resultado) || q.DiferencaMinima is not null || q.GolsNoJogoMinimo is not null || q.GolsDoTimeMinimo is not null;
         // O próximo jogo, seja quando for (sem ele a IA concluía "o Palmeiras não joga mais"): só quando o período chega até hoje
         var proximo = filtraResultado || (q.Ate is { } a && InicioDoDiaEmUtc(a.AddDays(1)) <= corte) ? null
             : await consulta.Where(p => p.Data > corte && (p.Status == "NS" || p.Status == "TBD")).OrderBy(p => p.Data).FirstOrDefaultAsync(ct);
@@ -138,7 +141,7 @@ public class ProcurarPartidasHandler(IScoutDb db) : IQueryHandler<ProcurarPartid
         // Com filtro de resultado, a conta do placar é feita aqui (só jogos encerrados) e o limite vale depois do filtro
         var partidas = filtraResultado
             ? (await consulta.Where(p => p.GolsMandante != null && p.GolsVisitante != null).ToListAsync(ct))
-                .Where(p => p.Encerrada && AtendeResultado(times.Contains(p.MandanteId), p.GolsMandante, p.GolsVisitante, q.Resultado, q.DiferencaMinima, q.GolsNoJogoMinimo))
+                .Where(p => p.Encerrada && AtendeResultado(times.Contains(p.MandanteId), p.GolsMandante, p.GolsVisitante, q.Resultado, q.DiferencaMinima, q.GolsNoJogoMinimo, q.GolsDoTimeMinimo))
                 .Take(limite).ToList()
             : SoEncerradasNoLimite(await consulta.Take(limite + 10).ToListAsync(ct), limite);
         if (proximo is not null) partidas.Insert(0, proximo);

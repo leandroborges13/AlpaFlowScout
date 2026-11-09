@@ -55,7 +55,7 @@ public class ListarTreinadoresHandler(IScoutDb db, AnaliseDeTimes analise) : IQu
         var passagens = analises.SelectMany(a => a.Treinadores);
         // Buscando pelo nome, vale qualquer passagem, da mais parecida para a menos; sem nome, só quem está no cargo
         var ordenadas = q.Nome is not null
-            ? passagens.Select(p => (p, pontos: BuscaPorNome.Pontuar(q.Nome, p.Nome))).Where(x => x.pontos > 0)
+            ? passagens.Select(p => (p, pontos: BuscaPorNome.Pontuar(BuscaPorNome.TraduzirApelidoDeTreinador(q.Nome), p.Nome))).Where(x => x.pontos > 0)
                 .OrderByDescending(x => x.pontos).ThenBy(x => x.p.Linha.Copa).Select(x => x.p)
             // A lista geral fica nas ligas: nas copas o mesmo treinador apareceria de novo
             : passagens.Where(p => (!q.SoNoCargo || p.NoCargo) && (!p.Linha.Copa || q.CompeticaoId is not null)).OrderBy(p => p.Linha.CompeticaoId).ThenByDescending(p => p.Linha.Aproveitamento);

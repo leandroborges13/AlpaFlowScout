@@ -21,6 +21,15 @@ public static class BuscaPorNome
     };
 
     /// <summary>"Galo" → "Atletico MG". Sem apelido conhecido, devolve a busca como veio.</summary>
+    /// <summary>Apelidos de treinador usados pela torcida e no canal ("Barba" = Eduardo Domínguez).</summary>
+    static readonly Dictionary<string, string> ApelidosDeTreinador = new() { ["barba"] = "Dominguez" };
+
+    public static string TraduzirApelidoDeTreinador(string busca)
+    {
+        var palavras = Palavras(busca);
+        return palavras.Count == 1 && ApelidosDeTreinador.TryGetValue(palavras[0], out var nome) ? nome : busca;
+    }
+
     public static string TraduzirApelido(string busca)
     {
         var palavras = Palavras(busca);
