@@ -20,7 +20,7 @@ public record Goleada(int Saldo, JogoDaSequencia Jogo);
 public record ResultadoSequencias(string Time, string Periodo, int Jogos, IReadOnlyList<Sequencia> Atuais, IReadOnlyList<Sequencia> EmCasa,
     IReadOnlyList<Sequencia> ForaDeCasa, IReadOnlyList<Sequencia> Recordes, Goleada? MaiorVitoria, Goleada? MaiorDerrota);
 
-public record ObterSequencias(string Time, DateOnly? De = null, DateOnly? Ate = null, int? CompeticaoId = null, int? Temporada = null)
+public record ObterSequencias(string Time, DateOnly? De = null, DateOnly? Ate = null, int? CompeticaoId = null, int? Temporada = null, string? Treinador = null)
     : IQuery<ResultadoSequencias?>;
 
 /// <summary>Um jogo encerrado do ponto de vista do time (gols pró e contra); a disputa de pênaltis não muda o resultado (empate).</summary>
@@ -60,6 +60,11 @@ public class ObterSequenciasHandler(IScoutDb db) : IQueryHandler<ObterSequencias
             .Where(p => (ids.Contains(p.MandanteId) || ids.Contains(p.VisitanteId)) && p.Data >= inicio && p.Data < fim
                         && p.GolsMandante != null && p.GolsVisitante != null && (p.Status == "FT" || p.Status == "AET" || p.Status == "PEN"));
         if (q.CompeticaoId is { } c) consulta = consulta.Where(p => p.CompeticaoId == c);
+        if (!string.IsNullOrWhiteSpace(q.Treinador))
+        {
+            var comEle = await ProcurarPartidasHandler.JogosDoTreinador(db, q.Treinador, ids, ct);
+            consulta = consulta.Where(p => comEle.Contains(p.Id));
+        }
         var partidas = await consulta.OrderBy(p => p.Data).ToListAsync(ct);
         var competicoes = await db.Competicoes.AsNoTracking().ToDictionaryAsync(x => x.Id, x => x.Nome, ct);
 
@@ -74,7 +79,9 @@ public class ObterSequenciasHandler(IScoutDb db) : IQueryHandler<ObterSequencias
 
         var time = nomes[ids[0]];
         var periodo = $"{de:dd/MM/yyyy} a {(q.Ate is null && q.Temporada is null ? "hoje" : ate.ToString("dd/MM/yyyy"))}"
-                      + (q.CompeticaoId is { } cc ? $" ({competicoes.GetValueOrDefault(cc, "")})" : " (todas as competições)");
+                      + (q.CompeticaoId is { } cc ? $" ({competicoes.GetValueOrDefault(cc, "")})" : " (todas as competições)")
+                      + (string.IsNullOrWhiteSpace(q.Treinador) ? "" : $", só jogos com {q.Treinador} no banco"
+                         + (jogos.Count > 0 ? $" (estreia em {TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(jogos[0].Data, DateTimeKind.Utc), ProcurarPartidasHandler.Brasilia):dd/MM/yyyy})" : ""));
         return Calcular(time, periodo, jogos);
     }
 

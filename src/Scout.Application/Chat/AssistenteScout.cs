@@ -346,10 +346,11 @@ public class AssistenteScout(
                        [Description("Diferença mínima de gols no placar (ex.: 'vitórias por mais de dois gols' = 3)")] int? diferencaMinima = null,
                        [Description("SOMA mínima de gols no jogo, dos dois times (ex.: 'jogos com mais de dois gols' = 3)")] int? golsNoJogoMinimo = null,
                        [Description("Mínimo de gols MARCADOS pelo time (ex.: 'o Galo fez mais de dois gols' = 3)")] int? golsDoTimeMinimo = null,
+                       [Description("Nome ou apelido do técnico: só os jogos em que ele estava no banco do time ('desde a chegada do Barba', 'com o Barba')")] string? treinador = null,
                        [Description("Quantos jogos trazer (padrão 8, máximo 80). Para contar ou listar jogos de um período, use 80.")] int? limite = null) =>
                 {
                     DateOnly? Data(string? s) => DateOnly.TryParse(s, System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : null;
-                    var r = await procurarPartidas.Handle(new ProcurarPartidas(time, adversario, Data(de), Data(ate), limite ?? 8, competicao, resultado, diferencaMinima, golsNoJogoMinimo, golsDoTimeMinimo), ct);
+                    var r = await procurarPartidas.Handle(new ProcurarPartidas(time, adversario, Data(de), Data(ate), limite ?? 8, competicao, resultado, diferencaMinima, golsNoJogoMinimo, golsDoTimeMinimo, treinador), ct);
                     return ProcurarPartidasHandler.Organizar(r, time);
                 },
                 "procurar_partidas",
@@ -358,19 +359,20 @@ public class AssistenteScout(
                 "Use o ResumoDosDisputados pronto (vitórias, empates, derrotas, pontos, gols pró e contra) em vez de somar placares."),
             AIFunctionFactory.Create(
                 async ([Description("Nome do time (oficial ou apelido, ex.: 'Galo')")] string time,
-                       [Description("Data inicial (aaaa-mm-dd), para 'desde X' (ex.: desde a chegada de um treinador); omita para a temporada")] string? de = null,
+                       [Description("Data inicial (aaaa-mm-dd), só se o usuário disser a data; omita para a temporada")] string? de = null,
                        [Description("Data final (aaaa-mm-dd)")] string? ate = null,
                        [Description("ID da competição, se pedirem só uma (ex.: 71 Série A)")] int? competicao = null,
+                       [Description("Nome ou apelido do técnico: só os jogos com ele no banco ('desde a chegada do Barba', 'com o Barba')")] string? treinador = null,
                        int? temporada = null) =>
                 {
                     DateOnly? Data(string? s) => DateOnly.TryParse(s, System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : null;
-                    return (object?)await sequencias.Handle(new ObterSequencias(time, Data(de), Data(ate), competicao, temporada), ct) ?? "Time não encontrado.";
+                    return (object?)await sequencias.Handle(new ObterSequencias(time, Data(de), Data(ate), competicao, temporada, treinador), ct) ?? "Time não encontrado.";
                 },
                 "sequencias",
                 "Sequências e marcas de um time, já contadas: as que estão valendo (invicto há N jogos, vitórias seguidas, sem vencer, " +
                 "derrotas seguidas, marcando gol, sem sofrer gol, sem marcar, sofrendo gol), também só em casa e só fora, com o jogo que " +
                 "começou e o que quebrou a anterior; os recordes do período (a maior de cada tipo) e a maior vitória e a maior derrota. " +
-                "Por padrão a temporada inteira, todas as competições."),
+                "Por padrão a temporada inteira, todas as competições. NÃO conta vitórias por N gols nem jogos com N gols: para contar, use procurar_partidas."),
             AIFunctionFactory.Create(
                 async ([Description("Nome do time, para o palpite do PRÓXIMO jogo dele")] string? time = null,
                        [Description("ID da partida, se já souber qual (também serve para ver se o palpite acertou)")] int? partidaId = null) =>
@@ -600,7 +602,7 @@ public class AssistenteScout(
         - "Chances criadas (xG)" também é percentil do time: nunca cite o valor do xG, diga "criou mais chances que em 90% dos próprios jogos".
         - Contar ou listar jogos ("quantas vitórias", "liste os jogos") = procurar_partidas com limite 80, sem competição (todas, salvo se
           citarem uma), e conte só o que veio. Se vierem exatamente 80, diga que podem existir mais e mostre o período coberto.
-        - Datas passadas e futuras: junto da data, diga como no vídeo, pelo campo Quando ("12/08/2026, há 12 semanas"). Em "desde X",
+        - Datas passadas e futuras: junto da data, diga como no vídeo, pelo campo Quando ("<data>, há N semanas"). Em "desde X",
           diga também quantos jogos foram desde então (JogosDepois do jogo de referência + 1, ou o total do ResumoDosDisputados).
         - Sequência, invencibilidade, "há quantos jogos não perde/não vence/não sofre gol", "maior sequência", "maior goleada" = use
           sequencias (já contadas, nunca conte você mesmo). Atuais/EmCasa/ForaDeCasa trazem a contagem de TODOS os tipos: use o número
@@ -619,8 +621,13 @@ public class AssistenteScout(
         - Pergunta que pode ser mais de uma coisa ("jogos com 3 ou mais gols do Galo", "jogos de mais de dois gols do Galo"):
           busque as leituras possíveis e responda uma linha para cada, dizendo qual é qual ("Galo marcando 3+ gols: 8 jogos. Jogos
           com 3+ gols somando os dois times: 27."). Não escolha uma leitura sozinho.
-        - "Desde a chegada do técnico X" / "com o técnico X": pegue no analisar_treinador o início da passagem dele no clube e use como "de".
-          Diga a data de início e o critério na resposta ("desde 12/08/2026, todas as competições: 4 vitórias por 3 gols ou mais").
+        - Contar jogos de um tipo ("quantas vitórias por 2 gols ou mais", "quantas derrotas", "jogos com 3+ gols") é SEMPRE procurar_partidas
+          com o filtro (resultado, diferencaMinima, golsNoJogoMinimo, golsDoTimeMinimo) e limite 80: o número é a quantidade que veio.
+          Nunca tire essa contagem de sequencias nem estime.
+        - "Desde a chegada do técnico X" / "com o técnico X" = parâmetro treinador (nome ou apelido) em procurar_partidas (limite 80) ou
+          em sequencias, SEM datas: vêm só os jogos com ele no banco. A chegada é o jogo mais antigo que vier (diga a data dele);
+          nunca deduza nem invente a data de chegada.
+          Diga o critério na resposta ("desde a estreia em <data>, todas as competições: N jogos, V vitórias...").
         - Se perguntarem do histórico entre os times, use o Confronto (V/E/D do lado do mandante, só com os jogos da base; diga desde que ano)
           e cite os últimos jogos. "Próximo jogo" de cada time = JogosSeguintes.
         - Atletas menores de 18 anos aparecem como "Atleta sub-18": não tente identificá-los.

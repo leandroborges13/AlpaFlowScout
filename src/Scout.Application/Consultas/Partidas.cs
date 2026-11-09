@@ -83,7 +83,8 @@ public record JogosDoTime(ResumoDosJogos ResumoDosDisputados, IReadOnlyList<Jogo
 /// `GolsNoJogoMinimo` é a SOMA dos gols do jogo ("jogos com mais de dois gols" = 3); `GolsDoTimeMinimo`, os gols que o time
 /// marcou ("o Galo fez mais de dois gols" = 3).</summary>
 public record ProcurarPartidas(string Time, string? Adversario = null, DateOnly? De = null, DateOnly? Ate = null, int Limite = 8, int? CompeticaoId = null,
-    string? Resultado = null, int? DiferencaMinima = null, int? GolsNoJogoMinimo = null, int? GolsDoTimeMinimo = null) : IQuery<IReadOnlyList<ResumoPartida>>;
+    string? Resultado = null, int? DiferencaMinima = null, int? GolsNoJogoMinimo = null, int? GolsDoTimeMinimo = null, string? Treinador = null)
+    : IQuery<IReadOnlyList<ResumoPartida>>;
 
 public class ProcurarPartidasHandler(IScoutDb db) : IQueryHandler<ProcurarPartidas, IReadOnlyList<ResumoPartida>>
 {
@@ -129,6 +130,12 @@ public class ProcurarPartidasHandler(IScoutDb db) : IQueryHandler<ProcurarPartid
         var consulta = db.Partidas.AsNoTracking().Where(p => times.Contains(p.MandanteId) || times.Contains(p.VisitanteId));
         if (adversarios is not null) consulta = consulta.Where(p => adversarios.Contains(p.MandanteId) || adversarios.Contains(p.VisitanteId));
         if (q.CompeticaoId is { } competicao) consulta = consulta.Where(p => p.CompeticaoId == competicao);
+        // "Com o técnico X" / "desde a chegada do X": só os jogos em que ele estava no banco do time (escalação do provedor)
+        if (!string.IsNullOrWhiteSpace(q.Treinador))
+        {
+            var comEle = await JogosDoTreinador(db, q.Treinador, times, ct);
+            consulta = consulta.Where(p => comEle.Contains(p.Id));
+        }
         if (q.De is { } de) { var inicio = InicioDoDiaEmUtc(de); consulta = consulta.Where(p => p.Data >= inicio); }
         if (q.Ate is { } ate) { var fim = InicioDoDiaEmUtc(ate.AddDays(1)); consulta = consulta.Where(p => p.Data < fim); }
         var corte = DateTime.UtcNow.AddDays(1);
@@ -163,6 +170,17 @@ public class ProcurarPartidasHandler(IScoutDb db) : IQueryHandler<ProcurarPartid
     /// gols): a IA não soma placares nem conta o jogo de hoje como se já tivesse acontecido. O time de cada jogo é o lado cujo nome
     /// mais se parece com o pedido (com adversário, os dois lados aparecem em todos os jogos).
     /// </summary>
+    /// <summary>
+    /// Os jogos em que o técnico (nome ou apelido) estava no banco de um dos times, pela escalação do provedor. Junta os cadastros
+    /// repetidos do mesmo técnico ("Eduardo Dominguez" e "E. Domínguez").
+    /// </summary>
+    public static async Task<IQueryable<int>> JogosDoTreinador(IScoutDb db, string treinador, List<int> times, CancellationToken ct)
+    {
+        var nome = BuscaPorNome.TraduzirApelidoDeTreinador(treinador);
+        var ids = (await db.Treinadores.AsNoTracking().ToListAsync(ct)).Where(t => BuscaPorNome.Pontuar(nome, t.Nome) > 0).Select(t => t.Id).ToList();
+        return db.TreinadoresNaPartida.Where(t => ids.Contains(t.TreinadorId) && times.Contains(t.ClubeId)).Select(t => t.PartidaId);
+    }
+
     /// <summary>"hoje", "ontem", "há 5 dias", "há 3 semanas", "há 4 meses", "amanhã", "daqui a 6 dias" (datas no horário de Brasília).</summary>
     public static string Relativo(DateTime data, DateTime hoje)
     {
