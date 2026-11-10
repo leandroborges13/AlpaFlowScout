@@ -575,6 +575,7 @@ export async function cartaoDoAtleta(c: CartaoDoAtleta) {
   fonte(ctx, 24, 600); ctx.fillStyle = COR.suave
   ctx.fillText(`${a.jogos} jogos · ${a.minutos} min · ${a.gols} gols · ${a.assistencias} assist.`, x0 + 50, y0 + 78)
   ctx.fillText(`Por 90 min · comparado com ${c.comparados} ${c.comparacao} com 450+ min`, x0 + 50, y0 + 114)
+  if (c.outrasCompeticoes?.length) { fonte(ctx, 22, 700); ctx.fillStyle = cor; ctx.fillText(`Também: ${c.outrasCompeticoes.join(' · ')}`, x0 + 50, y0 + 150, w - 240) }
   if (c.nota != null) {
     ctx.beginPath(); ctx.arc(x0 + w - 100, y0 + 88, 62, 0, Math.PI * 2); ctx.fillStyle = corDaNota(c.nota); ctx.fill()
     ctx.lineWidth = 6; ctx.strokeStyle = cor; ctx.stroke()

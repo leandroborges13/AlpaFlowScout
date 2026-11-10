@@ -37,4 +37,11 @@ public class CartaoDoAtletaTests
         Assert.Equal("Gol", ObterCartaoDoAtletaHandler.Blocos(Setor.Goleiro)[0].Nome);
         Assert.Equal("Defesa", ObterCartaoDoAtletaHandler.Blocos(Setor.Defesa)[0].Nome);
     }
+
+    [Fact]
+    public void Outras_competicoes_aparecem_com_nome_limpo()
+    {
+        Assert.Equal("Copa do Brasil: 1 jogo, 1 gol", ObterCartaoDoAtletaHandler.DescreverOutra("Copa Do Brasil", 1, 1, 0));
+        Assert.Equal("Sul-Americana: 2 jogos", ObterCartaoDoAtletaHandler.DescreverOutra("CONMEBOL Sudamericana", 2, 0, 0));
+    }
 }

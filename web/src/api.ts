@@ -61,6 +61,7 @@ export type ItemDoCartao = { chave: string; nome: string; valor: number | null; 
 export type CartaoDoAtleta = {
   resumo: ResumoAtleta; competicao: string; comparacao: string; comparados: number; nota: number | null; posicaoNaNota: number | null
   blocos: { nome: string; itens: ItemDoCartao[] }[]
+  outrasCompeticoes?: string[] | null
 }
 
 export type Parecidos = { referencia: ResumoAtleta; parecidos: { atleta: ResumoAtleta; semelhanca: number }[] }
