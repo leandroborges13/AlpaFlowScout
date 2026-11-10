@@ -47,6 +47,24 @@ public static class BuscaPorNome
         return acertos.Count == 0 || (acertos.All(a => a.Length < 4) && acertos.Count < termos.Count) ? 0 : acertos.Count;
     }
 
+    /// <summary>
+    /// Pontos de um atleta para a busca: as palavras que combinam, mais a inicial do cadastro ("K. Pascini" conta "Kauã" pelo K) e
+    /// um desempate para o sobrenome (a última palavra da busca). Sem isso, "Kauã Pascini" empatava com todo atleta chamado Kauã.
+    /// </summary>
+    public static double PontuarAtleta(string busca, string nome, string? completo)
+    {
+        var base_ = Pontuar(busca, $"{nome} {completo}");
+        if (base_ == 0) return 0;
+        var termos = Palavras(busca);
+        var palavras = Palavras($"{nome} {completo}");
+        var iniciais = System.Text.RegularExpressions.Regex.Matches(nome, @"(?<![\p{L}])(\p{L})\.").Select(m => char.ToLowerInvariant(m.Groups[1].Value.Normalize(NormalizationForm.FormD)[0])).ToHashSet();
+        double pontos = base_;
+        foreach (var t in termos.Where(t => !palavras.Any(p => Combina(t, p))))
+            if (iniciais.Contains(t[0])) pontos += 0.8;
+        if (termos.Count > 1 && palavras.Any(p => Combina(termos[^1], p))) pontos += 0.5;
+        return pontos;
+    }
+
     /// <summary>Os itens que combinam com a busca, do mais parecido para o menos.</summary>
     public static IEnumerable<T> Filtrar<T>(IEnumerable<T> itens, string busca, Func<T, string> nome) =>
         itens.Select(i => (i, pontos: Pontuar(busca, nome(i))))

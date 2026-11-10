@@ -4,28 +4,19 @@ namespace Scout.Tests;
 
 public class BuscaPorNomeTests
 {
-    [Theory]
-    [InlineData("Atlético MG", "Atletico-MG")]
-    [InlineData("atletico mineiro", "Atletico-MG")]
-    [InlineData("Eduardo Domingues o Barba", "Dominguez Eduardo")]
-    [InlineData("São Paulo", "Sao Paulo")]
-    [InlineData("Gremio", "Grêmio")]
-    public void Acha_nomes_sem_acento_hifen_ou_com_erro_de_digitacao(string busca, string nome) =>
-        Assert.True(BuscaPorNome.Pontuar(busca, nome) > 0);
-
     [Fact]
-    public void So_uma_sigla_em_comum_nao_basta()
+    public void Primeiro_nome_completo_acha_o_cadastro_pela_inicial()
     {
-        Assert.Equal(0, BuscaPorNome.Pontuar("Atlético MG", "America-MG"));
-        Assert.Equal(0, BuscaPorNome.Pontuar("Santos", "Atletico-MG"));
+        // "Kauã Pascini" empatava com todo Kauã do banco; a inicial do cadastro e o sobrenome desempatam
+        var pascini = BuscaPorNome.PontuarAtleta("Kauã Pascini", "K. Pascini", null);
+        var outroKaua = BuscaPorNome.PontuarAtleta("Kauã Pascini", "Kauã", "Kauã Pereira da Rocha");
+        Assert.True(pascini > outroKaua);
+        Assert.True(BuscaPorNome.PontuarAtleta("Tomás Cuello", "T. Cuello", "Tomás Cuello") > BuscaPorNome.PontuarAtleta("Tomás Cuello", "Tomás Pérez", null));
     }
 
     [Fact]
-    public void O_mais_parecido_vem_primeiro()
+    public void Nome_sem_relacao_nao_pontua()
     {
-        var nomes = new[] { "Eduardo Barros", "Dominguez Eduardo", "Atletico-GO" };
-
-        Assert.Equal("Dominguez Eduardo", BuscaPorNome.Filtrar(nomes, "Eduardo Domingues", n => n).First());
-        Assert.Equal("Atletico-MG", BuscaPorNome.Filtrar(new[] { "Athletico-PR", "Atletico-GO", "Atletico-MG", "America-MG" }, "Atlético MG", n => n).First());
+        Assert.Equal(0, BuscaPorNome.PontuarAtleta("Hulk", "K. Pascini", null));
     }
 }

@@ -126,7 +126,8 @@ public class AssistenteScout(
                 {
                     // Poucos milhares de nomes: a busca tolerante (sem acento, com erro de digitação) roda em memória
                     var atletas = await db.Atletas.AsNoTracking().Select(a => new { a.Id, a.Nome, a.NomeCompleto }).ToListAsync(ct);
-                    var achados = BuscaPorNome.Filtrar(atletas, nome, a => $"{a.Nome} {a.NomeCompleto}").Take(8).ToList();
+                    var achados = atletas.Select(a => (a, pontos: BuscaPorNome.PontuarAtleta(nome, a.Nome, a.NomeCompleto)))
+                        .Where(x => x.pontos > 0).OrderByDescending(x => x.pontos).Take(8).Select(x => x.a).ToList();
                     // Clube e competição de cada um, para escolher o certo entre homônimos ("Fernando do Bragantino")
                     var fichas = (await ObterFichaAtletaHandler.Fichas(db, achados.Select(a => a.Id).ToList(), ct)).ToDictionary(f => f.Id);
                     return achados.Select(a => fichas.GetValueOrDefault(a.Id) is { } f
