@@ -1,4 +1,4 @@
-import type { AnalisePartida, CartaoDoAtleta, Palpite, CalorDoJogador, DesempenhoNoJogo, FinalizacaoNoMapa, MapaDaPartida } from './api'
+import type { AnalisePartida, CartaoDoAtleta, HistoricoDePalpites, Palpite, CalorDoJogador, DesempenhoNoJogo, FinalizacaoNoMapa, MapaDaPartida } from './api'
 import { comAlfa, coresDoClube, coresDoJogo } from './Cores'
 
 // "Para vídeo": cartões 1080x1920 (9:16) para os Shorts do canal Galo na Lupa (@galonalupa), desenhados em canvas e baixados como PNG.
@@ -690,4 +690,58 @@ export async function cartaoDoPalpite(x: Palpite) {
   fonte(ctx, 22, 600); ctx.fillStyle = COR.suave; ctx.textAlign = 'left'
   ctx.fillText(`Modelo AlpaFlow: força tipo Elo pelos resultados da temporada, ${x.campoNeutro ? 'sem mando' : 'com mando de campo'}`, JANELA.x + 50, JANELA.y + JANELA.h - 40)
   await baixar(tela, `palpite-${nomeDeArquivo(`${p.mandante}-${p.visitante}`)}`)
+}
+
+/**
+ * "Placar do modelo" (backlog item 15): quantos palpites do Galo o modelo acertou (resultado) e cravou (placar), com os últimos
+ * jogos e, se vier, o próximo palpite. É o gancho do fim do pós-jogo: "se inscreve pra ver se ele acerta o próximo".
+ */
+export async function cartaoPlacarDoModelo(h: HistoricoDePalpites, proximo?: Palpite | null) {
+  await prontoParaDesenhar()
+  const [tela, ctx] = novaTela()
+  const nome = (n: string, id: number) => (id === TIME_DO_CANAL ? 'Galo' : n)
+  moldura(ctx, 'Placar do modelo', h.jogos ? `O modelo está em ${h.acertos} de ${h.jogos}` : 'O placar do modelo começa agora', 64)
+  const x0 = JANELA.x + 50, w = JANELA.w - 100
+  ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'center'
+
+  // o placar grande
+  fonte(ctx, 150, 900); ctx.fillStyle = COR.destaque
+  ctx.fillText(`${h.acertos}/${h.jogos}`, L / 2, JANELA.y + 170)
+  fonte(ctx, 32, 700); ctx.fillStyle = COR.suave
+  const pct = h.aproveitamento != null ? ` (${Math.round(h.aproveitamento)}%)` : ''
+  ctx.fillText(`resultados certos${pct} · 🎯 ${h.acertosDePlacar} ${h.acertosDePlacar === 1 ? 'placar cravado' : 'placares cravados'}`, L / 2, JANELA.y + 225)
+
+  // os últimos jogos
+  let y = JANELA.y + 285
+  for (const p of h.palpites.slice(0, 5)) {
+    const j = p.partida
+    caixa(ctx, x0, y, w, 62, 16, COR.faixa)
+    ctx.textBaseline = 'middle'
+    fonte(ctx, 24, 700); ctx.fillStyle = COR.suave; ctx.textAlign = 'left'
+    ctx.fillText(new Date(j.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }), x0 + 22, y + 31)
+    fonte(ctx, 30, 800); ctx.fillStyle = COR.texto
+    ctx.fillText(`${nome(j.mandante, j.mandanteId)} ${j.golsMandante} x ${j.golsVisitante} ${nome(j.visitante, j.visitanteId)}`, x0 + 120, y + 31)
+    ctx.textAlign = 'right'
+    ctx.fillText(`${p.acertouPlacar ? '🎯 ' : ''}${p.acertou ? '✅' : '❌'}`, x0 + w - 22, y + 31)
+    y += 74
+  }
+  if (!h.palpites.length) {
+    fonte(ctx, 30, 700); ctx.fillStyle = COR.suave; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    ctx.fillText('Ainda não há jogo encerrado com palpite guardado.', L / 2, y + 40)
+  }
+
+  // o próximo palpite
+  if (proximo && proximo.acertou == null) {
+    const j = proximo.partida
+    const fav = proximo.favorito === 'mandante' ? nome(j.mandante, j.mandanteId) : proximo.favorito === 'visitante' ? nome(j.visitante, j.visitanteId) : 'Empate'
+    const chance = proximo.favorito === 'mandante' ? proximo.chanceMandante : proximo.favorito === 'visitante' ? proximo.chanceVisitante : proximo.chanceEmpate
+    const yp = JANELA.y + JANELA.h - 70
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    fonte(ctx, 30, 800); ctx.fillStyle = COR.texto
+    ctx.fillText(`Próximo: ${nome(j.mandante, j.mandanteId)} x ${nome(j.visitante, j.visitanteId)}`, L / 2, yp - 22)
+    fonte(ctx, 28, 700); ctx.fillStyle = COR.destaque
+    ctx.fillText(`o modelo diz ${fav} (${Math.round(chance)}%) · placar ${proximo.placarProvavel}`, L / 2, yp + 22)
+  }
+  ctx.textAlign = 'left'
+  await baixar(tela, `placar-do-modelo-${h.acertos}-de-${h.jogos}`)
 }

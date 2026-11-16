@@ -143,6 +143,10 @@ api.MapGet("/partidas/{id:int}/palpite", async (int id, IQueryHandler<ObterPalpi
 api.MapGet("/palpites", (string? time, int? temporada, IQueryHandler<ObterHistoricoDePalpites, HistoricoDePalpites> h, CancellationToken ct) =>
     h.Handle(new ObterHistoricoDePalpites(time, temporada), ct));
 
+// O palpite do próximo jogo do time (para o cartão "Placar do modelo" no pós-jogo)
+api.MapGet("/palpites/proximo", async (string time, IQueryHandler<ObterPalpite, ResultadoPalpite?> h, CancellationToken ct) =>
+    await h.Handle(new ObterPalpite(Time: time), ct) is { } r ? Results.Ok(r) : Results.NotFound());
+
 api.MapGet("/atletas/{id:int}/cartao", async (int id, int? temporada, IQueryHandler<ObterCartaoDoAtleta, CartaoDoAtleta?> h, CancellationToken ct) =>
     await h.Handle(new ObterCartaoDoAtleta(id, temporada), ct) is { } c ? Results.Ok(c) : Results.NotFound());
 

@@ -183,6 +183,8 @@ export const api = {
   /** Palpite do modelo (feito/atualizado até o apito; depois, o guardado e se acertou). */
   palpite: (id: number) => pedir<ResultadoPalpite>(`/api/partidas/${id}/palpite`),
   palpites: (time?: string) => pedir<HistoricoDePalpites>(`/api/palpites${time ? `?time=${encodeURIComponent(time)}` : ''}`),
+  /** Palpite do próximo jogo do time (404 se não houver jogo marcado). */
+  proximoPalpite: (time: string) => pedir<ResultadoPalpite>(`/api/palpites/proximo?time=${encodeURIComponent(time)}`),
   /** Mapa de finalizações e de calor (só ligas e pós-jogo); null quando a fonte não tem o jogo. */
   mapa: async (id: number) => {
     const r = await fetch(`/api/partidas/${id}/mapa`, { credentials: 'same-origin' })

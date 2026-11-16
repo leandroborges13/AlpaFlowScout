@@ -48,7 +48,9 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
     - Passar para preto, grafite, branco e dourado (#f5c400), com o logo da lupa (marketing/identidade-lupa no repositório
       do kazapet), para o vídeo sair sem remendo na edição.
 
-15. **Cartão "placar do modelo"** (gancho de inscrição combinado em 13/11/2026)
+15. **Cartão "placar do modelo"** (gancho de inscrição combinado em 13/11/2026) — FEITO em 16/11/2026
+    (ParaVideo.cartaoPlacarDoModelo e botão "🎯 Placar do modelo" no palpite do painel da partida: acertos do Galo em
+    grande, % e placares cravados, os últimos 5 jogos com ✅/❌/🎯 e o próximo palpite; rota GET /api/palpites/proximo?time=.)
     - "O modelo está em X de Y": acertos de resultado e placares cravados, a partir de `historico_palpites`.
     - Vai no fim do pós-jogo e no fixado dos vídeos ("se inscreve pra ver se ele acerta").
 

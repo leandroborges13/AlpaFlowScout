@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api, type AnalisePartida, type ResultadoPalpite, type DesempenhoNoJogo, type EventoDaPartida, type LadoDaPartida, type MapaDaPartida, type ResumoPartida, type RoteiroPosJogo } from './api'
 import { GaleriaVideo } from './GaleriaVideo'
 import { PranchetaTatica } from './Prancheta'
-import { cartaoDoJogador, cartaoDoPalpite, cartoesDaPartida, coletar, ligarJogador, recortesDoMapa, type Cartao } from './ParaVideo'
+import { cartaoDoJogador, cartaoDoPalpite, cartaoPlacarDoModelo, cartoesDaPartida, coletar, ligarJogador, recortesDoMapa, type Cartao } from './ParaVideo'
 import { coresDoJogo } from './Cores'
 import { Escudo } from './PainelTime'
 import { CampoDaPartida, DesempenhoNaPartida, Destaques, LinhaDoTempo } from './PartidaVisual'
@@ -364,6 +364,13 @@ function PalpiteDoJogo({ id, gravacao }: { id: number; gravacao: boolean }) {
       {!gravacao && (
         <div className="pos-jogo-acoes">
           <button className="btn para-video" onClick={async () => setGaleria(await coletar(() => cartaoDoPalpite(x)))}>🎬 Palpite para vídeo</button>
+          <button className="btn para-video" title="Acertos do modelo nos jogos do Galo (e o próximo palpite, se este jogo ainda não começou)"
+            onClick={async () => {
+              const h = await api.palpites('Galo')
+              // jogo ainda por vir: ele mesmo é o próximo; jogo encerrado: busca o próximo do Galo
+              const proximo = x.acertou == null ? x : (await api.proximoPalpite('Galo').catch(() => null))?.palpite ?? null
+              setGaleria(await coletar(() => cartaoPlacarDoModelo(h, proximo)))
+            }}>🎯 Placar do modelo</button>
         </div>
       )}
       {galeria && <GaleriaVideo titulo={`Palpite: ${p.mandante} x ${p.visitante}`} cartoes={galeria} onFechar={() => setGaleria(null)} />}
