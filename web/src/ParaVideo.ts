@@ -1,12 +1,13 @@
 import type { AnalisePartida, CartaoDoAtleta, Palpite, CalorDoJogador, DesempenhoNoJogo, FinalizacaoNoMapa, MapaDaPartida } from './api'
 import { comAlfa, coresDoClube, coresDoJogo } from './Cores'
 
-// "Para vídeo": cartões 1080x1920 (9:16) para os Shorts do canal Futebol em Números, desenhados em canvas e baixados como PNG.
+// "Para vídeo": cartões 1080x1920 (9:16) para os Shorts do canal Galo na Lupa (@galonalupa), desenhados em canvas e baixados como PNG.
 // O conteúdo fica na janela 1000x735 em (40, 330), a mesma da moldura dos Shorts: o cartão entra direto na montagem.
 // Embaixo da janela fica espaço para o rosto e a legenda; no rodapé, a marca do canal.
 const L = 1080, A = 1920
 const JANELA = { x: 40, y: 330, w: 1000, h: 735 }
-const COR = { fundo: '#07170f', painel: '#0d2a1d', linha: '#1f4a35', verde: '#4fe3a0', verdeEscuro: '#0f9d58', texto: '#ffffff', suave: '#b9e8cf', rival: '#7c8b84' }
+// Identidade Galo na Lupa: preto, grafite, branco e dourado (marketing/identidade-lupa no repositório do kazapet)
+const COR = { fundo: '#0a0a0a', painel: '#161616', linha: '#2a2a2a', destaque: '#f5c400', texto: '#ffffff', suave: '#bdbdbd', rival: '#6b6b6b', campo: '#1a1a1a', faixa: '#1e1e1e' }
 const FONTE = 'Inter, system-ui, sans-serif'
 
 type Ctx = CanvasRenderingContext2D
@@ -17,10 +18,13 @@ function novaTela(): [HTMLCanvasElement, Ctx] {
   c.height = A
   const ctx = c.getContext('2d')!
   const g = ctx.createRadialGradient(L / 2, 700, 100, L / 2, 700, 1300)
-  g.addColorStop(0, '#0d3423')
+  g.addColorStop(0, '#1c1c1c')
   g.addColorStop(1, COR.fundo)
   ctx.fillStyle = g
   ctx.fillRect(0, 0, L, A)
+  // o listrado da camisa, bem apagado
+  ctx.fillStyle = 'rgba(255,255,255,.035)'
+  for (let x = 0; x < L; x += 140) ctx.fillRect(x, 0, 70, A)
   return [c, ctx]
 }
 
@@ -72,11 +76,12 @@ function caixa(ctx: Ctx, x: number, y: number, w: number, h: number, r: number, 
 function moldura(ctx: Ctx, selo: string, titulo: string, tamanhoTitulo = 64) {
   fonte(ctx, 30, 800)
   const ws = ctx.measureText(selo).width + 44
-  caixa(ctx, (L - ws) / 2, 90, ws, 52, 26, COR.verdeEscuro)
-  ctx.fillStyle = COR.texto
+  caixa(ctx, (L - ws) / 2, 90, ws, 52, 26, COR.destaque)
+  ctx.fillStyle = COR.fundo
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.fillText(selo, L / 2, 117)
+  ctx.fillStyle = COR.texto
   fonte(ctx, tamanhoTitulo, 800)
   // o título tem duas linhas; o que passar disso termina em reticências
   let ls = linhas(ctx, titulo, 960)
@@ -85,14 +90,44 @@ function moldura(ctx: Ctx, selo: string, titulo: string, tamanhoTitulo = 64) {
   ls.forEach((l, i) => ctx.fillText(l, L / 2, 168 + i * tamanhoTitulo * 1.12))
   ctx.textAlign = 'left'
   caixa(ctx, JANELA.x, JANELA.y, JANELA.w, JANELA.h, 32, COR.painel)
-  ctx.textAlign = 'center'
-  fonte(ctx, 34, 800)
-  ctx.fillStyle = COR.texto
-  ctx.fillText('Futebol em Números', L / 2, A - 150)
-  fonte(ctx, 26, 600)
-  ctx.fillStyle = COR.verde
-  ctx.fillText('análise com a IA do AlpaFlow Scout · scout.alpaflow.tec.br', L / 2, A - 102)
+  marca(ctx, A - 150)
   ctx.textAlign = 'left'
+}
+
+/** O logo do canal: a lupa dourada com o listrado da camisa e as três barras dentro da lente (viewBox 120 do logo.svg). */
+function lupa(ctx: Ctx, x: number, y: number, tamanho: number) {
+  const s = tamanho / 120
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.scale(s, s)
+  ctx.strokeStyle = COR.destaque; ctx.lineCap = 'round'; ctx.lineWidth = 15
+  ctx.beginPath(); ctx.moveTo(78, 78); ctx.lineTo(108, 108); ctx.stroke()
+  ctx.save()
+  ctx.beginPath(); ctx.arc(50, 50, 36, 0, Math.PI * 2); ctx.clip()
+  ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0, 0, 100, 100)
+  ctx.fillStyle = '#f2f2f2'; for (const lx of [20, 42, 64]) ctx.fillRect(lx, 0, 11, 100)
+  ctx.fillStyle = 'rgba(10,10,10,.6)'; ctx.fillRect(0, 0, 100, 100)
+  ctx.fillStyle = COR.destaque
+  for (const [bx, by, bh] of [[29, 54, 20], [45, 42, 32], [61, 29, 45]]) { ctx.beginPath(); ctx.roundRect(bx, by, 11, bh, 3); ctx.fill() }
+  ctx.restore()
+  ctx.lineWidth = 7; ctx.beginPath(); ctx.arc(50, 50, 38, 0, Math.PI * 2); ctx.stroke()
+  ctx.restore()
+}
+
+/** Rodapé com a marca: lupa + "Galo na Lupa" e, embaixo, o @ e a fonte dos dados. `y` é o meio da linha do nome. */
+function marca(ctx: Ctx, y: number) {
+  fonte(ctx, 40, 900)
+  const n1 = 'Galo na ', n2 = 'Lupa'
+  const wn = ctx.measureText(n1).width + ctx.measureText(n2).width
+  const tam = 76, total = tam + 18 + wn
+  const x0 = (L - total) / 2
+  lupa(ctx, x0, y - tam / 2 + 6, tam)
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle'
+  ctx.fillStyle = COR.texto; ctx.fillText(n1, x0 + tam + 18, y)
+  ctx.fillStyle = COR.destaque; ctx.fillText(n2, x0 + tam + 18 + ctx.measureText(n1).width, y)
+  ctx.textAlign = 'center'
+  fonte(ctx, 26, 700); ctx.fillStyle = COR.suave
+  ctx.fillText('@galonalupa · dados: AlpaFlow Scout', L / 2, y + 54)
 }
 
 /** Um cartão pronto: o nome do arquivo (sem .png) e a imagem. */
@@ -164,7 +199,7 @@ export async function cartoesDaPartida(a: AnalisePartida, mapa?: MapaDaPartida |
     fonte(ctx, 150, 800)
     ctx.fillStyle = COR.texto
     ctx.fillText(`${p.golsMandante ?? '-'}  x  ${p.golsVisitante ?? '-'}`, L / 2, JANELA.y + 130)
-    if (a.desfecho) { fonte(ctx, 32, 700); ctx.fillStyle = COR.verde; ctx.fillText(a.desfecho, L / 2, JANELA.y + 300) }
+    if (a.desfecho) { fonte(ctx, 32, 700); ctx.fillStyle = COR.destaque; ctx.fillText(a.desfecho, L / 2, JANELA.y + 300) }
     ctx.textAlign = 'left'
     const gols = [...a.eventos].filter((e) => e.tipo.startsWith('Gol')).sort((x, y) => x.minuto - y.minuto || (x.acrescimo ?? 0) - (y.acrescimo ?? 0))
     let y = JANELA.y + 370
@@ -223,7 +258,7 @@ export async function cartoesDaPartida(a: AnalisePartida, mapa?: MapaDaPartida |
     const destaques = (a.desempenhos ?? []).filter((d) => d.nota != null).sort((x, y) => y.nota! - x.nota!).slice(0, 5)
     let y = JANELA.y + 50
     for (const d of destaques) {
-      caixa(ctx, JANELA.x + 40, y, JANELA.w - 80, 106, 22, '#123726')
+      caixa(ctx, JANELA.x + 40, y, JANELA.w - 80, 106, 22, COR.faixa)
       caixa(ctx, JANELA.x + 40, y, 12, 106, 6, corDe(d.clubeId)) // faixa com a cor do clube
       fonte(ctx, 64, 800)
       ctx.fillStyle = corDe(d.clubeId)
@@ -259,7 +294,7 @@ export async function cartoesDaPartida(a: AnalisePartida, mapa?: MapaDaPartida |
 
 /** Cor da nota (0 a 100): azul é jogo muito bom, verde bom, amarelo regular, laranja abaixo. */
 export function corDaNota(nota: number | null | undefined) {
-  if (nota == null) return '#5b6b63'
+  if (nota == null) return '#5a5a5a'
   return nota >= 70 ? '#2f9bff' : nota >= 55 ? '#1fbf6a' : nota >= 40 ? '#e0b10f' : '#f07a2a'
 }
 
@@ -284,7 +319,7 @@ async function cartaoDasNotas(a: AnalisePartida, jogo: string, nome: string) {
   moldura(ctx, jogo, `As notas do ${lado.time}${lado.esquema ? ` · ${lado.esquema}` : ''}`, 56)
   // campo deitado: o time ataca para a direita, a esquerda dele fica em cima
   const cx = JANELA.x + 30, cy = JANELA.y + 24, cw = JANELA.w - 60, ch = JANELA.h - 150
-  caixa(ctx, cx, cy, cw, ch, 18, '#0f3a27')
+  caixa(ctx, cx, cy, cw, ch, 18, COR.campo)
   ctx.strokeStyle = 'rgba(255,255,255,.28)'
   ctx.lineWidth = 3
   ctx.strokeRect(cx + 10, cy + 10, cw - 20, ch - 20)
@@ -319,7 +354,7 @@ async function cartaoDasNotas(a: AnalisePartida, jogo: string, nome: string) {
     fonte(ctx, 24, 800)
     const w = ctx.measureText(t).width + 76
     if (x + w > JANELA.x + JANELA.w - 30) break
-    caixa(ctx, x, y - 24, w, 48, 24, '#123726')
+    caixa(ctx, x, y - 24, w, 48, 24, COR.faixa)
     ctx.beginPath(); ctx.arc(x + 24, y, 17, 0, Math.PI * 2); ctx.fillStyle = corDaNota(d.nota); ctx.fill()
     fonte(ctx, 17, 900); ctx.fillStyle = '#fff'; ctx.textAlign = 'center'
     ctx.fillText(d.nota != null ? `${Math.round(d.nota)}` : '–', x + 24, y + 1)
@@ -438,7 +473,7 @@ const TIME_DO_CANAL = 1062
 /** Campo deitado (105 x 68 m) com as linhas principais; devolve a altura e a conversão de metros para a tela. */
 function campo(ctx: Ctx, x: number, y: number, w: number, fundo = true) {
   const h = (w * 68) / 105
-  if (fundo) caixa(ctx, x, y, w, h, 8, '#0f3b27')
+  if (fundo) caixa(ctx, x, y, w, h, 8, COR.campo)
   ctx.strokeStyle = 'rgba(255,255,255,.45)'
   ctx.lineWidth = 3
   ctx.strokeRect(x, y, w, h)
@@ -629,7 +664,7 @@ export async function cartaoDoPalpite(x: Palpite) {
     depois ? `O modelo ${x.acertou ? 'acertou' : 'errou'}?` : `${p.mandante} x ${p.visitante}: quem ganha?`)
   const faixas = [
     { nome: p.mandante, valor: x.chanceMandante, cor: corM, chave: 'mandante' },
-    { nome: 'Empate', valor: x.chanceEmpate, cor: '#9aa5a0', chave: 'empate' },
+    { nome: 'Empate', valor: x.chanceEmpate, cor: '#8a8a8a', chave: 'empate' },
     { nome: p.visitante, valor: x.chanceVisitante, cor: corV, chave: 'visitante' },
   ]
   const x0 = JANELA.x + 50, w = JANELA.w - 100
@@ -653,6 +688,6 @@ export async function cartaoDoPalpite(x: Palpite) {
     ctx.fillText(`${x.acertou ? '✅ Acertou' : '❌ Errou'}: ${p.mandante} ${p.golsMandante} x ${p.golsVisitante} ${p.visitante}`, L / 2, y + 80)
   }
   fonte(ctx, 22, 600); ctx.fillStyle = COR.suave; ctx.textAlign = 'left'
-  ctx.fillText('Modelo AlpaFlow: força tipo Elo pelos resultados da temporada, com mando de campo', JANELA.x + 50, JANELA.y + JANELA.h - 40)
+  ctx.fillText(`Modelo AlpaFlow: força tipo Elo pelos resultados da temporada, ${x.campoNeutro ? 'sem mando' : 'com mando de campo'}`, JANELA.x + 50, JANELA.y + JANELA.h - 40)
   await baixar(tela, `palpite-${nomeDeArquivo(`${p.mandante}-${p.visitante}`)}`)
 }

@@ -222,12 +222,12 @@ public class PartidasTests
         var frase = Scout.Application.Chat.RoteiristaPosJogo.FraseDoMapa(p, mapa);
         Assert.Equal("O Galo finalizou 2 vezes, 1 de dentro da área e 1 no alvo; o Cruzeiro, 1 vez, 1 da área e 0 no alvo. Olha no mapa.", frase);
 
-        var semFrase = "TÍTULO: t\n\nFALA: Perdemos. Me segue que no próximo jogo tem mais.\n\nCARTÕES:\nplacar";
+        var semFrase = "TÍTULO: t\n\nFALA: Perdemos. Se inscreve no Galo na Lupa pra ver se o modelo acerta o próximo.\n\nCARTÕES:\nplacar";
         var com = Scout.Application.Chat.RoteiristaPosJogo.ComFraseDoMapa(semFrase, frase);
         Assert.Contains("Perdemos. O Galo finalizou 2 vezes", com);
-        Assert.EndsWith("Olha no mapa. Me segue que no próximo jogo tem mais.\n\nCARTÕES:\nplacar", com);
+        Assert.EndsWith("Olha no mapa. Se inscreve no Galo na Lupa pra ver se o modelo acerta o próximo.\n\nCARTÕES:\nplacar", com);
         // se a IA já citou, não repete
-        var jaTem = "FALA: O Galo finalizou 2 vezes e perdeu. Me segue que no próximo jogo tem mais.\n\nCARTÕES:";
+        var jaTem = "FALA: O Galo finalizou 2 vezes e perdeu. Se inscreve no Galo na Lupa pra ver se o modelo acerta o próximo.\n\nCARTÕES:";
         Assert.Equal(jaTem, Scout.Application.Chat.RoteiristaPosJogo.ComFraseDoMapa(jaTem, frase));
     }
 

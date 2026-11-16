@@ -155,7 +155,7 @@ function Tela({ clubeId, time, adversario, onFechar }: { clubeId: number; time: 
             <div className="pq-campo">{campo}</div>
             {formato === 'h' && <div className="pq-elenco">{elenco}</div>}
           </div>
-          <div className="pq-rodape">Futebol em <b>Números</b></div>
+          <div className="pq-rodape">Galo na <b>Lupa</b></div>
         </div>
         {!semBotoes && (
           <div className="galeria-controles">
@@ -252,7 +252,7 @@ function CampoPrancheta({ cores, pecas, sel, onClicar, onMover, rivais, coresRiv
           arrasto.current = { i, rival, moveu: false, x0: e.clientX, y0: e.clientY }
         }}>
         <circle cx={cx} cy={cy} r={3.3} fill={!rival && sel === i ? '#ffd23f' : c.camisa} stroke={c.detalhe} strokeWidth={0.7} />
-        <text x={cx} y={ty} textAnchor="middle" fontSize={2.5} fontWeight={800} fill="#fff" stroke="#07170f" strokeWidth={0.7}
+        <text x={cx} y={ty} textAnchor="middle" fontSize={2.5} fontWeight={800} fill="#fff" stroke="#0a0a0a" strokeWidth={0.7}
           paintOrder="stroke" fontFamily="Inter, Arial, sans-serif">{curto(p.nome) || '?'}</text>
       </g>
     )
@@ -304,8 +304,8 @@ function CampoPrancheta({ cores, pecas, sel, onClicar, onMover, rivais, coresRiv
 function Gramado() {
   return (
     <g>
-      <rect x={-3} y={-3} width={L + 6} height={C + 6} fill="#0b2a1d" />
-      {Array.from({ length: 7 }, (_, k) => <rect key={k} x={0} y={(k * C) / 7} width={L} height={C / 14} fill="#0e3323" />)}
+      <rect x={-3} y={-3} width={L + 6} height={C + 6} fill="#161616" />
+      {Array.from({ length: 7 }, (_, k) => <rect key={k} x={0} y={(k * C) / 7} width={L} height={C / 14} fill="#1b1b1b" />)}
       <g fill="none" stroke="rgba(255,255,255,.4)" strokeWidth={0.35}>
         <rect x={0} y={0} width={L} height={C} />
         <line x1={0} y1={C / 2} x2={L} y2={C / 2} />
@@ -369,12 +369,12 @@ async function baixarImagem(pecas: Peca[], titulo: string, esquema: string, form
   const c = document.createElement('canvas')
   c.width = W; c.height = H
   const g = c.getContext('2d')!
-  g.fillStyle = '#07170f'; g.fillRect(0, 0, W, H)
+  g.fillStyle = '#0a0a0a'; g.fillRect(0, 0, W, H)
   const [fw, fh, fx, fy] = formato === 'h' ? [620, 960, 120, 60] : [880, 1360, 100, 380]
   const sx = fw / (L + 6), sy = fh / (C + 6)
   const X = (v: number) => fx + (v + 3) * sx, Y = (v: number) => fy + (v + 3) * sy
-  g.fillStyle = '#0b2a1d'; g.fillRect(fx, fy, fw, fh)
-  g.fillStyle = '#0e3323'
+  g.fillStyle = '#161616'; g.fillRect(fx, fy, fw, fh)
+  g.fillStyle = '#1b1b1b'
   for (let k = 0; k < 7; k++) g.fillRect(X(0), Y((k * C) / 7), L * sx, (C / 14) * sy)
   g.strokeStyle = 'rgba(255,255,255,.4)'; g.lineWidth = 3
   g.strokeRect(X(0), Y(0), L * sx, C * sy)
@@ -389,7 +389,7 @@ async function baixarImagem(pecas: Peca[], titulo: string, esquema: string, form
       const cx = X((p.x / 100) * L), cy = Y((p.y / 100) * C), ty = cy + (emCima ? -4.6 : 6.2) * sy
       g.beginPath(); g.arc(cx, cy, 3.3 * sx, 0, Math.PI * 2); g.fillStyle = c.camisa; g.fill()
       g.lineWidth = 6; g.strokeStyle = c.detalhe; g.stroke()
-      g.strokeStyle = '#07170f'
+      g.strokeStyle = '#0a0a0a'
       g.font = `800 ${Math.round(2.5 * sx)}px Inter, Arial, sans-serif`; g.textAlign = 'center'
       g.lineWidth = 8; g.strokeText(curto(p.nome) || '?', cx, ty); g.fillStyle = '#fff'; g.fillText(curto(p.nome) || '?', cx, ty)
     }
@@ -410,10 +410,11 @@ async function baixarImagem(pecas: Peca[], titulo: string, esquema: string, form
   }
   g.textAlign = 'left'
   const [tx, ty, tw] = formato === 'h' ? [880, 200, 920] : [100, 140, 880]
-  g.fillStyle = '#0f9d58'; g.font = '800 40px Inter, Arial, sans-serif'
+  g.fillStyle = '#f5c400'; g.font = '800 40px Inter, Arial, sans-serif'
   const sw = g.measureText(esquema).width + 56
   g.beginPath(); g.roundRect(tx, ty - 50, sw, 66, 33); g.fill()
-  g.fillStyle = '#fff'; g.fillText(esquema, tx + 28, ty - 4)
+  g.fillStyle = '#0a0a0a'; g.fillText(esquema, tx + 28, ty - 4)
+  g.fillStyle = '#fff'
   g.font = `900 ${formato === 'h' ? 84 : 72}px Inter, Arial, sans-serif`
   let linha = '', yy = ty + 110
   for (const p of titulo.split(' ')) {
@@ -421,7 +422,7 @@ async function baixarImagem(pecas: Peca[], titulo: string, esquema: string, form
   }
   g.fillText(linha, tx, yy)
   g.font = '800 34px Inter, Arial, sans-serif'; g.fillStyle = 'rgba(255,255,255,.8)'
-  g.fillText('Futebol em', formato === 'h' ? 880 : 100, H - 70)
-  g.fillStyle = '#4fe3a0'; g.fillText('Números', (formato === 'h' ? 880 : 100) + g.measureText('Futebol em ').width, H - 70)
+  g.fillText('Galo na', formato === 'h' ? 880 : 100, H - 70)
+  g.fillStyle = '#f5c400'; g.fillText('Lupa', (formato === 'h' ? 880 : 100) + g.measureText('Galo na ').width, H - 70)
   await baixarCartao({ nome: `prancheta-${esquema}`, canvas: c })
 }

@@ -1,7 +1,7 @@
 namespace Scout.Domain;
 
 /// <summary>
-/// Roteiro do vídeo de pós-jogo (canal Futebol em Números), escrito pela IA a partir da análise da partida.
+/// Roteiro do vídeo de pós-jogo (canal Galo na Lupa), escrito pela IA a partir da análise da partida.
 /// Um por partida: gerar de novo substitui o anterior.
 /// </summary>
 public class RoteiroPosJogo

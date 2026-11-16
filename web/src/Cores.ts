@@ -1,11 +1,11 @@
 // Cores dos clubes para os cartões do "Para vídeo" e a prancheta (cor sozinha não é marca protegida).
-// camisa = cor principal do uniforme, detalhe = a segunda cor, destaque = a cor que aparece bem no fundo verde-escuro dos cartões
+// camisa = cor principal do uniforme, detalhe = a segunda cor, destaque = a cor que aparece bem no fundo preto e grafite dos cartões
 // (para clube de camisa preta ou branca, o destaque é o branco).
 
 export type CoresDoClube = { camisa: string; detalhe: string; destaque: string }
 
 const BRANCO = '#f4f4f4'
-const PADRAO: CoresDoClube = { camisa: '#4fe3a0', detalhe: '#07170f', destaque: '#4fe3a0' }
+const PADRAO: CoresDoClube = { camisa: '#7fb2ff', detalhe: '#0a0a0a', destaque: '#7fb2ff' } // clube fora da tabela: azul claro (o dourado é a marca do canal)
 
 // chave = trecho do nome sem acento, minúsculo (como a API-Football escreve: "Atletico-MG", "Vasco DA Gama", "Sport Recife")
 const TABELA: [string, CoresDoClube][] = [
@@ -25,6 +25,7 @@ const TABELA: [string, CoresDoClube][] = [
   ['botafogo', { camisa: '#111111', detalhe: '#ffffff', destaque: BRANCO }],
   ['vasco', { camisa: '#111111', detalhe: '#ffffff', destaque: BRANCO }],
   ['cruzeiro', { camisa: '#0033a0', detalhe: '#ffffff', destaque: '#4d8bff' }],
+  ['boca juniors', { camisa: '#103f8f', detalhe: '#f5c400', destaque: '#4d8bff' }], // azul e ouro: o destaque é o azul (o dourado é a marca do canal)
   ['bahia', { camisa: '#0057a8', detalhe: '#d71920', destaque: '#4d94ff' }],
   ['fortaleza', { camisa: '#0b3f8f', detalhe: '#d71920', destaque: '#5c8fe6' }],
   ['bragantino', { camisa: '#ffffff', detalhe: '#d71920', destaque: '#ff4a4a' }],
@@ -45,7 +46,7 @@ const TABELA: [string, CoresDoClube][] = [
 
 const normal = (nome: string) => nome.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
-/** Cores do clube pelo nome; clube fora da tabela fica com o verde do canal. */
+/** Cores do clube pelo nome; clube fora da tabela fica azul claro (o dourado é a marca do canal). */
 export function coresDoClube(nome: string | null | undefined): CoresDoClube {
   if (!nome) return PADRAO
   const n = normal(nome)

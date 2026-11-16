@@ -7,7 +7,7 @@ using Scout.Domain;
 namespace Scout.Application.Chat;
 
 /// <summary>
-/// Roteiro do Short de pós-jogo do canal Futebol em Números: título, gancho, a fala de ~40 s (em primeira pessoa, para o Leandro
+/// Roteiro do Short de pós-jogo do canal Galo na Lupa (@galonalupa): título, gancho, a fala de ~40 s (em primeira pessoa, para o Leandro
 /// gravar) e a legenda, escritos pela IA só com a análise da partida. Guarda no banco (um por partida).
 /// </summary>
 public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<AnalisarPartida, AnalisePartida?> analisarPartida, IMapaDaPartida mapas)
@@ -32,7 +32,7 @@ public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<Anal
         return roteiro;
     }
 
-    const string Fecho = "Me segue que no próximo jogo tem mais.";
+    const string Fecho = "Se inscreve no Galo na Lupa pra ver se o modelo acerta o próximo.";
 
     /// <summary>A frase das finalizações do mapa, pronta ("O Atletico-MG finalizou 17 vezes, 13 de dentro da área e 9 no alvo; ...").</summary>
     public static string? FraseDoMapa(ResumoPartida p, MapaDaPartida? mapa)
@@ -120,7 +120,7 @@ public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<Anal
         : $"pior que em {Math.Round(100 - v)}% dos próprios jogos da temporada";
 
     const string Instrucoes = """
-        Você escreve o roteiro do Short de pós-jogo do canal "Futebol em Números" (YouTube e TikTok), do Leandro, torcedor do Galo
+        Você escreve o roteiro do Short de pós-jogo do canal "Galo na Lupa" (@galonalupa no YouTube, TikTok, Instagram e X), do Leandro, torcedor do Galo
         (Atlético-MG) que analisa futebol com a IA do AlpaFlow Scout. Escreva em português do Brasil, tom de conversa de torcedor que
         entende de números, sem exagero e sem inventar nada além dos dados recebidos.
 
@@ -129,7 +129,7 @@ public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<Anal
         GANCHO (primeiros 2 segundos): uma frase curta e forte, que faça a pessoa ficar. Pode ser uma pergunta.
         FALA (cerca de 40 segundos, 90 a 110 palavras): em primeira pessoa, para o Leandro ler. Conte o placar e o contexto em uma
         frase, explique onde o jogo foi ganho ou perdido com 2 ou 3 aspectos, cite 1 ou 2 destaques pela nota da IA e termine com
-        "Me segue que no próximo jogo tem mais." Antes dessa frase, cite o próximo jogo do Galo (ou, se o Galo não jogou, do time
+        "Se inscreve no Galo na Lupa pra ver se o modelo acerta o próximo." Antes dessa frase, cite o próximo jogo do Galo (ou, se o Galo não jogou, do time
         que venceu), pelo ProximoJogo daquele time. Nunca anuncie o próximo jogo do outro time.
         CARTÕES: linhas curtas com o que mostrar na tela, na ordem da fala (placar, os aspectos, os destaques e, se houver
         Finalizacoes, o mapa de finalizações).

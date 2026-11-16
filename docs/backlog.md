@@ -1,6 +1,6 @@
 # Backlog do AlpaFlow Scout
 
-Ideias guardadas para depois. Desde 03/11/2026 o canal "Futebol em Números" (YouTube e TikTok) é a vitrine do Scout: entra primeiro
+Ideias guardadas para depois. Desde 03/11/2026 o canal do YouTube e do TikTok é a vitrine do Scout (desde 12/11/2026 "Galo na Lupa", @galonalupa): entra primeiro
 o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada item sai daqui quando for feito.
 
 ## Para o canal (conteúdo mais rápido e com gancho)
@@ -39,7 +39,11 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
     - Tirar o mando quando o jogo for em campo neutro (final de copa em jogo único, ou estádio que não é de nenhum dos dois)
       e dizer isso no palpite ("campo neutro").
 
-14. **Cartões do "Para vídeo" na marca Galo na Lupa** (12/11/2026 o canal virou Galo na Lupa, @galonalupa)
+14. **Cartões do "Para vídeo" na marca Galo na Lupa** (12/11/2026 o canal virou Galo na Lupa, @galonalupa) — FEITO em 16/11/2026
+    (ParaVideo.ts: paleta preta/grafite/dourada, listrado da camisa no fundo, selo dourado e rodapé com a lupa desenhada no
+    canvas, "Galo na Lupa" e "@galonalupa · dados: AlpaFlow Scout"; prancheta e página pública /jogo no mesmo visual, link do
+    canal youtube.com/@galonalupa; roteiro do pós-jogo fecha com "Se inscreve no Galo na Lupa pra ver se o modelo acerta o
+    próximo"; clube fora da tabela de cores fica azul claro e o Boca entrou na tabela.)
     - Os cartões do Scout (jogo, atleta, palpite, prancheta) ainda saem no verde do "Futebol em Números".
     - Passar para preto, grafite, branco e dourado (#f5c400), com o logo da lupa (marketing/identidade-lupa no repositório
       do kazapet), para o vídeo sair sem remendo na edição.
@@ -103,7 +107,7 @@ A API-Football (a nossa) não tem coordenadas de lance. Opções vistas:
 10. **Cartão do atleta para vídeo (por 90 min, percentil e ranking)** — ideia de 06/11/2026, a partir de um "playercard" de outro perfil.
     - **v1 feita em 08/11/2026** (só API-Football): GET /api/atletas/{id}/cartao e botão "Cartão para vídeo" no painel do
       atleta; ranking contra o mesmo setor na liga. Falta: comparação com todos os de linha e as métricas da PitchAPI.
-    - No "Para vídeo" do painel do atleta, no nosso visual (verde, Futebol em Números), 1080x1920.
+    - No "Para vídeo" do painel do atleta, no visual do canal (Galo na Lupa), 1080x1920.
     - Blocos com o que a API-Football tem: Passe (passes certos, precisão, passes decisivos, assistências), Defesa (desarmes,
       interceptações, bloqueios), Duelos (ganhos e %, faltas sofridas), Ataque (finalizações, no alvo, gols, dribles certos e %),
       Disciplina (faltas, cartões). Cada número por 90 min, com percentil (cor) e "3º de 413" contra atletas com 450+ min

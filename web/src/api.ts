@@ -346,7 +346,7 @@ export type MapaDaPartida = {
   jogadores?: CalorDoJogador[] | null
 }
 
-/** Roteiro do Short de pós-jogo (canal Futebol em Números), escrito pela IA. */
+/** Roteiro do Short de pós-jogo (canal Galo na Lupa), escrito pela IA. */
 export type RoteiroPosJogo = { partidaId: number; texto: string; criadoEm: string; avisadoEm?: string | null }
 
 export type AtletaDoTreinador = { atleta: ResumoAtleta; jogosComEle: number; funcaoComEle?: string | null }

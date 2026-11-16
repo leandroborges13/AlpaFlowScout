@@ -5,7 +5,7 @@ import { corDaNota } from './ParaVideo'
 
 /**
  * Página pública de um jogo (backlog item 5): /jogo/<id>, sem login, para o link da bio e da descrição dos vídeos do canal
- * Futebol em Números. Placar, gols, onde o jogo foi decidido, destaques pela nota e o palpite do modelo ("acertou ou errou?").
+ * Galo na Lupa (@galonalupa). Placar, gols, onde o jogo foi decidido, destaques pela nota e o palpite do modelo ("acertou ou errou?").
  * Sem fotos de atleta; só escudos, no visual dos cartões do canal.
  */
 type Pagina = {
@@ -18,7 +18,7 @@ type Pagina = {
   explicacao: string
 }
 
-const CANAL = 'https://youtube.com/@leandroborgesscout'
+const CANAL = 'https://youtube.com/@galonalupa'
 
 export function idDaPaginaPublica(caminho: string): number | null {
   const m = caminho.match(/^\/jogo\/(\d+)\/?$/)
@@ -33,7 +33,7 @@ export function PaginaJogo({ id }: { id: number }) {
       .then((r) => (r.ok ? (r.json() as Promise<Pagina>) : null))
       .then((p) => {
         setPagina(p)
-        if (p) document.title = `${p.partida.mandante} x ${p.partida.visitante} · Futebol em Números`
+        if (p) document.title = `${p.partida.mandante} x ${p.partida.visitante} · Galo na Lupa`
       })
       .catch(() => setPagina(null))
   }, [id])
@@ -120,7 +120,7 @@ export function PaginaJogo({ id }: { id: number }) {
 function Marca() {
   return (
     <a className="pj-marca" href={CANAL} target="_blank" rel="noreferrer">
-      Futebol em <span>Números</span>
+      Galo na <span>Lupa</span>
     </a>
   )
 }
@@ -128,7 +128,7 @@ function Marca() {
 function Chamada() {
   return (
     <footer className="pj-chamada">
-      <a className="pj-botao" href={CANAL} target="_blank" rel="noreferrer">🔔 Se inscreve no Futebol em Números</a>
+      <a className="pj-botao" href={CANAL} target="_blank" rel="noreferrer">🔔 Se inscreve no Galo na Lupa</a>
       <small>Análises com a IA do AlpaFlow Scout · scout.alpaflow.tec.br</small>
     </footer>
   )

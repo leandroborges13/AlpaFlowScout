@@ -11,7 +11,7 @@ using Scout.Infrastructure.Dados;
 namespace Scout.Infrastructure.Provedor;
 
 /// <summary>
-/// Pós-jogo automático do canal Futebol em Números: a cada 10 minutos olha os jogos dos times acompanhados (SCOUT_POSJOGO_TIMES,
+/// Pós-jogo automático do canal Galo na Lupa: a cada 10 minutos olha os jogos dos times acompanhados (SCOUT_POSJOGO_TIMES,
 /// ids do provedor separados por vírgula; o Galo é 1062) que começaram há 2h20 a 8h. Quando o jogo termina, atualiza a partida
 /// no provedor, a IA escreve o roteiro e o aviso sai no WhatsApp (SCOUT_WHATSAPP_URL, _CHAVE, _INSTANCIA e _NUMERO, Evolution API).
 /// Espera 2h20 do início porque, logo no apito, o provedor ainda não fechou as estatísticas e as notas sairiam incompletas.
