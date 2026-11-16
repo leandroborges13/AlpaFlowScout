@@ -21,6 +21,18 @@ public class PalpitesTests
         Assert.Equal(c.Mandante, c.Visitante);
     }
 
+    [Theory]
+    [InlineData(11, "Final", true)]          // Sul-Americana: final única
+    [InlineData(13, "Final", true)]          // Libertadores: final única
+    [InlineData(73, "Final", false)]         // Copa do Brasil: final em ida e volta
+    [InlineData(11, "Semi-finals", false)]   // semifinal tem mando
+    [InlineData(71, "Regular Season - 35", false)]
+    public void Campo_neutro_so_na_final_unica_das_copas_continentais(int competicao, string rodada, bool esperado)
+    {
+        var p = new Scout.Domain.Partida { CompeticaoId = competicao, Rodada = rodada };
+        Assert.Equal(esperado, ObterCopasDoTimeHandler.CampoNeutro(p));
+    }
+
     [Fact]
     public void Time_bem_mais_forte_fora_ainda_e_favorito()
     {

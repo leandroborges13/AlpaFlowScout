@@ -194,6 +194,7 @@ export type Palpite = {
   partida: ResumoPartida; chanceMandante: number; chanceEmpate: number; chanceVisitante: number; favorito: 'mandante' | 'empate' | 'visitante'
   placarProvavel: string; chancePlacar: number; feitoEm: string; congelado: boolean
   resultado: 'mandante' | 'empate' | 'visitante' | null; acertou: boolean | null; acertouPlacar: boolean | null
+  campoNeutro?: boolean
 }
 export type ResultadoPalpite = { palpite: Palpite | null; partida: ResumoPartida | null; explicacao: string }
 export type HistoricoDePalpites = { time: string | null; jogos: number; acertos: number; acertosDePlacar: number; aproveitamento: number | null; palpites: Palpite[] }

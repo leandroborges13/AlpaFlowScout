@@ -31,6 +31,10 @@ public class ObterCopasDoTimeHandler(IScoutDb db) : IQueryHandler<ObterCopasDoTi
 {
     public const int Simulacoes = 10_000;
     const int CopaDoBrasil = 73; // final em ida e volta; Libertadores e Sul-Americana têm final única em campo neutro
+    static readonly int[] FinalUnicaEmCampoNeutro = [13, 11]; // Libertadores, Sul-Americana
+
+    /// <summary>Jogo sem mando de campo: a final única da Libertadores e da Sul-Americana (a da Copa do Brasil é ida e volta).</summary>
+    public static bool CampoNeutro(Partida p) => p.Rodada == "Final" && FinalUnicaEmCampoNeutro.Contains(p.CompeticaoId);
     static readonly string[] Chave = ["Round of 128", "Round of 64", "Round of 32", "Round of 16", "Quarter-finals", "Semi-finals", "Final"];
 
     public async Task<CopasDoTime?> Handle(ObterCopasDoTime q, CancellationToken ct)
@@ -265,7 +269,7 @@ public class ObterCopasDoTimeHandler(IScoutDb db) : IQueryHandler<ObterCopasDoTi
         foreach (var p in partidas.Where(p => p.Encerrada && p.GolsMandante is not null).OrderBy(p => p.Data))
         {
             var (m, v) = (R(p.MandanteId), R(p.VisitanteId));
-            var esperado = 1 / (1 + Math.Pow(10, -((m - v + MandoDeCampo) / 400)));
+            var esperado = 1 / (1 + Math.Pow(10, -((m - v + (CampoNeutro(p) ? 0 : MandoDeCampo)) / 400)));
             var saldo = p.GolsMandante!.Value - p.GolsVisitante!.Value;
             var real = saldo > 0 ? 1 : saldo < 0 ? 0 : 0.5;
             var k = 16 * (saldo == 0 ? 1 : Math.Log(Math.Abs(saldo) + 1) + 1);

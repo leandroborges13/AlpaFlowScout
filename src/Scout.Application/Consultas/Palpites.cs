@@ -9,9 +9,11 @@ namespace Scout.Application.Consultas;
 /// O palpite de um jogo. `Favorito`: "mandante", "empate" ou "visitante" (o resultado de maior chance). Depois do jogo:
 /// `Resultado` (do mesmo jeito), `Acertou` (o favorito aconteceu) e `AcertouPlacar`. `Congelado`: o jogo já começou e o palpite
 /// não muda mais. Sem palpite guardado antes do apito, `Palpite` vem nulo (não se inventa palpite depois do jogo).
+/// `CampoNeutro`: final única sem mando (o "mandante" é só quem o provedor lista primeiro).
 /// </summary>
 public record Palpite(ResumoPartida Partida, double ChanceMandante, double ChanceEmpate, double ChanceVisitante, string Favorito,
-    string PlacarProvavel, double ChancePlacar, DateTime FeitoEm, bool Congelado, string? Resultado, bool? Acertou, bool? AcertouPlacar);
+    string PlacarProvavel, double ChancePlacar, DateTime FeitoEm, bool Congelado, string? Resultado, bool? Acertou, bool? AcertouPlacar,
+    bool CampoNeutro = false);
 
 public record ResultadoPalpite(Palpite? Palpite, ResumoPartida? Partida, string Explicacao);
 
@@ -42,7 +44,9 @@ public class PalpitesHandler(IScoutDb db) : IQueryHandler<ObterPalpite, Resultad
         var palpite = await Palpitar(partida, ct);
         var resumo = (await ProcurarPartidasHandler.Resumir(db, [partida], ct))[0];
         return new ResultadoPalpite(palpite is null ? null : Montar(palpite, partida, resumo), resumo,
-            palpite is null ? "Não há palpite guardado de antes do jogo: o modelo não faz palpite depois que a bola rola." : Explicacao);
+            palpite is null ? "Não há palpite guardado de antes do jogo: o modelo não faz palpite depois que a bola rola."
+            : ObterCopasDoTimeHandler.CampoNeutro(partida) ? Explicacao + " Final única em campo neutro: nenhum dos dois tem vantagem de mando."
+            : Explicacao);
     }
 
     /// <summary>Faz (ou refaz) o palpite enquanto o jogo não começou; depois devolve o guardado (ou nulo).</summary>
@@ -55,7 +59,7 @@ public class PalpitesHandler(IScoutDb db) : IQueryHandler<ObterPalpite, Resultad
         var daTemporada = await db.Partidas.AsNoTracking().Where(p => p.Temporada == partida.Temporada).ToListAsync(ct);
         var forca = ObterCopasDoTimeHandler.Forca(daTemporada, ligas);
         var (fm, fv) = (forca.GetValueOrDefault(partida.MandanteId, 1550), forca.GetValueOrDefault(partida.VisitanteId, 1550));
-        var c = Calcular(fm, fv);
+        var c = Calcular(fm, fv, ObterCopasDoTimeHandler.CampoNeutro(partida));
         if (guardado is null) db.Palpites.Add(guardado = new PalpiteDaPartida { PartidaId = partida.Id });
         guardado.FeitoEm = DateTime.UtcNow;
         (guardado.ForcaMandante, guardado.ForcaVisitante) = (Math.Round(fm, 1), Math.Round(fv, 1));
@@ -101,7 +105,8 @@ public class PalpitesHandler(IScoutDb db) : IQueryHandler<ObterPalpite, Resultad
         return new Palpite(resumo, x.ChanceMandante, x.ChanceEmpate, x.ChanceVisitante, favorito, $"{x.PlacarMandante} x {x.PlacarVisitante}",
             x.ChancePlacar, x.FeitoEm, p.Data <= DateTime.UtcNow, resultado,
             encerrada ? resultado == favorito : null,
-            encerrada ? p.GolsMandante == x.PlacarMandante && p.GolsVisitante == x.PlacarVisitante : null);
+            encerrada ? p.GolsMandante == x.PlacarMandante && p.GolsVisitante == x.PlacarVisitante : null,
+            ObterCopasDoTimeHandler.CampoNeutro(p));
     }
 
     /// <summary>O resultado de maior chance (no empate de chances, o empate).</summary>

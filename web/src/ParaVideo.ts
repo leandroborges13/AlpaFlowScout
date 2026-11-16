@@ -647,7 +647,7 @@ export async function cartaoDoPalpite(x: Palpite) {
   }
   ctx.textAlign = 'center'
   fonte(ctx, 34, 700); ctx.fillStyle = COR.suave
-  ctx.fillText(`Placar mais provável: ${x.placarProvavel} (${Math.round(x.chancePlacar)}%)`, L / 2, y + 10)
+  ctx.fillText(`Placar mais provável: ${x.placarProvavel} (${Math.round(x.chancePlacar)}%)${x.campoNeutro ? ' · campo neutro' : ''}`, L / 2, y + 10)
   if (depois && p.golsMandante != null) {
     fonte(ctx, 40, 900); ctx.fillStyle = x.acertou ? '#1db954' : '#f0563a'
     ctx.fillText(`${x.acertou ? '✅ Acertou' : '❌ Errou'}: ${p.mandante} ${p.golsMandante} x ${p.golsVisitante} ${p.visitante}`, L / 2, y + 80)

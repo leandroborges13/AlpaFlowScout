@@ -359,7 +359,7 @@ function PalpiteDoJogo({ id, gravacao }: { id: number; gravacao: boolean }) {
         ))}
       </div>
       <p className="card-sub">
-        Placar mais provável: <b>{x.placarProvavel}</b> ({x.chancePlacar.toFixed(0)}%) · {x.congelado ? 'palpite guardado antes do apito' : 'atualizado até o apito inicial'}
+        Placar mais provável: <b>{x.placarProvavel}</b> ({x.chancePlacar.toFixed(0)}%) · {x.congelado ? 'palpite guardado antes do apito' : 'atualizado até o apito inicial'}{x.campoNeutro ? ' · campo neutro, sem mando' : ''}
       </p>
       {!gravacao && (
         <div className="pos-jogo-acoes">

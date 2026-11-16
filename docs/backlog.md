@@ -31,6 +31,28 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
    - scout.alpaflow.tec.br/a/<id> com a resposta e os cartões, sem login, e um botão "pergunte você também" (cadastro).
    - Transforma quem vem do vídeo em usuário da plataforma.
 
+13. **Palpite em campo neutro** (16/11/2026, por causa da final Galo x Boca em Barranquilla) — FEITO em 16/11/2026
+    (ObterCopasDoTimeHandler.CampoNeutro: final da Libertadores e da Sul-Americana; vale no palpite, na força Elo e na
+    simulação; `campoNeutro` no palpite e "campo neutro" no painel, na página pública e no cartão. Final Galo x Boca passou
+    de 53/26/21 e 1 x 0 para 42/27/31 e 1 x 1.)
+    - Hoje o modelo dá vantagem de mando a quem a API lista como mandante, mesmo em final de jogo único em campo neutro.
+    - Tirar o mando quando o jogo for em campo neutro (final de copa em jogo único, ou estádio que não é de nenhum dos dois)
+      e dizer isso no palpite ("campo neutro").
+
+14. **Cartões do "Para vídeo" na marca Galo na Lupa** (12/11/2026 o canal virou Galo na Lupa, @galonalupa)
+    - Os cartões do Scout (jogo, atleta, palpite, prancheta) ainda saem no verde do "Futebol em Números".
+    - Passar para preto, grafite, branco e dourado (#f5c400), com o logo da lupa (marketing/identidade-lupa no repositório
+      do kazapet), para o vídeo sair sem remendo na edição.
+
+15. **Cartão "placar do modelo"** (gancho de inscrição combinado em 13/11/2026)
+    - "O modelo está em X de Y": acertos de resultado e placares cravados, a partir de `historico_palpites`.
+    - Vai no fim do pós-jogo e no fixado dos vídeos ("se inscreve pra ver se ele acerta").
+
+16. **Cartões de intervalo e fim de jogo direto do Scout**
+    - Hoje saem de um HTML preenchido à mão (marketing/x/jogo no kazapet): placar, posse, finalizações, no alvo, escanteios e o
+      veredito do palpite (cravou, acertou ou errou).
+    - O Scout já tem esses números depois do apito: gerar os cartões 1600x900 (X) e 1080x1920 (Shorts) sozinho.
+
 ## Mapa de calor e finalizações no campo (levantamento de 03/11/2026)
 
 FEITO em 03/11/2026 com a PitchAPI (Série A 2023-2026 confirmada): 4º cartão do "Para vídeo" e contagens de finalização no roteiro.

@@ -173,7 +173,7 @@ function PalpitePublico({ x, corM, corV }: { x: Palpite; corM: string; corV: str
       ))}
       <p className="pj-legenda">
         Placar mais provável: <b>{x.placarProvavel}</b> · {x.congelado ? 'palpite guardado antes do apito inicial' : 'atualizado até o apito inicial'}.
-        Modelo AlpaFlow: força tipo Elo pelos resultados da temporada, com mando de campo.
+        Modelo AlpaFlow: força tipo Elo pelos resultados da temporada, {x.campoNeutro ? 'em campo neutro (final única, sem mando)' : 'com mando de campo'}.
       </p>
     </section>
   )
