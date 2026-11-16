@@ -1,4 +1,4 @@
-import type { AnalisePartida, CartaoDoAtleta, HistoricoDePalpites, Palpite, CalorDoJogador, DesempenhoNoJogo, FinalizacaoNoMapa, MapaDaPartida } from './api'
+import type { AnalisePartida, CartaoDoAtleta, HistoricoDePalpites, Palpite, PlacarAoVivo, CalorDoJogador, DesempenhoNoJogo, FinalizacaoNoMapa, MapaDaPartida } from './api'
 import { comAlfa, coresDoClube, coresDoJogo } from './Cores'
 
 // "Para vídeo": cartões 1080x1920 (9:16) para os Shorts do canal Galo na Lupa (@galonalupa), desenhados em canvas e baixados como PNG.
@@ -744,4 +744,113 @@ export async function cartaoPlacarDoModelo(h: HistoricoDePalpites, proximo?: Pal
   }
   ctx.textAlign = 'left'
   await baixar(tela, `placar-do-modelo-${h.acertos}-de-${h.jogos}`)
+}
+
+// ---------- Intervalo e fim de jogo (backlog item 16): 1600x900 para o X e 1080x1920 para os Shorts ----------
+
+/** O que o modelo disse antes do jogo e, no fim, se cravou, acertou ou errou (o mesmo texto nos dois formatos). */
+function vereditoDoModelo(p: PlacarAoVivo, palpite: Palpite | null, nome: (n: string, id: number) => string): [string, string] | null {
+  if (!palpite) return null
+  const fav = palpite.favorito === 'mandante' ? `${nome(p.mandante.time, p.mandante.clubeId)} (${Math.round(palpite.chanceMandante)}%)`
+    : palpite.favorito === 'visitante' ? `${nome(p.visitante.time, p.visitante.clubeId)} (${Math.round(palpite.chanceVisitante)}%)`
+    : `empate (${Math.round(palpite.chanceEmpate)}%)`
+  if (!p.encerrado) return ['O modelo deu ', `${fav} · placar ${palpite.placarProvavel}`]
+  const gm = p.mandante.gols ?? 0, gv = p.visitante.gols ?? 0
+  const res = gm > gv ? 'mandante' : gm < gv ? 'visitante' : 'empate'
+  if (`${gm} x ${gv}` === palpite.placarProvavel) return ['O modelo cravou o placar: ', `${palpite.placarProvavel} era o mais provável 🎯`]
+  return res === palpite.favorito ? ['O modelo acertou: ', `deu ${fav} ✅`] : ['O modelo errou: ', `deu ${fav} e ${palpite.placarProvavel}`]
+}
+
+const selosDoJogo = (p: PlacarAoVivo): [string, string] =>
+  p.encerrado ? ['Fim de jogo', COR.destaque] : p.intervalo ? ['Intervalo', '#ff4d3d'] : [`Ao vivo${p.minuto ? ` · ${p.minuto}'` : ''}`, '#ff4d3d']
+
+/** As barras dos números: mandante à esquerda, visitante à direita, o rótulo no meio. Linha sem número dos dois some. */
+function barrasDoJogo(ctx: Ctx, p: PlacarAoVivo, x: number, y: number, w: number, alto: number, passo: number, corM: string, corV: string) {
+  const linhas: [string, number | null, number | null, boolean][] = [
+    ['Posse de bola', p.mandante.posse, p.visitante.posse, true],
+    ['Finalizações', p.mandante.finalizacoes, p.visitante.finalizacoes, false],
+    ['No alvo', p.mandante.noAlvo, p.visitante.noAlvo, false],
+    ['Escanteios', p.mandante.escanteios, p.visitante.escanteios, false],
+  ]
+  const num = 120
+  for (const [rotulo, a, b, pct] of linhas) {
+    if (a == null && b == null) continue
+    const va = a ?? 0, vb = b ?? 0, total = va + vb || 1
+    ctx.textBaseline = 'middle'
+    fonte(ctx, Math.round(alto * 0.95), 900)
+    ctx.textAlign = 'center'; ctx.fillStyle = corM === COR.destaque ? COR.destaque : COR.texto
+    ctx.fillText(`${va}${pct ? '%' : ''}`, x + num / 2, y + alto / 2)
+    ctx.fillStyle = corV === COR.destaque ? COR.destaque : COR.texto
+    ctx.fillText(`${vb}${pct ? '%' : ''}`, x + w - num / 2, y + alto / 2)
+    const bx = x + num + 10, bw = w - 2 * (num + 10)
+    caixa(ctx, bx, y, bw, alto, alto / 3, COR.linha)
+    ctx.save(); ctx.beginPath(); ctx.roundRect(bx, y, bw, alto, alto / 3); ctx.clip()
+    ctx.fillStyle = corM; ctx.fillRect(bx, y, (bw * va) / total, alto)
+    ctx.fillStyle = corV; ctx.fillRect(bx + (bw * va) / total, y, bw - (bw * va) / total, alto)
+    ctx.restore()
+    fonte(ctx, Math.round(alto * 0.5), 900); ctx.fillStyle = '#ffffff'
+    ctx.shadowColor = 'rgba(0,0,0,.7)'; ctx.shadowBlur = 6
+    ctx.fillText(rotulo.toUpperCase(), bx + bw / 2, y + alto / 2)
+    ctx.shadowBlur = 0
+    y += passo
+  }
+  return y
+}
+
+/**
+ * Cartões do jogo na hora: intervalo (ou ao vivo) e fim de jogo, com o placar, os números dos dois times e o que o modelo
+ * tinha dito. Dois formatos: 1600x900 para o X e 1080x1920 para os Shorts.
+ */
+export async function cartoesDoPlacar(p: PlacarAoVivo, palpite: Palpite | null) {
+  await prontoParaDesenhar()
+  const nome = (n: string, id: number) => (id === TIME_DO_CANAL ? 'Galo' : n)
+  const [nm, nv] = [nome(p.mandante.time, p.mandante.clubeId), nome(p.visitante.time, p.visitante.clubeId)]
+  // o Galo em dourado e o outro em cinza; sem o Galo, as cores dos dois clubes
+  const galoM = p.mandante.clubeId === TIME_DO_CANAL, galoV = p.visitante.clubeId === TIME_DO_CANAL
+  const [cm, cv] = galoM || galoV ? [galoM ? COR.destaque : '#6b6b6b', galoV ? COR.destaque : '#6b6b6b'] : coresDoJogo(p.mandante.time, p.visitante.time)
+  const [selo, corSelo] = selosDoJogo(p)
+  const veredito = vereditoDoModelo(p, palpite, nome)
+  const sufixo = p.encerrado ? 'fim' : p.intervalo ? 'intervalo' : 'ao-vivo'
+  const arquivo = nomeDeArquivo(`${nm}-${nv}-${sufixo}`)
+  const placar = `${p.mandante.gols ?? 0} x ${p.visitante.gols ?? 0}`
+
+  // ---- X: 1600x900 ----
+  const W = 1600, H = 900
+  const tx = document.createElement('canvas'); tx.width = W; tx.height = H
+  const g = tx.getContext('2d')!
+  const fundo = g.createRadialGradient(W / 2, 300, 100, W / 2, 300, 1100); fundo.addColorStop(0, '#1c1c1c'); fundo.addColorStop(1, COR.fundo)
+  g.fillStyle = fundo; g.fillRect(0, 0, W, H)
+  g.fillStyle = 'rgba(255,255,255,.035)'; for (let x = 0; x < W; x += 140) g.fillRect(x, 0, 70, H)
+  lupa(g, 80, 56, 68)
+  fonte(g, 36, 900); g.textAlign = 'left'; g.textBaseline = 'middle'
+  g.fillStyle = COR.texto; g.fillText('Galo na ', 162, 92)
+  g.fillStyle = COR.destaque; g.fillText('Lupa', 162 + g.measureText('Galo na ').width, 92)
+  fonte(g, 30, 900); const ws = g.measureText(selo.toUpperCase()).width + 60
+  caixa(g, W - 80 - ws, 62, ws, 60, 30, corSelo)
+  g.fillStyle = corSelo === COR.destaque ? COR.fundo : '#ffffff'; g.textAlign = 'center'; g.fillText(selo.toUpperCase(), W - 80 - ws / 2, 93)
+  fonte(g, 170, 900); g.fillStyle = COR.texto; g.textAlign = 'center'
+  g.fillText(placar, W / 2, 255)
+  const meio = g.measureText(placar).width / 2 + 50
+  fonte(g, 64, 900); g.textAlign = 'right'; g.fillStyle = galoM ? COR.destaque : COR.texto; g.fillText(nm, W / 2 - meio, 262)
+  g.textAlign = 'left'; g.fillStyle = galoV ? COR.destaque : COR.texto; g.fillText(nv, W / 2 + meio, 262)
+  barrasDoJogo(g, p, 80, 380, W - 160, 44, 70, cm, cv)
+  if (veredito) {
+    caixa(g, 80, H - 160, W - 160, 96, 20, COR.painel); caixa(g, 80, H - 160, 10, 96, 5, COR.destaque)
+    fonte(g, 34, 800); g.textAlign = 'left'; g.textBaseline = 'middle'
+    g.fillStyle = COR.texto; g.fillText(veredito[0], 122, H - 112)
+    g.fillStyle = COR.destaque; g.fillText(veredito[1], 122 + g.measureText(veredito[0]).width, H - 112)
+  }
+  g.fillStyle = COR.destaque; g.fillRect(0, H - 12, W, 12)
+  await baixar(tx, `x-${arquivo}`)
+
+  // ---- Shorts: 1080x1920, na moldura de sempre ----
+  const [tv, ctx] = novaTela()
+  moldura(ctx, selo, `${nm} ${placar} ${nv}`, 72)
+  ctx.textAlign = 'center'
+  const fim = barrasDoJogo(ctx, p, JANELA.x + 40, JANELA.y + 60, JANELA.w - 80, 52, 120, cm, cv)
+  ctx.textAlign = 'left'
+  if (veredito)
+    textoNaCaixa(ctx, veredito[0] + veredito[1], JANELA.x + 50, Math.min(fim + 10, JANELA.y + JANELA.h - 150), JANELA.w - 100, 130, 40, 28, COR.destaque, 800)
+  ctx.textAlign = 'left'
+  await baixar(tv, `short-${arquivo}`)
 }

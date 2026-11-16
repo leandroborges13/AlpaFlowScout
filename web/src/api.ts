@@ -183,6 +183,8 @@ export const api = {
   /** Palpite do modelo (feito/atualizado até o apito; depois, o guardado e se acertou). */
   palpite: (id: number) => pedir<ResultadoPalpite>(`/api/partidas/${id}/palpite`),
   palpites: (time?: string) => pedir<HistoricoDePalpites>(`/api/palpites${time ? `?time=${encodeURIComponent(time)}` : ''}`),
+  /** Placar e números do jogo na hora, direto do provedor (intervalo e fim de jogo). */
+  aoVivo: (id: number) => pedir<PlacarAoVivo>(`/api/partidas/${id}/ao-vivo`),
   /** Palpite do próximo jogo do time (404 se não houver jogo marcado). */
   proximoPalpite: (time: string) => pedir<ResultadoPalpite>(`/api/palpites/proximo?time=${encodeURIComponent(time)}`),
   /** Mapa de finalizações e de calor (só ligas e pós-jogo); null quando a fonte não tem o jogo. */
@@ -198,6 +200,8 @@ export type Palpite = {
   resultado: 'mandante' | 'empate' | 'visitante' | null; acertou: boolean | null; acertouPlacar: boolean | null
   campoNeutro?: boolean
 }
+export type LadoAoVivo = { clubeId: number; time: string; gols: number | null; posse: number | null; finalizacoes: number | null; noAlvo: number | null; escanteios: number | null; xg: number | null }
+export type PlacarAoVivo = { partidaId: number; status: string; minuto: number | null; mandante: LadoAoVivo; visitante: LadoAoVivo; intervalo: boolean; encerrado: boolean }
 export type ResultadoPalpite = { palpite: Palpite | null; partida: ResumoPartida | null; explicacao: string }
 export type HistoricoDePalpites = { time: string | null; jogos: number; acertos: number; acertosDePlacar: number; aproveitamento: number | null; palpites: Palpite[] }
 

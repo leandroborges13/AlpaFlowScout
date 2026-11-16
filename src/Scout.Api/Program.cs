@@ -137,6 +137,10 @@ api.MapGet("/atletas/{id:int}/resumo-ia", async (int id, int? temporada, IQueryH
         ? Results.Ok(new { texto = await assistente.ResumirAtleta(d, ct) })
         : Results.NotFound());
 
+// Placar e números do jogo na hora, para os cartões de intervalo e fim de jogo (não guarda nada)
+api.MapGet("/partidas/{id:int}/ao-vivo", async (int id, IPlacarAoVivo h, CancellationToken ct) =>
+    await h.Obter(id, ct) is { } r ? Results.Ok(r) : Results.NotFound());
+
 api.MapGet("/partidas/{id:int}/palpite", async (int id, IQueryHandler<ObterPalpite, ResultadoPalpite?> h, CancellationToken ct) =>
     await h.Handle(new ObterPalpite(id), ct) is { } r ? Results.Ok(r) : Results.NotFound());
 

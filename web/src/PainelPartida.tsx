@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api, type AnalisePartida, type ResultadoPalpite, type DesempenhoNoJogo, type EventoDaPartida, type LadoDaPartida, type MapaDaPartida, type ResumoPartida, type RoteiroPosJogo } from './api'
 import { GaleriaVideo } from './GaleriaVideo'
 import { PranchetaTatica } from './Prancheta'
-import { cartaoDoJogador, cartaoDoPalpite, cartaoPlacarDoModelo, cartoesDaPartida, coletar, ligarJogador, recortesDoMapa, type Cartao } from './ParaVideo'
+import { cartaoDoJogador, cartaoDoPalpite, cartaoPlacarDoModelo, cartoesDaPartida, cartoesDoPlacar, coletar, ligarJogador, recortesDoMapa, type Cartao } from './ParaVideo'
 import { coresDoJogo } from './Cores'
 import { Escudo } from './PainelTime'
 import { CampoDaPartida, DesempenhoNaPartida, Destaques, LinhaDoTempo } from './PartidaVisual'
@@ -82,6 +82,7 @@ export function PainelPartida({ partida, gravacao, onFechar }: PainelProps) {
           <button className="btn" onClick={() => setPrancheta({ id: p.mandanteId, nome: p.mandante })}>🧩 Prancheta: {p.mandante}</button>
           <button className="btn" onClick={() => setPrancheta({ id: p.visitanteId, nome: p.visitante })}>🧩 Prancheta: {p.visitante}</button>
           <LinkPublico id={p.id} />
+          {!gravacao && <PlacarAgora id={p.id} />}
         </div>
         {prancheta && <PranchetaTatica clubeId={prancheta.id} time={prancheta.nome} onFechar={() => setPrancheta(null)}
           adversario={prancheta.id === p.mandanteId ? { id: p.visitanteId, nome: p.visitante } : { id: p.mandanteId, nome: p.mandante }} />}
@@ -375,6 +376,31 @@ function PalpiteDoJogo({ id, gravacao }: { id: number; gravacao: boolean }) {
       )}
       {galeria && <GaleriaVideo titulo={`Palpite: ${p.mandante} x ${p.visitante}`} cartoes={galeria} onFechar={() => setGaleria(null)} />}
     </section>
+  )
+}
+
+/**
+ * Cartões do jogo na hora (backlog item 16): no intervalo e no apito, busca o placar e os números direto do provedor (2 consultas
+ * da cota, nada fica guardado) e gera o cartão do X (1600x900) e o do Short (1080x1920), com o que o modelo tinha dito.
+ */
+function PlacarAgora({ id }: { id: number }) {
+  const [galeria, setGaleria] = useState<Cartao[] | null>(null)
+  const [estado, setEstado] = useState<'pronto' | 'buscando' | 'erro'>('pronto')
+  return (
+    <>
+      <button className="btn para-video" disabled={estado === 'buscando'} title="Intervalo ou fim de jogo: placar, posse, finalizações, no alvo e escanteios agora"
+        onClick={async () => {
+          setEstado('buscando')
+          try {
+            const [placar, palpite] = await Promise.all([api.aoVivo(id), api.palpite(id).catch(() => null)])
+            setGaleria(await coletar(() => cartoesDoPlacar(placar, palpite?.palpite ?? null)))
+            setEstado('pronto')
+          } catch { setEstado('erro') }
+        }}>
+        {estado === 'buscando' ? 'Buscando…' : estado === 'erro' ? '📺 Placar agora (tentar de novo)' : '📺 Placar agora'}
+      </button>
+      {galeria && <GaleriaVideo titulo="Placar agora: X e Short" cartoes={galeria} onFechar={() => setGaleria(null)} />}
+    </>
   )
 }
 

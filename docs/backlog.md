@@ -54,7 +54,10 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
     - "O modelo está em X de Y": acertos de resultado e placares cravados, a partir de `historico_palpites`.
     - Vai no fim do pós-jogo e no fixado dos vídeos ("se inscreve pra ver se ele acerta").
 
-16. **Cartões de intervalo e fim de jogo direto do Scout**
+16. **Cartões de intervalo e fim de jogo direto do Scout** — FEITO em 16/11/2026
+    (botão "📺 Placar agora" no painel da partida: GET /api/partidas/{id}/ao-vivo busca placar e números no provedor sem
+    guardar nada (ApiFootballClient.Consultar com guardar: false, 2 consultas da cota) e gera o cartão do X 1600x900 e o do
+    Short 1080x1920 com selo Intervalo, Ao vivo ou Fim de jogo e o que o modelo disse: cravou, acertou ou errou.)
     - Hoje saem de um HTML preenchido à mão (marketing/x/jogo no kazapet): placar, posse, finalizações, no alvo, escanteios e o
       veredito do palpite (cravou, acertou ou errou).
     - O Scout já tem esses números depois do apito: gerar os cartões 1600x900 (X) e 1080x1920 (Shorts) sozinho.

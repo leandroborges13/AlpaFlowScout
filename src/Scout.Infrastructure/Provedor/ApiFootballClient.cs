@@ -26,13 +26,15 @@ public class ApiFootballClient(HttpClient http, IDbContextFactory<ScoutDbContext
     static readonly SemaphoreSlim fila = new(1, 1);
 
     /// <param name="validade">null = guarda para sempre (temporada encerrada não muda).</param>
-    public async Task<JsonElement> Consultar(string endpoint, IDictionary<string, object> parametros, TimeSpan? validade, CancellationToken ct)
+    /// <param name="guardar">false = consulta ao vivo: não lê nem grava a cópia guardada (número parcial de jogo em andamento
+    /// não pode ficar no lugar do final).</param>
+    public async Task<JsonElement> Consultar(string endpoint, IDictionary<string, object> parametros, TimeSpan? validade, CancellationToken ct, bool guardar = true)
     {
         var query = string.Join("&", parametros.OrderBy(p => p.Key).Select(p => $"{p.Key}={Uri.EscapeDataString(Convert.ToString(p.Value)!)}"));
         var chave = $"{endpoint}?{query}";
 
         await using var db = await fabrica.CreateDbContextAsync(ct);
-        var guardada = await db.RespostasProvedor.AsNoTracking().FirstOrDefaultAsync(r => r.Chave == chave, ct);
+        var guardada = guardar ? await db.RespostasProvedor.AsNoTracking().FirstOrDefaultAsync(r => r.Chave == chave, ct) : null;
         if (guardada is not null && (validade is null || DateTime.UtcNow - guardada.ObtidaEm < validade))
             return JsonDocument.Parse(guardada.Json).RootElement;
 
@@ -67,8 +69,8 @@ public class ApiFootballClient(HttpClient http, IDbContextFactory<ScoutDbContext
                 throw new InvalidOperationException($"API-Football: {erros.GetRawText()}");
             }
 
-            if (guardada is null) db.RespostasProvedor.Add(new RespostaProvedor { Chave = chave, Json = json, ObtidaEm = DateTime.UtcNow });
-            else db.RespostasProvedor.Update(new RespostaProvedor { Chave = chave, Json = json, ObtidaEm = DateTime.UtcNow });
+            if (guardar && guardada is null) db.RespostasProvedor.Add(new RespostaProvedor { Chave = chave, Json = json, ObtidaEm = DateTime.UtcNow });
+            else if (guardar) db.RespostasProvedor.Update(new RespostaProvedor { Chave = chave, Json = json, ObtidaEm = DateTime.UtcNow });
             await db.SaveChangesAsync(ct);
             log.LogDebug("API-Football {Chave} ({Usadas} hoje)", chave, cota.Usadas);
             return raiz;

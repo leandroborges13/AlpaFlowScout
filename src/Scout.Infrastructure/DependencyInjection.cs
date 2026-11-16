@@ -39,6 +39,7 @@ public static class DependencyInjection
         services.AddScoped<Scout.Application.Consultas.IHistoricoDoAtleta, HistoricoDoAtleta>();
         services.AddScoped<Scout.Application.Consultas.ICarreiraDoTreinador, CarreiraDoTreinador>();
         services.AddScoped<Scout.Application.Consultas.IDetalhesDaPartida, DetalhesDaPartida>();
+        services.AddScoped<Scout.Application.Consultas.IPlacarAoVivo, PlacarAoVivoDoProvedor>();
         services.AddScoped<Acesso.Usuarios>();
         return services;
     }
