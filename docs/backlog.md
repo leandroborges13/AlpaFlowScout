@@ -62,6 +62,14 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
       veredito do palpite (cravou, acertou ou errou).
     - O Scout já tem esses números depois do apito: gerar os cartões 1600x900 (X) e 1080x1920 (Shorts) sozinho.
 
+17. **"No alvo" do mapa conta chute bloqueado** (achado no pós-jogo Mirassol 0 x 0 Galo, 16/11/2026)
+    - A PitchAPI marca `noAlvo` em chute bloqueado: Galo 8 "no alvo" = 1 no alvo + 7 bloqueados da API-Football; Mirassol 5 = 2 + 3.
+    - O roteiro automático (FraseDoMapa) e o cartão do mapa usam esse número e contradizem a estatística do jogo e o aspecto
+      "Finalizações no alvo" (percentil 3).
+    - Corrigir: no roteiro e nos cartões, o "no alvo" vem da estatística da API-Football; no mapa, separar bloqueado (cor própria)
+      quando der para saber, ou só "finalizações" sem dizer no alvo.
+    - Junto: o roteiro disse "o Galo recebe o Boca" numa final em campo neutro; usar o CampoNeutro (item 13) no próximo jogo.
+
 ## Mapa de calor e finalizações no campo (levantamento de 03/11/2026)
 
 FEITO em 03/11/2026 com a PitchAPI (Série A 2023-2026 confirmada): 4º cartão do "Para vídeo" e contagens de finalização no roteiro.
