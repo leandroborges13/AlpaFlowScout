@@ -555,7 +555,8 @@ async function cartaoDoMapa(a: AnalisePartida, mapa: MapaDaPartida, jogo: string
     if (f.gol) { ctx.lineWidth = 5; ctx.strokeStyle = '#ffd166'; ctx.stroke() }
   }
   const resumo = (fs: FinalizacaoNoMapa[]) =>
-    `${fs.length} finalizações · ${fs.filter((f) => f.dentroDaArea).length} da área · ${fs.filter((f) => f.noAlvo).length} no alvo`
+    `${fs.length} finalizações · ${fs.filter((f) => f.dentroDaArea).length} da área · ${fs.filter((f) => f.noAlvo).length} no alvo` +
+      (fs.some((f) => f.bloqueada) ? ` · ${fs.filter((f) => f.bloqueada).length} travadas` : '')
   const yResumo = JANELA.y + 75 + g.h + 14
   fonte(ctx, 24, 700)
   ctx.textBaseline = 'top'

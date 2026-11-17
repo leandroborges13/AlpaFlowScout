@@ -343,6 +343,8 @@ export type AnalisePartida = {
 export type FinalizacaoNoMapa = {
   clubeId: number; jogador: string; minuto: number; x: number; y: number; xg: number
   noAlvo: boolean; gol: boolean; dentroDaArea: boolean; situacao?: string | null
+  /** travada por um defensor (não conta como no alvo) */
+  bloqueada?: boolean
 }
 /** Mapa de uma fonte externa: finalizações e grade de calor 16x12 ([x, y, ações]) com o mandante atacando para a direita. */
 /** O mapa de um jogador, com o nome da fonte do mapa (pode diferir do nosso; ver ligarJogador). */

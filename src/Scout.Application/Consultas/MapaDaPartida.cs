@@ -3,9 +3,11 @@ namespace Scout.Application.Consultas;
 /// <summary>
 /// Finalização no campo de 105x68 metros, sempre atacando para a direita (x = 105 é o gol atacado), como a fonte entrega.
 /// `Xg`: chance de gol da finalização (0 a 1), da fonte do mapa (não é o xG do provedor principal).
+/// `NoAlvo`: foi no gol e não foi travada (a fonte marca chute bloqueado como "no alvo"; a estatística do jogo, não).
+/// `Bloqueada`: travada por um defensor no caminho.
 /// </summary>
 public record FinalizacaoNoMapa(int ClubeId, string Jogador, int Minuto, double X, double Y, double Xg, bool NoAlvo, bool Gol,
-    bool DentroDaArea, string? Situacao);
+    bool DentroDaArea, string? Situacao, bool Bloqueada = false);
 
 /// <summary>
 /// Onde o time teve a bola: grade de 16 x 12 células com o número de ações em cada uma, os dois times no mesmo campo

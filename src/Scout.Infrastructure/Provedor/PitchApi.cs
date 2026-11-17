@@ -37,7 +37,9 @@ public class PitchApi(HttpClient http, IConfiguration config, IMemoryCache cache
                 .Select(s => new FinalizacaoNoMapa(
                     Nosso(Texto(s, "team_id")), Texto(s, "player", "name") ?? "?", Numero(s, "minute") is { } m ? (int)m : 0,
                     Numero(s, "x") ?? 0, Numero(s, "y") ?? 0, Numero(s, "expected_goals") ?? 0,
-                    Logico(s, "is_on_target"), Texto(s, "event_type") == "Goal", Logico(s, "is_inside_box"), Texto(s, "situation")))
+                    // a PitchAPI marca chute bloqueado como is_on_target: no alvo é só o que chegou ao gol (como na estatística do jogo)
+                    Logico(s, "is_on_target") && !Logico(s, "is_blocked"), Texto(s, "event_type") == "Goal", Logico(s, "is_inside_box"),
+                    Texto(s, "situation"), Logico(s, "is_blocked")))
                 .Where(f => f.ClubeId != 0)
                 .OrderBy(f => f.Minuto)
                 .ToList();

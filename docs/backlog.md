@@ -62,7 +62,9 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
       veredito do palpite (cravou, acertou ou errou).
     - O Scout já tem esses números depois do apito: gerar os cartões 1600x900 (X) e 1080x1920 (Shorts) sozinho.
 
-17. **"No alvo" do mapa conta chute bloqueado** (achado no pós-jogo Mirassol 0 x 0 Galo, 16/11/2026)
+17. **"No alvo" do mapa conta chute bloqueado** (achado no pós-jogo Mirassol 0 x 0 Galo, 16/11/2026) — FEITO em 17/11/2026: no alvo = `is_on_target` sem `is_blocked`
+    (Mirassol x Galo agora dá 1 e 2, igual à estatística), campo `Bloqueada` no mapa, "(7 travadas)" na frase do roteiro e no cartão,
+    e o próximo jogo do roteiro diz "final única em campo neutro" (CampoNeutro por competição e rodada).
     - A PitchAPI marca `noAlvo` em chute bloqueado: Galo 8 "no alvo" = 1 no alvo + 7 bloqueados da API-Football; Mirassol 5 = 2 + 3.
     - O roteiro automático (FraseDoMapa) e o cartão do mapa usam esse número e contradizem a estatística do jogo e o aspecto
       "Finalizações no alvo" (percentil 3).
@@ -159,6 +161,9 @@ A API-Football (a nossa) não tem coordenadas de lance. Opções vistas:
     - **Jogos de copa FEITO em 08/11/2026** (ColetaBzzoiro.ColetarCopas; até 40 jogos/dia e comando `copas-bzzoiro <temporada>
       [max]`): desempenho por atleta nos jogos de Copa do Brasil, Libertadores e Sul-Americana com time da Série A, na mesma
       tabela da PitchAPI (desempenhos_avancados, coluna fonte). Teste local: 15 jogos, 390 de 398 atletas ligados.
+    - **Argentina (conferido em 17/11/2026):** a PitchAPI tem a Liga Profesional 2024-2026 (l_45VZuL, grátis: 497 jogos em 2026,
+      33 do Boca, com /advanced/players: xT, VAEP, passe progressivo, SCA) e a Bzzoiro também (liga 85). Serve para analisar o
+      adversário argentino (Boca na final) e, se quiser, cadastrar a liga no Scout.
     - Falta para 2027 sem o Pro: criar a partida a partir da Bzzoiro/PitchAPI quando a API-Football não tiver o jogo (hoje a
       coleta só complementa jogos que já estão na base) e montar escalação, placar e estatística do time a partir delas.
 

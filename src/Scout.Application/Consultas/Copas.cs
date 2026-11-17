@@ -34,7 +34,8 @@ public class ObterCopasDoTimeHandler(IScoutDb db) : IQueryHandler<ObterCopasDoTi
     static readonly int[] FinalUnicaEmCampoNeutro = [13, 11]; // Libertadores, Sul-Americana
 
     /// <summary>Jogo sem mando de campo: a final única da Libertadores e da Sul-Americana (a da Copa do Brasil é ida e volta).</summary>
-    public static bool CampoNeutro(Partida p) => p.Rodada == "Final" && FinalUnicaEmCampoNeutro.Contains(p.CompeticaoId);
+    public static bool CampoNeutro(Partida p) => CampoNeutro(p.CompeticaoId, p.Rodada);
+    public static bool CampoNeutro(int competicaoId, string? rodada) => rodada == "Final" && FinalUnicaEmCampoNeutro.Contains(competicaoId);
     static readonly string[] Chave = ["Round of 128", "Round of 64", "Round of 32", "Round of 16", "Quarter-finals", "Semi-finals", "Final"];
 
     public async Task<CopasDoTime?> Handle(ObterCopasDoTime q, CancellationToken ct)

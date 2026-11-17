@@ -42,9 +42,11 @@ public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<Anal
         string Do(int clubeId, string nome, bool primeiro)
         {
             var f = mapa.Finalizacoes.Where(x => x.ClubeId == clubeId).ToList();
+            var travadas = f.Count(x => x.Bloqueada);
+            var alvo = $"{f.Count(x => x.NoAlvo)} no alvo" + (travadas == 0 ? "" : travadas == 1 ? " (1 travada)" : $" ({travadas} travadas)");
             return primeiro
-                ? $"O {nome} finalizou {Vezes(f.Count)}, {f.Count(x => x.DentroDaArea)} de dentro da área e {f.Count(x => x.NoAlvo)} no alvo"
-                : $"o {nome}, {Vezes(f.Count)}, {f.Count(x => x.DentroDaArea)} da área e {f.Count(x => x.NoAlvo)} no alvo";
+                ? $"O {nome} finalizou {Vezes(f.Count)}, {f.Count(x => x.DentroDaArea)} de dentro da área e {alvo}"
+                : $"o {nome}, {Vezes(f.Count)}, {f.Count(x => x.DentroDaArea)} da área e {alvo}";
         }
         return $"{Do(p.MandanteId, p.Mandante, true)}; {Do(p.VisitanteId, p.Visitante, false)}. Olha no mapa.";
     }
@@ -105,12 +107,15 @@ public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<Anal
             Finalizacoes = mapa is null ? null : new[] { (p.MandanteId, p.Mandante), (p.VisitanteId, p.Visitante) }.ToDictionary(t => t.Item2, t =>
             {
                 var doTime = mapa.Finalizacoes.Where(f => f.ClubeId == t.Item1).ToList();
-                return new { Total = doTime.Count, DentroDaArea = doTime.Count(f => f.DentroDaArea), NoAlvo = doTime.Count(f => f.NoAlvo) };
+                return new { Total = doTime.Count, DentroDaArea = doTime.Count(f => f.DentroDaArea), NoAlvo = doTime.Count(f => f.NoAlvo),
+                    Travadas = doTime.Count(f => f.Bloqueada) };
             }),
             // de qual time é cada próximo jogo, para a IA não anunciar o jogo do adversário como se fosse do Galo
             ProximoJogo = new[] { (p.MandanteId, p.Mandante), (p.VisitanteId, p.Visitante) }.ToDictionary(t => t.Item2, t =>
                 a.JogosSeguintes?.Where(j => j.MandanteId == t.Item1 || j.VisitanteId == t.Item1)
-                    .Select(j => $"{j.Mandante} x {j.Visitante} ({j.Competicao}, {Dia(j.Data)})").FirstOrDefault()),
+                    .Select(j => $"{j.Mandante} x {j.Visitante} ({j.Competicao}, {Dia(j.Data)}" +
+                        (Scout.Application.Consultas.ObterCopasDoTimeHandler.CampoNeutro(j.CompeticaoId, j.Rodada) ? ", final única em campo neutro: ninguém recebe ninguém" : "") + ")")
+                    .FirstOrDefault()),
         });
     }
 

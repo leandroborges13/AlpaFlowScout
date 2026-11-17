@@ -232,6 +232,25 @@ public class PartidasTests
     }
 
     [Fact]
+    public void Frase_do_mapa_separa_chute_travado_do_no_alvo()
+    {
+        // Mirassol 0 x 0 Galo (14/11/2026): a fonte marcava 8 "no alvo" do Galo, eram 1 no alvo e 7 travadas
+        var p = new ResumoPartida(1, DateTime.UtcNow, null, 71, "Serie A", 2026, "FT", 20, "Mirassol", null, 10, "Galo", null, 0, 0);
+        FinalizacaoNoMapa F(int clube, bool alvo, bool travada) => new(clube, "X", 10, 90, 34, 0.1, alvo, false, true, null, travada);
+        var mapa = new MapaDaPartida([F(10, true, false), F(10, false, true), F(10, false, true), F(20, false, true), F(20, false, false)], [], "PitchAPI");
+        Assert.Equal("O Mirassol finalizou 2 vezes, 2 de dentro da área e 0 no alvo (1 travada); o Galo, 3 vezes, 3 da área e 1 no alvo (2 travadas). Olha no mapa.",
+            Scout.Application.Chat.RoteiristaPosJogo.FraseDoMapa(p, mapa));
+    }
+
+    [Fact]
+    public void Final_unica_da_Sul_Americana_e_campo_neutro()
+    {
+        Assert.True(Scout.Application.Consultas.ObterCopasDoTimeHandler.CampoNeutro(11, "Final"));
+        Assert.False(Scout.Application.Consultas.ObterCopasDoTimeHandler.CampoNeutro(11, "Semi-finals"));
+        Assert.False(Scout.Application.Consultas.ObterCopasDoTimeHandler.CampoNeutro(73, "Final"));
+    }
+
+    [Fact]
     public void Ultimos_jogos_contam_so_os_disputados_e_o_de_hoje_vem_a_parte()
     {
         // Flamengo em 04/11/2026: o jogo de hoje com o Grêmio ainda não começou; os 5 anteriores no Brasileirão
