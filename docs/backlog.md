@@ -99,6 +99,38 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
       - cartão "ranking do time na liga" no Para vídeo.
     - Cuidado: a métrica é da PitchAPI. O Wyscout mede diferente, e números de fontes diferentes não se comparam.
 
+19. **"Leandro Borges comenta": opinião com o rosto e os números, depois de cada jogo** — ideia de 18/11/2026, a partir do vidIQ
+    - **Fazer:** a partir do pós-jogo da final (21/11) ou na semana seguinte.
+    - **Por quê:**
+      - Nos Shorts do Galo que mais estouraram no mês, o formato "torcedor comenta" se destaca. O "HG Comenta empate do Galo contra
+        o Mirassol" (GALO SEMPRE) fez 118 mil views em 3 dias, com 2 a 3 minutos de opinião com o rosto.
+      - Ninguém no nicho faz isso com dados.
+    - **Formato:**
+      - Short de 2 a 3 min, gravado logo depois do apito.
+      - Na tela: os cartões do Scout (placar, onde o jogo foi ganho ou perdido, nota da IA, a frase do estilo na liga).
+      - Na fala: opinião do Leandro.
+      - Título com nome próprio e afirmação, como "LEANDRO BORGES COMENTA: ...".
+    - **No Scout:**
+      - O roteiro do pós-jogo já existe.
+      - Falta uma versão "pontos para comentar": 4 ou 5 números com a frase pronta, em vez de uma fala lida.
+      - Pode virar um botão "Comentar o jogo" no painel da partida.
+
+20. **Galo x Cruzeiro nos números do ano** — ideia de 18/11/2026, a partir do vidIQ
+    - **Fazer:** na semana seguinte à final.
+    - **Por quê:** entre os Shorts que mais estouraram no nicho do Galo no mês, a rivalidade com o Cruzeiro (zoação e "reação dos
+      rivais") aparece várias vezes, com 50 a 200 mil views. Com dados dá para entrar nesse assunto sem baixar o nível.
+    - **Conteúdo, os dois em 2026:**
+      - campanha e pontos no Brasileirão;
+      - gols pró e contra;
+      - xG;
+      - estilo na liga (item 18: quem pressiona, quem perde a bola no próprio campo);
+      - melhor jogador de cada um pela nota da IA;
+      - o clássico do ano.
+    - **Formato:** Short de 45 s com 4 ou 5 cartões ("lado a lado") e um post no X com os mesmos cartões.
+    - **No Scout:**
+      - Quase tudo já sai das consultas de time e do estilo na liga.
+      - Falta um cartão "time x time" no Para vídeo, aproveitando o lado a lado do raio-x de atletas.
+
 ## Mapa de calor e finalizações no campo (levantamento de 03/11/2026)
 
 FEITO em 03/11/2026 com a PitchAPI (Série A 2023-2026 confirmada): 4º cartão do "Para vídeo" e contagens de finalização no roteiro.
