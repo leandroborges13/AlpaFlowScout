@@ -72,6 +72,24 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
       quando der para saber, ou só "finalizações" sem dizer no alvo.
     - Junto: o roteiro disse "o Galo recebe o Boca" numa final em campo neutro; usar o CampoNeutro (item 13) no próximo jogo.
 
+18. **Métricas de time da PitchAPI (/v1/matches/{id}/advanced)** — ideia de 18/11/2026, a partir do perfil @ovitorscout (Instagram, 15 mil)
+    - O endpoint traz por jogo e por time:
+      - pressão e recuperação: ppda, high_turnovers (recuperações no campo adversário), counterpress_regains_5s;
+      - posição: avg_defensive_action_x (altura da defesa), field_tilt;
+      - estilo de ataque: direct_attacks e buildup_attacks;
+      - também passes progressivos, xT e VAEP do time.
+    - Nada disso é guardado hoje.
+    - "Onde o time perde a bola" = high_turnovers do adversário no jogo.
+    - Teste em 18/11 (Série A e liga argentina de 2026, todos os jogos):
+      - Galo: 2º que mais perde a bola no próprio campo (9,1 por jogo) e 17º em PPDA (pressiona pouco).
+      - Boca: 5º em PPDA na Argentina e 1º em ataques diretos.
+    - Fazer:
+      - tabela de desempenho do time por jogo vinda do /advanced, coletada na AtualizacaoDiaria;
+      - ranking na liga (posição e média) no painel do time e da partida;
+      - frase no roteiro automático ("o Galo é o 2º que mais perde a bola no próprio campo");
+      - cartão "ranking do time na liga" no Para vídeo.
+    - Cuidado: a métrica é da PitchAPI. O Wyscout mede diferente, e números de fontes diferentes não se comparam.
+
 ## Mapa de calor e finalizações no campo (levantamento de 03/11/2026)
 
 FEITO em 03/11/2026 com a PitchAPI (Série A 2023-2026 confirmada): 4º cartão do "Para vídeo" e contagens de finalização no roteiro.
