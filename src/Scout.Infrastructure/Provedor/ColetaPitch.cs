@@ -66,6 +66,63 @@ public class ColetaPitch(HttpClient http, ScoutDbContext db, IConfiguration conf
         return new(jogos, atletas, ligados, semPar);
     }
 
+    /// <summary>
+    /// Métricas de time jogo a jogo (/v1/matches/{id}/advanced, 1 consulta por jogo): pressão, recuperações altas, contrapressão,
+    /// altura da defesa, field tilt e estilo de ataque (<see cref="EstiloNoJogo"/>). Separada da coleta dos atletas para trazer
+    /// também os jogos que já tinham sido coletados antes desta tabela existir.
+    /// </summary>
+    public async Task<int> ColetarEstilos(int competicaoId, int temporada, int maxJogos, CancellationToken ct)
+    {
+        var chave = config["PITCHAPI_KEY"];
+        if (string.IsNullOrWhiteSpace(chave) || !PitchApi.Ligas.TryGetValue(competicaoId, out var liga)) return 0;
+        var lista = await Buscar($"/v1/leagues/{liga}/matches?season={temporada}", chave, ct);
+        if (lista is null) return 0;
+        var partidas = await db.Partidas.Where(p => p.CompeticaoId == competicaoId && p.Temporada == temporada).ToListAsync(ct);
+        var clubes = await db.Clubes.ToDictionaryAsync(c => c.Id, c => PitchApi.Nome(c.Nome), ct);
+        var feitos = (await db.EstilosNoJogo.Where(e => e.Fonte == "PitchAPI").Select(e => e.PartidaId).Distinct().ToListAsync(ct)).ToHashSet();
+
+        int jogos = 0;
+        foreach (var m in lista.Value.GetProperty("matches").EnumerateArray()
+                     .Where(m => Texto(m, "status") == "finished").OrderByDescending(m => Texto(m, "time_utc")))
+        {
+            if (jogos >= maxJogos) break;
+            var partida = Achar(m, partidas, clubes);
+            if (partida is null || !partida.Encerrada || feitos.Contains(partida.Id)) continue;
+            var id = Texto(m, "id")!;
+            var adv = await Buscar($"/v1/matches/{id}/advanced", chave, ct);
+            if (adv is null) break; // freio da PitchAPI: continua amanhã
+            var times = new Dictionary<string, int>
+            {
+                [Texto(m, "home_team", "id") ?? "casa"] = partida.MandanteId,
+                [Texto(m, "away_team", "id") ?? "fora"] = partida.VisitanteId,
+            };
+            foreach (var t in adv.Value.GetProperty("teams").EnumerateArray())
+            {
+                if (!times.TryGetValue(Texto(t, "team", "id") ?? "", out var clubeId)) continue;
+                db.EstilosNoJogo.Add(LerEstilo(t, partida.Id, clubeId));
+            }
+            partida.PitchId ??= id;
+            await db.SaveChangesAsync(ct);
+            jogos++;
+        }
+        log.LogInformation("PitchAPI estilos {Competicao}/{Temporada}: {Jogos} jogos novos", competicaoId, temporada, jogos);
+        return jogos;
+    }
+
+    /// <summary>Um time do /advanced da PitchAPI como <see cref="EstiloNoJogo"/>.</summary>
+    public static EstiloNoJogo LerEstilo(JsonElement t, int partidaId, int clubeId) => new()
+    {
+        PartidaId = partidaId, ClubeId = clubeId, Fonte = "PitchAPI",
+        Posse = Num(t, "territory", "possession_pct"), FieldTilt = Num(t, "territory", "field_tilt"),
+        Ppda = Num(t, "defending", "ppda"), RecuperacoesAltas = (int)(Num(t, "defending", "high_turnovers") ?? 0),
+        RecuperacoesEm5s = (int)(Num(t, "defending", "counterpress_regains_5s") ?? 0), AlturaDefesa = Num(t, "defending", "avg_defensive_action_x"),
+        AtaquesDiretos = (int)(Num(t, "tempo", "direct_attacks") ?? 0), AtaquesConstruidos = (int)(Num(t, "tempo", "buildup_attacks") ?? 0),
+        PassesProgressivos = (int)(Num(t, "passing", "progressive_passes") ?? 0),
+        EntradasTercoFinal = (int)(Num(t, "territory", "final_third_entries") ?? 0), EntradasArea = (int)(Num(t, "territory", "box_entries") ?? 0),
+        Xt = Num(t, "possession_value", "xt_total"),
+        Bruto = t.GetRawText(),
+    };
+
     /// <summary>O nosso jogo com horário até 3 h do da PitchAPI e o mandante ou o visitante com o mesmo nome.</summary>
     static Partida? Achar(JsonElement m, List<Partida> partidas, Dictionary<int, string> clubes)
     {

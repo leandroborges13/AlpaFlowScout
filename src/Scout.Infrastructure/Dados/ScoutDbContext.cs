@@ -42,6 +42,7 @@ public class ScoutDbContext(DbContextOptions<ScoutDbContext> options) : DbContex
     public DbSet<TreinadorNaPartida> TreinadoresNaPartida => Set<TreinadorNaPartida>();
     public DbSet<CobrancaDisputa> CobrancasDisputa => Set<CobrancaDisputa>();
     public DbSet<DesempenhoAvancado> DesempenhosAvancados => Set<DesempenhoAvancado>();
+    public DbSet<EstiloNoJogo> EstilosNoJogo => Set<EstiloNoJogo>();
     public DbSet<RoteiroPosJogo> RoteirosPosJogo => Set<RoteiroPosJogo>();
     public DbSet<PalpiteDaPartida> Palpites => Set<PalpiteDaPartida>();
     public DbSet<RespostaProvedor> RespostasProvedor => Set<RespostaProvedor>();
@@ -84,6 +85,10 @@ public class ScoutDbContext(DbContextOptions<ScoutDbContext> options) : DbContex
         b.Entity<DesempenhoAvancado>().Property(d => d.Fonte).HasMaxLength(10).HasDefaultValue("PitchAPI");
         b.Entity<DesempenhoAvancado>().HasIndex(d => d.AtletaId);
         b.Entity<DesempenhoAvancado>().Property(d => d.Bruto).HasColumnType("jsonb");
+        b.Entity<EstiloNoJogo>().ToTable("estilos_no_jogo");
+        b.Entity<EstiloNoJogo>().HasIndex(e => new { e.PartidaId, e.ClubeId, e.Fonte }).IsUnique();
+        b.Entity<EstiloNoJogo>().Property(e => e.Fonte).HasMaxLength(10).HasDefaultValue("PitchAPI");
+        b.Entity<EstiloNoJogo>().Property(e => e.Bruto).HasColumnType("jsonb");
         b.Entity<Partida>().Property(p => p.PitchId).HasMaxLength(20);
 
         b.Entity<PalpiteDaPartida>().HasKey(x => x.PartidaId);

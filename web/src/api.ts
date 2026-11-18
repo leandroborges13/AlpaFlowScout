@@ -166,6 +166,12 @@ export const api = {
   resumoIa: (id: number, temporada: number) => pedir<{ texto: string }>(`/api/atletas/${id}/resumo-ia?temporada=${temporada}`),
   time: (id: number, competicao: number, temporada: number) =>
     pedir<DetalheTime>(`/api/times/${id}?competicao=${competicao}&temporada=${temporada}`),
+  /** Estilo do time na liga (pressão, recuperações altas, field tilt...); null quando não há métricas de time. */
+  estiloNaLiga: async (id: number, competicao?: number, temporada?: number) => {
+    const q = competicao && temporada ? `?competicao=${competicao}&temporada=${temporada}` : ''
+    const r = await fetch(`/api/times/${id}/estilo${q}`, { credentials: 'same-origin' })
+    return r.status === 204 ? null : (r.ok ? (r.json() as Promise<EstiloNaLiga>) : Promise.reject(new Error(`Erro ${r.status}`)))
+  },
   timesParaAtleta: (id: number, temporada: number) => pedir<TimesParaAtleta>(`/api/atletas/${id}/times?temporada=${temporada}`),
   treinador: (id: number) => pedir<DetalheTreinador>(`/api/treinadores/${id}`),
   atletasDoTreinador: (id: number) => pedir<AtletaDoTreinador[]>(`/api/treinadores/${id}/atletas`),
@@ -338,6 +344,10 @@ export type AnalisePartida = {
   /** O jogo seguinte de cada time depois desta partida. */
   jogosSeguintes?: ResumoPartida[] | null
 }
+
+/** Métrica de time por jogo e a posição na liga (1 = quem mais tem; no PPDA, quem mais pressiona). `frase` pronta para vídeo. */
+export type MetricaNaLiga = { chave: string; nome: string; valor: number; posicao: number; total: number; mediaDaLiga: number; maisEhMais: boolean; frase: string }
+export type EstiloNaLiga = { clubeId: number; time: string; competicaoId: number; competicao: string; temporada: number; jogos: number; metricas: MetricaNaLiga[]; fonte: string }
 
 /** Finalização no campo de 105x68 m, sempre atacando para a direita; xg de 0 a 1. */
 export type FinalizacaoNoMapa = {

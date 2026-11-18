@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { PranchetaTatica } from './Prancheta'
-import { api, type DetalheTime, type NecessidadeNaFuncao, type ResumoAtleta, type ResumoTime, type ResumoTreinador } from './api'
+import { api, type DetalheTime, type EstiloNaLiga, type NecessidadeNaFuncao, type ResumoAtleta, type ResumoTime, type ResumoTreinador } from './api'
 import { CartaoAtleta, Medidor } from './Componentes'
 
 /** Escudo do time (pequeno, uso informativo: aparece também no modo gravação), ou as iniciais quando não há escudo. */
@@ -59,10 +59,13 @@ export function PainelTime({ time, gravacao, onFechar, onAbrirAtleta, onAbrirTre
   const [detalhe, setDetalhe] = useState<DetalheTime | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [prancheta, setPrancheta] = useState(false)
+  const [estiloLiga, setEstiloLiga] = useState<EstiloNaLiga | null>(null)
 
   useEffect(() => {
     setDetalhe(null); setErro(null)
     api.time(time.id, time.competicaoId, time.temporada).then(setDetalhe).catch((e) => setErro(e.message))
+    setEstiloLiga(null)
+    api.estiloNaLiga(time.id, time.competicaoId, time.temporada).then(setEstiloLiga).catch(() => setEstiloLiga(null))
   }, [time])
 
   useEffect(() => {
@@ -109,6 +112,8 @@ export function PainelTime({ time, gravacao, onFechar, onAbrirAtleta, onAbrirTre
                 <p><b>{detalhe.estilo.rotulo}.</b> {detalhe.estilo.explicacao}</p>
               </section>
             )}
+
+            {estiloLiga && <EstiloDaLiga e={estiloLiga} />}
 
             {detalhe.dimensoes.length > 0 && (
               <section>
@@ -191,6 +196,30 @@ export function PainelTime({ time, gravacao, onFechar, onAbrirAtleta, onAbrirTre
         </div>
       </div>
     </div>
+  )
+}
+
+/** Métricas de time (PitchAPI) com a posição na liga; destaque para quem está entre os 3 de cima ou de baixo. */
+function EstiloDaLiga({ e }: { e: EstiloNaLiga }) {
+  return (
+    <section className="estilo-liga">
+      <h3>Como joga, na {e.competicao} {e.temporada}</h3>
+      <p className="dica">Média por jogo em {e.jogos} jogos, contra os outros {e.metricas[0]?.total ?? 0} times · fonte: {e.fonte}</p>
+      <div className="linhas">
+        {e.metricas.map((m) => {
+          const ponta = m.posicao <= 3 || m.posicao > m.total - 3
+          return (
+            <div key={m.chave} className={ponta ? 'ponta' : ''} title={m.frase}>
+              <b className="pos">{m.posicao}º</b>
+              <span>{m.nome}</span>
+              <b>{m.valor.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}</b>
+              <small>média {m.mediaDaLiga.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}</small>
+              {ponta && <em>{m.frase}</em>}
+            </div>
+          )
+        })}
+      </div>
+    </section>
   )
 }
 

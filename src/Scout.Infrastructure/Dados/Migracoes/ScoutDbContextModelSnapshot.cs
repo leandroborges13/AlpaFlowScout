@@ -697,6 +697,93 @@ namespace Scout.Infrastructure.Dados.Migracoes
                     b.ToTable("estatisticas", (string)null);
                 });
 
+            modelBuilder.Entity("Scout.Domain.EstiloNoJogo", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<double?>("AlturaDefesa")
+                        .HasColumnType("double precision")
+                        .HasColumnName("altura_defesa");
+
+                    b.Property<int>("AtaquesConstruidos")
+                        .HasColumnType("integer")
+                        .HasColumnName("ataques_construidos");
+
+                    b.Property<int>("AtaquesDiretos")
+                        .HasColumnType("integer")
+                        .HasColumnName("ataques_diretos");
+
+                    b.Property<string>("Bruto")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("bruto");
+
+                    b.Property<int>("ClubeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("clube_id");
+
+                    b.Property<int>("EntradasArea")
+                        .HasColumnType("integer")
+                        .HasColumnName("entradas_area");
+
+                    b.Property<int>("EntradasTercoFinal")
+                        .HasColumnType("integer")
+                        .HasColumnName("entradas_terco_final");
+
+                    b.Property<double?>("FieldTilt")
+                        .HasColumnType("double precision")
+                        .HasColumnName("field_tilt");
+
+                    b.Property<string>("Fonte")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("PitchAPI")
+                        .HasColumnName("fonte");
+
+                    b.Property<int>("PartidaId")
+                        .HasColumnType("integer")
+                        .HasColumnName("partida_id");
+
+                    b.Property<int>("PassesProgressivos")
+                        .HasColumnType("integer")
+                        .HasColumnName("passes_progressivos");
+
+                    b.Property<double?>("Posse")
+                        .HasColumnType("double precision")
+                        .HasColumnName("posse");
+
+                    b.Property<double?>("Ppda")
+                        .HasColumnType("double precision")
+                        .HasColumnName("ppda");
+
+                    b.Property<int>("RecuperacoesAltas")
+                        .HasColumnType("integer")
+                        .HasColumnName("recuperacoes_altas");
+
+                    b.Property<int>("RecuperacoesEm5s")
+                        .HasColumnType("integer")
+                        .HasColumnName("recuperacoes_em5s");
+
+                    b.Property<double?>("Xt")
+                        .HasColumnType("double precision")
+                        .HasColumnName("xt");
+
+                    b.HasKey("Id")
+                        .HasName("pk_estilos_no_jogo");
+
+                    b.HasIndex("PartidaId", "ClubeId", "Fonte")
+                        .IsUnique()
+                        .HasDatabaseName("ix_estilos_no_jogo_partida_id_clube_id_fonte");
+
+                    b.ToTable("estilos_no_jogo", (string)null);
+                });
+
             modelBuilder.Entity("Scout.Domain.PalpiteDaPartida", b =>
                 {
                     b.Property<int>("PartidaId")

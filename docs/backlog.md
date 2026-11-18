@@ -73,6 +73,15 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
     - Junto: o roteiro disse "o Galo recebe o Boca" numa final em campo neutro; usar o CampoNeutro (item 13) no próximo jogo.
 
 18. **Métricas de time da PitchAPI (/v1/matches/{id}/advanced)** — ideia de 18/11/2026, a partir do perfil @ovitorscout (Instagram, 15 mil)
+    - **FEITO em 18/11/2026 (menos o cartão do Para vídeo):**
+      - tabela estilos_no_jogo, preenchida por ColetaPitch.ColetarEstilos na AtualizacaoDiaria (até 150 jogos/dia) e pelo comando
+        `pitch-estilos <liga> <temporada> [max]`;
+      - consulta ObterEstiloNaLiga (média por jogo, posição e frase pronta, com mínimo de 5 jogos), servida em
+        GET /api/times/{id}/estilo e pelo comando `estilo <clube>`;
+      - seção "Como joga, na <liga>" no painel do time;
+      - no roteiro do pós-jogo: EstiloDoJogo (do banco ou direto da PitchAPI logo depois do apito, por IEstiloDaPartida) e as
+        frases do ranking em que o time está entre os 3 de cima ou de baixo.
+    - Falta: o cartão "ranking do time na liga" no Para vídeo.
     - O endpoint traz por jogo e por time:
       - pressão e recuperação: ppda, high_turnovers (recuperações no campo adversário), counterpress_regains_5s;
       - posição: avg_defensive_action_x (altura da defesa), field_tilt;

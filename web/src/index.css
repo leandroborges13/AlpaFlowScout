@@ -460,3 +460,12 @@ body:has(.pj) { background: #0a0a0a; }
 /* Prancheta: setas e adversário */
 .prancheta-setas { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .prancheta-setas label.botao-prancheta { display: inline-flex; gap: 6px; align-items: center; }
+
+/* Estilo do time na liga (métricas de time da PitchAPI) */
+.estilo-liga .dica { font-size: 13px; opacity: .7; margin: 0 0 8px; }
+.estilo-liga .linhas { display: grid; gap: 4px; }
+.estilo-liga .linhas > div { display: grid; grid-template-columns: 44px 1fr auto 90px; align-items: baseline; gap: 10px; padding: 6px 10px; border-radius: 8px; background: rgba(255,255,255,.04); }
+.estilo-liga .linhas > div.ponta { background: rgba(245,196,0,.12); }
+.estilo-liga .linhas .pos { opacity: .8; }
+.estilo-liga .linhas small { opacity: .6; text-align: right; }
+.estilo-liga .linhas em { grid-column: 2 / -1; font-style: normal; font-size: 13px; color: #f5c400; }

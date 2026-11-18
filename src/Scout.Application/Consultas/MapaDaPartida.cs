@@ -1,3 +1,5 @@
+using Scout.Domain;
+
 namespace Scout.Application.Consultas;
 
 /// <summary>
@@ -24,6 +26,13 @@ public record CalorDoJogador(int ClubeId, string Nome, int? Camisa, int Acoes, I
 /// <summary>Mapa de finalizações e de calor de uma partida, de uma fonte externa (hoje a PitchAPI: só ligas e só pós-jogo).</summary>
 public record MapaDaPartida(IReadOnlyList<FinalizacaoNoMapa> Finalizacoes, IReadOnlyList<CalorDoTime> Calor, string Fonte,
     IReadOnlyList<CalorDoJogador>? Jogadores = null);
+
+/// <summary>As métricas de time do jogo (pressão, recuperações altas...) direto da fonte, para o pós-jogo sair antes da coleta diária.</summary>
+public interface IEstiloDaPartida
+{
+    /// <summary>Nulo quando a fonte não está configurada, não cobre a competição ou ainda não tem o jogo.</summary>
+    Task<IReadOnlyList<EstiloNoJogo>?> ObterEstilo(ResumoPartida partida, CancellationToken ct);
+}
 
 public interface IMapaDaPartida
 {

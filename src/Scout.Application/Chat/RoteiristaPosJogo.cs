@@ -10,18 +10,20 @@ namespace Scout.Application.Chat;
 /// Roteiro do Short de pós-jogo do canal Galo na Lupa (@galonalupa): título, gancho, a fala de ~40 s (em primeira pessoa, para o Leandro
 /// gravar) e a legenda, escritos pela IA só com a análise da partida. Guarda no banco (um por partida).
 /// </summary>
-public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<AnalisarPartida, AnalisePartida?> analisarPartida, IMapaDaPartida mapas)
+public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<AnalisarPartida, AnalisePartida?> analisarPartida, IMapaDaPartida mapas,
+    IEstiloDaPartida estilos, IQueryHandler<ObterEstiloNaLiga, EstiloNaLiga?> estiloNaLiga)
 {
     public async Task<RoteiroPosJogo?> Gerar(int partidaId, CancellationToken ct)
     {
         var a = await analisarPartida.Handle(new AnalisarPartida(partidaId), ct);
         if (a is null || a.Partida.GolsMandante is null) return null;
         var mapa = await mapas.Obter(a.Partida, ct); // sem mapa (copa, fonte fora do ar): o roteiro sai sem as finalizações
+        var estilo = await EstiloDoJogo(a, ct);
 
         var resposta = await chat.GetResponseAsync(
         [
             new(ChatRole.System, Instrucoes),
-            new(ChatRole.User, Dados(a, mapa)),
+            new(ChatRole.User, Dados(a, mapa, estilo)),
         ], new ChatOptions { Temperature = 0.4f }, ct);
 
         var roteiro = await db.RoteirosPosJogo.FirstOrDefaultAsync(r => r.PartidaId == partidaId, ct);
@@ -31,6 +33,28 @@ public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<Anal
         await db.SaveChangesAsync(ct);
         return roteiro;
     }
+
+    /// <summary>As métricas de time do jogo (do banco ou, logo depois do apito, direto da fonte) e as frases do ranking na liga.</summary>
+    async Task<EstiloParaRoteiro?> EstiloDoJogo(AnalisePartida a, CancellationToken ct)
+    {
+        var p = a.Partida;
+        IReadOnlyList<EstiloNoJogo>? noJogo = await db.EstilosNoJogo.Where(e => e.PartidaId == p.Id).ToListAsync(ct);
+        if (noJogo.Count != 2) noJogo = await estilos.ObterEstilo(p, ct);
+        if (noJogo is null || noJogo.Count != 2) return null;
+        var naLiga = new Dictionary<string, IReadOnlyList<string>>();
+        foreach (var (id, nome) in new[] { (p.MandanteId, p.Mandante), (p.VisitanteId, p.Visitante) })
+            if (await estiloNaLiga.Handle(new ObterEstiloNaLiga(id, p.CompeticaoId, p.Temporada), ct) is { } e)
+                naLiga[nome] = FrasesDeDestaque(e);
+        return new EstiloParaRoteiro(noJogo, naLiga);
+    }
+
+    /// <summary>Só as métricas em que o time está entre os 3 de cima ou os 3 de baixo da liga: o resto não é notícia.</summary>
+    public static IReadOnlyList<string> FrasesDeDestaque(EstiloNaLiga e) =>
+        e.Metricas.Where(m => m.Posicao <= 3 || m.Posicao > m.Total - 3)
+            .Select(m => $"{e.Time} é {m.Frase} da {e.Competicao} {e.Temporada} ({m.Valor:0.#} por jogo; média da liga {m.MediaDaLiga:0.#})")
+            .ToList();
+
+    public record EstiloParaRoteiro(IReadOnlyList<EstiloNoJogo> NoJogo, IReadOnlyDictionary<string, IReadOnlyList<string>> NaLiga);
 
     const string Fecho = "Se inscreve no Galo na Lupa pra ver se o modelo acerta o próximo.";
 
@@ -69,7 +93,7 @@ public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<Anal
     }
 
     /// <summary>O que a IA precisa da análise, sem escalações nem indicadores de cada atleta (deixa o pedido curto e focado).</summary>
-    public static string Dados(AnalisePartida a, MapaDaPartida? mapa = null)
+    public static string Dados(AnalisePartida a, MapaDaPartida? mapa = null, EstiloParaRoteiro? estilo = null)
     {
         var p = a.Partida;
         string Time(int clubeId) => clubeId == p.MandanteId ? p.Mandante : p.Visitante;
@@ -110,6 +134,19 @@ public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<Anal
                 return new { Total = doTime.Count, DentroDaArea = doTime.Count(f => f.DentroDaArea), NoAlvo = doTime.Count(f => f.NoAlvo),
                     Travadas = doTime.Count(f => f.Bloqueada) };
             }),
+            // métricas de time do jogo: onde cada um roubou e perdeu a bola, pressão e domínio (PitchAPI)
+            EstiloDoJogo = estilo is null ? null : new[] { (p.MandanteId, p.Mandante), (p.VisitanteId, p.Visitante) }.ToDictionary(t => t.Item2, t =>
+            {
+                var e = estilo.NoJogo.First(x => x.ClubeId == t.Item1);
+                var rival = estilo.NoJogo.First(x => x.ClubeId != t.Item1);
+                return new
+                {
+                    RoubouNoCampoDeAtaque = e.RecuperacoesAltas, PerdeuNoProprioCampo = rival.RecuperacoesAltas,
+                    RecuperouEm5s = e.RecuperacoesEm5s, Ppda = e.Ppda is { } v ? Math.Round(v, 1) : (double?)null,
+                    FieldTilt = e.FieldTilt is { } f ? Math.Round(f) : (double?)null, e.AtaquesDiretos, e.AtaquesConstruidos,
+                };
+            }),
+            EstiloNaLiga = estilo?.NaLiga,
             // de qual time é cada próximo jogo, para a IA não anunciar o jogo do adversário como se fosse do Galo
             ProximoJogo = new[] { (p.MandanteId, p.Mandante), (p.VisitanteId, p.Visitante) }.ToDictionary(t => t.Item2, t =>
                 a.JogosSeguintes?.Where(j => j.MandanteId == t.Item1 || j.VisitanteId == t.Item1)
@@ -155,5 +192,9 @@ public class RoteiristaPosJogo(IChatClient chat, IScoutDb db, IQueryHandler<Anal
         - Os gols vêm em ordem cronológica, com o acréscimo ("90+3") e o placar depois de cada um (PlacarDepois). Use o PlacarDepois
           para dizer qual gol empatou e qual virou ou decidiu: nunca deduza pela ordem dos nomes.
         - Datas já vêm com o dia da semana: use exatamente esse dia, nunca calcule outro.
+        - Quando vier EstiloDoJogo (métricas de time do jogo): pode usar no máximo UMA frase sobre onde o jogo foi disputado, por
+          exemplo "o Galo perdeu a bola 12 vezes no próprio campo" (PerdeuNoProprioCampo) ou "roubou 9 no campo de ataque"
+          (RoubouNoCampoDeAtaque). Ppda menor = mais pressão; não cite o número do Ppda, diga "pressionou mais/menos".
+        - Quando vier EstiloNaLiga: são frases prontas sobre a temporada. Pode usar no máximo uma, como está, se ajudar a explicar o jogo.
         """;
 }

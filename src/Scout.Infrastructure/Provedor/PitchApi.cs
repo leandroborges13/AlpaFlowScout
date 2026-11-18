@@ -14,7 +14,7 @@ namespace Scout.Infrastructure.Provedor;
 /// (desde 2023) e Série B (desde 2024); copas não têm. A partida é achada pela data (até 3 h de diferença) e pelo nome de um dos
 /// times, porque os ids são outros. Serviço pequeno e sem garantia: qualquer falha vira "sem mapa", nunca erro na tela.
 /// </summary>
-public class PitchApi(HttpClient http, IConfiguration config, IMemoryCache cache, ILogger<PitchApi> log) : IMapaDaPartida
+public class PitchApi(HttpClient http, IConfiguration config, IMemoryCache cache, ILogger<PitchApi> log) : IMapaDaPartida, IEstiloDaPartida
 {
     /// <summary>Nossas competições (ids da API-Football) e as ligas correspondentes na PitchAPI.</summary>
     public static readonly IReadOnlyDictionary<int, string> Ligas = new Dictionary<int, string> { [71] = "l_1D8Xrl", [72] = "l_3qUkB8" };
@@ -64,6 +64,31 @@ public class PitchApi(HttpClient http, IConfiguration config, IMemoryCache cache
         catch (Exception e) when (e is not OperationCanceledException)
         {
             log.LogWarning(e, "Mapa da partida {Partida} indisponível na PitchAPI", p.Id);
+            return null;
+        }
+    }
+
+    public async Task<IReadOnlyList<Scout.Domain.EstiloNoJogo>?> ObterEstilo(ResumoPartida p, CancellationToken ct)
+    {
+        var chave = config["PITCHAPI_KEY"];
+        if (string.IsNullOrWhiteSpace(chave) || !Ligas.TryGetValue(p.CompeticaoId, out var liga) || p.GolsMandante is null) return null;
+        try
+        {
+            var jogos = await Buscar($"/v1/leagues/{liga}/matches?season={p.Temporada}", chave, TimeSpan.FromMinutes(30), ct);
+            var jogo = Achar(jogos.GetProperty("matches"), p);
+            if (jogo is null) return null;
+            var (id, casaId, foraId) = jogo.Value;
+            var adv = await Buscar($"/v1/matches/{id}/advanced", chave, TimeSpan.FromHours(12), ct);
+            var r = adv.GetProperty("teams").EnumerateArray()
+                .Select(t => (Time: Texto(t, "team", "id"), Dados: t))
+                .Where(t => t.Time == casaId || t.Time == foraId)
+                .Select(t => ColetaPitch.LerEstilo(t.Dados, p.Id, t.Time == casaId ? p.MandanteId : p.VisitanteId))
+                .ToList();
+            return r.Count == 2 ? r : null;
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            log.LogWarning(e, "Métricas de time da partida {Partida} indisponíveis na PitchAPI", p.Id);
             return null;
         }
     }

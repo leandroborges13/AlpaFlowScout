@@ -32,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<Importador>();
         // Mapa de finalizações e de calor (PitchAPI); sem PITCHAPI_KEY, o mapa simplesmente não aparece
         services.AddHttpClient<Scout.Application.Consultas.IMapaDaPartida, PitchApi>(c => { c.BaseAddress = new Uri("https://api.pitchapi.dev"); c.Timeout = TimeSpan.FromSeconds(20); });
+        services.AddTransient<Scout.Application.Consultas.IEstiloDaPartida>(sp => (PitchApi)sp.GetRequiredService<Scout.Application.Consultas.IMapaDaPartida>());
         // Desempenho avançado jogo a jogo (PitchAPI), base para sair do Pro da API-Football
         services.AddHttpClient<ColetaPitch>(c => { c.BaseAddress = new Uri("https://api.pitchapi.dev"); c.Timeout = TimeSpan.FromSeconds(30); });
         // Copas, elencos e nascimento (Bzzoiro); sem BZZOIRO_KEY, não faz nada

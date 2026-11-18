@@ -243,6 +243,35 @@ public class PartidasTests
     }
 
     [Fact]
+    public void Estilo_na_liga_ranqueia_e_conta_a_perda_de_bola_pelo_rival()
+    {
+        // 3 times, 5 jogos cada contra o mesmo rival (99): o time 1 perde 10 bolas no próprio campo por jogo, o 2 perde 6 e o 3 perde 2
+        var linhas = new List<Scout.Domain.EstiloNoJogo>();
+        var jogo = 0;
+        foreach (var (time, perde, rouba, pp) in new[] { (1, 10, 4, 14.0), (2, 6, 8, 9.0), (3, 2, 6, 11.0) })
+            for (var i = 0; i < 5; i++)
+            {
+                jogo++;
+                linhas.Add(new Scout.Domain.EstiloNoJogo { PartidaId = jogo, ClubeId = time, RecuperacoesAltas = rouba, Ppda = pp });
+                linhas.Add(new Scout.Domain.EstiloNoJogo { PartidaId = jogo, ClubeId = 99, RecuperacoesAltas = perde, Ppda = 10 });
+            }
+        var m = Scout.Application.Consultas.ObterEstiloNaLigaHandler.Calcular(linhas, 1)!;
+        var perdas = m.Single(x => x.Chave == "perdasNoProprioCampo");
+        Assert.Equal(10, perdas.Valor);
+        Assert.Equal(1, perdas.Posicao);
+        Assert.Equal("o time que mais perde a bola no próprio campo", perdas.Frase);
+        // PPDA: menor = mais pressão. O time 1 (14) é o que menos pressiona entre os 4 (o rival 99 também entra, com 5+ jogos)
+        var ppda = m.Single(x => x.Chave == "ppda");
+        Assert.Equal(4, ppda.Posicao);
+        Assert.Equal("o time que menos pressiona", ppda.Frase);
+        // e o time 2 é o que mais rouba a bola no campo de ataque (8 por jogo; o rival 99 e o time 3 roubam 6)
+        var rouba2 = Scout.Application.Consultas.ObterEstiloNaLigaHandler.Calcular(linhas, 2)!.Single(x => x.Chave == "recuperacoesAltas");
+        Assert.Equal(1, rouba2.Posicao);
+        // com menos de 5 jogos, o time fica fora
+        Assert.Null(Scout.Application.Consultas.ObterEstiloNaLigaHandler.Calcular(linhas.Where(l => l.PartidaId > 2).ToList(), 1));
+    }
+
+    [Fact]
     public void Final_unica_da_Sul_Americana_e_campo_neutro()
     {
         Assert.True(Scout.Application.Consultas.ObterCopasDoTimeHandler.CampoNeutro(11, "Final"));

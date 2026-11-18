@@ -14,6 +14,7 @@ public static class DependencyInjection
         services.AddScoped<AnaliseDeTimes>();
         services.AddScoped<IQueryHandler<ListarCompeticoes, IReadOnlyList<CompeticaoDisponivel>>, ListarCompeticoesHandler>();
         services.AddScoped<IQueryHandler<ObterPrancheta, Prancheta?>, ObterPranchetaHandler>();
+        services.AddScoped<IQueryHandler<ObterEstiloNaLiga, EstiloNaLiga?>, ObterEstiloNaLigaHandler>();
         services.AddScoped<IQueryHandler<ObterSequencias, ResultadoSequencias?>, ObterSequenciasHandler>();
         services.AddScoped<PalpitesHandler>();
         services.AddScoped<IQueryHandler<ObterPaginaPublica, PaginaPublica?>, ObterPaginaPublicaHandler>();

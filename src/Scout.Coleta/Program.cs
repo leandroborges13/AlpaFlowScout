@@ -9,6 +9,8 @@
 //   dotnet run --project src/Scout.Coleta -- nascimento <id> <aaaa-mm-dd> <fonte>   (data de fonte pública, ex.: "site do clube")
 //   dotnet run --project src/Scout.Coleta -- atleta <nome>   (o que a base tem do atleta)
 //   dotnet run --project src/Scout.Coleta -- pitch <liga> <temporada> [max]   (desempenho avançado jogo a jogo pela PitchAPI)
+//   dotnet run --project src/Scout.Coleta -- pitch-estilos <liga> <temporada> [max]   (métricas de time jogo a jogo: pressão, recuperações altas)
+//   dotnet run --project src/Scout.Coleta -- estilo <clube>   (estilo do time na liga: pressão, recuperações altas, com o ranking)
 //   dotnet run --project src/Scout.Coleta -- nascimentos-bzzoiro <temporada>   (data de nascimento de quem está sem, pela Bzzoiro)
 //   dotnet run --project src/Scout.Coleta -- copas-bzzoiro <temporada> [max]   (desempenho dos atletas nos jogos de copa, pela Bzzoiro)
 using Microsoft.EntityFrameworkCore;
@@ -56,6 +58,12 @@ try
             Console.WriteLine($"PitchAPI: {rp.Jogos} jogos, {rp.Ligados}/{rp.Atletas} atletas ligados ao cadastro, {rp.SemPar} jogos sem par na base");
             break;
 
+        case "pitch-estilos" when args.Length >= 3 && int.TryParse(args[1], out var ligaE) && int.TryParse(args[2], out var temporadaE):
+            await sp.GetRequiredService<ScoutDbContext>().Database.MigrateAsync(cts.Token);
+            var maxE = args.Length >= 4 && int.TryParse(args[3], out var me) ? me : 400;
+            Console.WriteLine($"PitchAPI estilos: {await sp.GetRequiredService<ColetaPitch>().ColetarEstilos(ligaE, temporadaE, maxE, cts.Token)} jogos");
+            break;
+
         case "nascimentos-bzzoiro" when args.Length >= 2 && int.TryParse(args[1], out var temporadaB):
             var rb = await sp.GetRequiredService<ColetaBzzoiro>().PreencherNascimentos(temporadaB, cts.Token);
             Console.WriteLine($"Bzzoiro: {rb.Preenchidos} de {rb.SemData} atletas sem data preenchidos; {rb.ClubesLigados}/{rb.Clubes} clubes ligados; {rb.Duvidosos} com datas conflitantes");
@@ -66,6 +74,15 @@ try
             var maxC = args.Length >= 3 && int.TryParse(args[2], out var mc) ? mc : 200;
             var rc = await sp.GetRequiredService<ColetaBzzoiro>().ColetarCopas(temporadaC, maxC, cts.Token);
             Console.WriteLine($"Bzzoiro copas: {rc.Jogos} jogos, {rc.Ligados}/{rc.Atletas} atletas ligados ao cadastro, {rc.SemPar} jogos sem par na base");
+            break;
+
+        case "estilo" when args.Length >= 2 && int.TryParse(args[1], out var clubeEst):
+            // o estilo do time na liga, como a tela mostra (métricas de time da PitchAPI ranqueadas)
+            var est = await new Scout.Application.Consultas.ObterEstiloNaLigaHandler(sp.GetRequiredService<ScoutDbContext>())
+                .Handle(new Scout.Application.Consultas.ObterEstiloNaLiga(clubeEst), cts.Token);
+            if (est is null) { Console.WriteLine("Sem métricas de time para esse clube."); break; }
+            Console.WriteLine($"{est.Time} · {est.Competicao} {est.Temporada} · {est.Jogos} jogos");
+            foreach (var mt in est.Metricas) Console.WriteLine($"  {mt.Posicao,2}º de {mt.Total} | {mt.Nome}: {mt.Valor} (média {mt.MediaDaLiga}) | {mt.Frase}");
             break;
 
         case "atleta" when args.Length >= 2:

@@ -55,7 +55,9 @@ public class AtualizacaoDiaria(IServiceScopeFactory escopos, IConfiguration conf
                 try
                 {
                     using var escopo = escopos.CreateScope();
-                    await escopo.ServiceProvider.GetRequiredService<ColetaPitch>().Coletar(liga, temporada, 150, ct);
+                    var pitch = escopo.ServiceProvider.GetRequiredService<ColetaPitch>();
+                    await pitch.Coletar(liga, temporada, 150, ct);
+                    await pitch.ColetarEstilos(liga, temporada, 150, ct); // métricas de time (pressão, recuperações altas...)
                 }
                 catch (Exception e) when (e is not OperationCanceledException)
                 {

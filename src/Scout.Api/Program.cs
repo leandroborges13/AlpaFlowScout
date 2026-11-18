@@ -166,6 +166,10 @@ api.MapGet("/times", (int? competicao, int? temporada, IQueryHandler<ListarTimes
 api.MapGet("/times/{id:int}", async (int id, int? competicao, int? temporada, IQueryHandler<ObterTime, DetalheTime?> h, CancellationToken ct) =>
     await h.Handle(new ObterTime(id, competicao, temporada), ct) is { } d ? Results.Ok(d) : Results.NotFound());
 
+// Estilo do time na liga: métricas de time (pressão, recuperações altas, field tilt...) ranqueadas contra os outros times
+api.MapGet("/times/{id:int}/estilo", async (int id, int? competicao, int? temporada, IQueryHandler<ObterEstiloNaLiga, EstiloNaLiga?> h, CancellationToken ct) =>
+    await h.Handle(new ObterEstiloNaLiga(id, competicao, temporada), ct) is { } e ? Results.Ok(e) : Results.NoContent());
+
 api.MapGet("/times/{id:int}/prancheta", async (int id, string? esquema, IQueryHandler<ObterPrancheta, Prancheta?> h, CancellationToken ct) =>
     await h.Handle(new ObterPrancheta(id, esquema), ct) is { } p ? Results.Ok(p) : Results.NotFound());
 
