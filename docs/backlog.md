@@ -131,6 +131,17 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
       - Quase tudo já sai das consultas de time e do estilo na liga.
       - Falta um cartão "time x time" no Para vídeo, aproveitando o lado a lado do raio-x de atletas.
 
+21. **Atleta que saiu do clube continua no elenco** (achado em 21/11/2026, véspera da final)
+    - **O problema:** a prancheta e o elenco do time (/api/times/{id}/prancheta) listam quem tem estatística pelo clube na
+      temporada. Por isso o Hulk, que foi para o Fluminense, aparecia no Galo com nota 83, a 2ª maior do elenco. Também
+      apareciam o Junior Alonso e o Iván Román, sem jogo pelo Galo desde 15/09.
+    - **O risco:** vídeo ou roteiro citando jogador que não está mais no time.
+    - **Fazer:**
+      - marcar como "fora do elenco" quem não aparece em nenhuma escalação ou banco do clube nos últimos 60 dias;
+      - quando der, confirmar pela transferência (API-Football /transfers ou Bzzoiro: elenco por time e transferências);
+      - na prancheta, no elenco, na provável e no chat, só entra quem está no elenco atual;
+      - na nota da temporada, mostrar "saiu em <mês>" em vez de sumir com o atleta.
+
 ## Mapa de calor e finalizações no campo (levantamento de 03/11/2026)
 
 FEITO em 03/11/2026 com a PitchAPI (Série A 2023-2026 confirmada): 4º cartão do "Para vídeo" e contagens de finalização no roteiro.
