@@ -142,6 +142,31 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
       - na prancheta, no elenco, na provável e no chat, só entra quem está no elenco atual;
       - na nota da temporada, mostrar "saiu em <mês>" em vez de sumir com o atleta.
 
+22. **Ferramentas para crescer o canal: testar no planejamento de segunda (23/11/2026)** — conversa de 22/11/2026
+    - **Fazer:** na manhã de segunda (23/11), antes do pré-jogo do Galo x Corinthians de quarta.
+    - **Por quê:**
+      - Os Shorts alternam picos (provável: 387) e quedas, o X quase não entrega e o TikTok novo não pegou.
+      - Dos vídeos longos, os que funcionaram foram os de antes do jogo, com rosto na miniatura:
+        - Os garotos do Galo: 91;
+        - Galo x Grêmio: dá pra virar?: 68;
+        - Paredes x Fred: 52.
+      - Os de depois do jogo com miniatura só de cartão ficaram em 42 e 5.
+    - **Para testar:**
+      - **YouTube Studio, grátis:**
+        - Insights → aba "Pesquisa": o que o público busca. Usar no título do pré-jogo do Corinthians.
+        - "Testar e comparar": A/B de título e miniatura no próximo vídeo longo, com rosto x só cartão.
+      - **Metricool, plano grátis:**
+        - Painel único de YouTube, IG, FB, TikTok e X, com relatório semanal e melhores horários de cada rede.
+        - O Leandro cria a conta e conecta as redes. Depois disso, o planejamento usa os dados de lá.
+      - **Google Trends:** buscas sobre o Galo em MG antes e depois do jogo, para escolher título e gancho.
+      - **TikTok Creative Center:** hashtags e sons em alta no Brasil, para o @galoemnumeros.
+      - **vidIQ, funções que ainda não usamos:**
+        - comment_insights e subscriber_insights;
+        - title_thumbnail_wins;
+        - postagem social: se publicar Reels e TikTok pelo vidIQ, troca parte do trabalho manual no Chrome. Testar com 1 vídeo.
+    - **Fora:** TubeBuddy (faz o mesmo que o vidIQ) e corte automático tipo Opus Clip (a edição já é nossa).
+    - **Resultado esperado:** decidir quais ficam na rotina semanal e registrar no plano da semana.
+
 ## Mapa de calor e finalizações no campo (levantamento de 03/11/2026)
 
 FEITO em 03/11/2026 com a PitchAPI (Série A 2023-2026 confirmada): 4º cartão do "Para vídeo" e contagens de finalização no roteiro.
