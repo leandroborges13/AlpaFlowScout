@@ -167,6 +167,30 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
     - **Fora:** TubeBuddy (faz o mesmo que o vidIQ) e corte automático tipo Opus Clip (a edição já é nossa).
     - **Resultado esperado:** decidir quais ficam na rotina semanal e registrar no plano da semana.
 
+23. **Mapa de mercado fora do Brasil: "o centroavante que o Galo precisa"** — ideia de 23/11/2026 (depois do vice e do "Barba ou Bracks")
+    - **O problema:** o Scout só ranqueia atletas da Série A. Em jogos de copa entram só os times da Série A, e a liga argentina
+      está na PitchAPI e na Bzzoiro, mas não está cadastrada. Então não dá pra responder "quem o Galo deveria contratar" olhando
+      a América do Sul.
+    - **Por quê:** o assunto da semana é a falta de centroavante (artilheiro do Galo na Série A tem 5 gols; Cassierra 3 em 1.215
+      min). Short e vídeo longo do tipo "5 centroavantes que cabem no Galo" com nota da IA é pauta da janela (dez a fev).
+    - **Fazer, nesta ordem:**
+      1. Cadastrar ligas sul-americanas 2026:
+         - Argentina (PitchAPI l_45VZuL, Bzzoiro 85, API-Football 128);
+         - depois Colômbia, Uruguai, Equador, Chile e Paraguai (conferir cobertura na PitchAPI e na Bzzoiro; a API-Football
+           cobre todas enquanto o Pro durar, até ~09/12).
+         - Começar só pelos atacantes e meias, para caber na cota.
+      2. **Nota comparável entre ligas:** hoje a nota e o percentil são calculados dentro da competição. Um 85 na liga uruguaia não
+         vale um 85 na Série A. Criar um fator de força da liga (Elo dos clubes, resultados em Libertadores e Sul-Americana) e
+         mostrar sempre "nota na liga dele" e "nota ajustada à Série A".
+      3. **Busca "perfil de mercado":** função, idade máxima, minutos mínimos, liga e contrato/valor (Bzzoiro tem contrato e
+         valor de mercado), ordenada pela nota ajustada.
+      4. **Cartão "lado a lado" para vídeo:** candidato x Cassierra, com gols por 90, finalização, duelos aéreos e participação.
+    - **Depois (internacional):** Portugal, México, MLS e ligas de onde o Brasil costuma comprar (Bzzoiro e PitchAPI cobrem várias).
+      Avaliar custo antes.
+    - **Cuidados:**
+      - Não afirmar que o clube "vai contratar": é sugestão pelos números.
+      - Conferir se o atleta ainda está no clube (item 21).
+
 ## Mapa de calor e finalizações no campo (levantamento de 03/11/2026)
 
 FEITO em 03/11/2026 com a PitchAPI (Série A 2023-2026 confirmada): 4º cartão do "Para vídeo" e contagens de finalização no roteiro.
