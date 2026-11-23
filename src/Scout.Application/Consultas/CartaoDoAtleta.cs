@@ -21,7 +21,7 @@ public class ObterCartaoDoAtletaHandler(IScoutDb db, MotorDeAnalise motor) : IQu
 {
     public async Task<CartaoDoAtleta?> Handle(ObterCartaoDoAtleta q, CancellationToken ct)
     {
-        var linhas = await BuscarPorPerfilHandler.CarregarLinhas(db, motor, q.Temporada, null, ct);
+        var linhas = await BuscarPorPerfilHandler.CarregarLinhas(db, motor, q.Temporada, null, ct, incluirExterior: true);
         // Se jogou mais de uma liga na temporada, fica a de mais minutos (como no painel do atleta)
         var l = linhas.Where(x => x.AtletaId == q.AtletaId).OrderByDescending(x => x.Minutos).FirstOrDefault();
         if (l is null) return null;

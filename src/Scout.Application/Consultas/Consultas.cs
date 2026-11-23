@@ -107,11 +107,14 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor) : IQueryH
     /// Linhas das competições pedidas (ou de todas as ligas). Sem temporada, usa em cada competição a mais recente
     /// que tem estatística: assim a Série C 2025 entra junto com as Séries A e B de 2026.
     /// Copas só entram quando pedidas: poucos jogos e times de divisões diferentes não dão uma nota justa.
+    /// Ligas de fora do Brasil (ex.: 128, argentina) também só entram quando pedidas ou com `incluirExterior`: assim os rankings
+    /// "do Brasileirão" não mudam por ter outra liga no banco (a nota é calculada dentro de cada liga e não se compara entre elas).
     /// </summary>
-    public static async Task<List<LinhaAnalise>> CarregarLinhas(IScoutDb db, MotorDeAnalise motor, int? temporada, int[]? competicoes, CancellationToken ct)
+    public static async Task<List<LinhaAnalise>> CarregarLinhas(IScoutDb db, MotorDeAnalise motor, int? temporada, int[]? competicoes, CancellationToken ct,
+        bool incluirExterior = false)
     {
         var linhas = new List<LinhaAnalise>();
-        foreach (var (competicao, ano) in await CompeticoesAlvo(db, temporada, competicoes, ct, incluirCopas: false))
+        foreach (var (competicao, ano) in await CompeticoesAlvo(db, temporada, competicoes, ct, incluirCopas: false, incluirExterior: incluirExterior))
             if (await motor.Analisar(competicao, ano, ct) is { } analise) linhas.AddRange(analise.Linhas);
         return linhas;
     }
@@ -121,11 +124,16 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor) : IQueryH
     /// `incluirCopas: false` deixa as copas de fora quando nenhuma competição foi pedida.
     /// </summary>
     public static async Task<List<(int Competicao, int Temporada)>> CompeticoesAlvo(IScoutDb db, int? temporada, int[]? competicoes, CancellationToken ct,
-        bool incluirCopas = true)
+        bool incluirCopas = true, bool incluirExterior = false)
     {
         var consulta = db.Estatisticas.AsNoTracking().Where(e => e.Minutos > 0);
         if (competicoes is { Length: > 0 }) consulta = consulta.Where(e => competicoes.Contains(e.CompeticaoId));
-        else if (!incluirCopas) consulta = consulta.Where(e => e.Competicao.Tipo != Competicao.TipoCopa);
+        else
+        {
+            if (!incluirCopas) consulta = consulta.Where(e => e.Competicao.Tipo != Competicao.TipoCopa);
+            // liga de outro país só quando pedida (copa continental tem país "World" e segue a regra das copas)
+            if (!incluirExterior) consulta = consulta.Where(e => e.Competicao.Tipo == Competicao.TipoCopa || e.Competicao.Pais == "" || e.Competicao.Pais == "Brazil");
+        }
         if (temporada is not null) consulta = consulta.Where(e => e.Temporada == temporada);
         var alvos = await consulta.GroupBy(e => e.CompeticaoId)
             .Select(g => new { Competicao = g.Key, Temporada = g.Max(e => e.Temporada) })
@@ -158,7 +166,7 @@ public class ObterAtletaHandler(IScoutDb db, MotorDeAnalise motor, IHistoricoDoA
 {
     public async Task<DetalheAtleta?> Handle(ObterAtleta q, CancellationToken ct)
     {
-        var linhas = await BuscarPorPerfilHandler.CarregarLinhas(db, motor, q.Temporada, q.CompeticaoId is { } c ? [c] : null, ct);
+        var linhas = await BuscarPorPerfilHandler.CarregarLinhas(db, motor, q.Temporada, q.CompeticaoId is { } c ? [c] : null, ct, incluirExterior: true);
         // Se jogou mais de uma competição na temporada, fica a de mais minutos
         var l = linhas.Where(x => x.AtletaId == q.AtletaId).OrderByDescending(x => x.Minutos).FirstOrDefault();
         if (l is null) return null;

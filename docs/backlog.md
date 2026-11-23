@@ -174,7 +174,11 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
     - **Por quê:** o assunto da semana é a falta de centroavante (artilheiro do Galo na Série A tem 5 gols; Cassierra 3 em 1.215
       min). Short e vídeo longo do tipo "5 centroavantes que cabem no Galo" com nota da IA é pauta da janela (dez a fev).
     - **Fazer, nesta ordem:**
-      1. Cadastrar ligas sul-americanas 2026:
+      1. Cadastrar ligas sul-americanas 2026 — **Argentina FEITA em 23/11/2026** (`importar 128 2026`: 30 clubes, 1.203 atletas,
+         501 jogos com escalação, ~1.100 consultas; PitchApi.Ligas[128]). Liga de fora do Brasil só entra em ranking, busca e
+         lista de times quando pedida (`incluirExterior` em CarregarLinhas/CompeticoesAlvo/CarregarTimes); atleta, time e
+         treinador de lá abrem normalmente. Centroavantes 900+ min com maior nota na liga: Passerini (Belgrano) 78,6, N. Fernández
+         (Belgrano) 63,3, R. Martínez (Talleres, 14 gols) 60,9, Módica (Gimnasia M., 14 gols) 58,6, Merentiel 58,6.
          - Argentina (PitchAPI l_45VZuL, Bzzoiro 85, API-Football 128);
          - depois Colômbia, Uruguai, Equador, Chile e Paraguai (conferir cobertura na PitchAPI e na Bzzoiro; a API-Football
            cobre todas enquanto o Pro durar, até ~09/12).

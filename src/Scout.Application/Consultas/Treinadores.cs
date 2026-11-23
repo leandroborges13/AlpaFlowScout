@@ -71,7 +71,7 @@ public class ObterTreinadorHandler(IScoutDb db, AnaliseDeTimes analise, ICarreir
 {
     public async Task<DetalheTreinador?> Handle(ObterTreinador q, CancellationToken ct)
     {
-        var analises = await ListarTimesHandler.CarregarAnalises(db, analise, q.Temporada, null, ct);
+        var analises = await ListarTimesHandler.CarregarAnalises(db, analise, q.Temporada, null, ct, incluirExterior: true);
         var passagens = analises.SelectMany(a => a.Treinadores.Select(p => (a, p))).Where(x => x.p.TreinadorId == q.TreinadorId)
             .OrderBy(x => x.p.Linha.Copa).ThenByDescending(x => x.p.Fim).ToList(); // ligas primeiro; o resumo é a liga mais recente
         if (passagens.Count == 0) return null;

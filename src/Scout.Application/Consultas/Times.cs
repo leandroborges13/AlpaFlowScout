@@ -96,13 +96,16 @@ public class ListarTimesHandler(IScoutDb db, AnaliseDeTimes analise) : IQueryHan
     }
 
     /// <summary>Times das competições pedidas (ou de todas), na temporada mais recente com dados de cada uma.</summary>
-    public static async Task<List<LinhaTime>> CarregarTimes(IScoutDb db, AnaliseDeTimes analise, int? temporada, int[]? competicoes, CancellationToken ct) =>
-        (await CarregarAnalises(db, analise, temporada, competicoes, ct)).SelectMany(a => a.Times).ToList();
+    /// Liga de fora do Brasil só entra quando pedida ou com `incluirExterior` (ver BuscarPorPerfilHandler.CarregarLinhas).
+    public static async Task<List<LinhaTime>> CarregarTimes(IScoutDb db, AnaliseDeTimes analise, int? temporada, int[]? competicoes, CancellationToken ct,
+        bool incluirExterior = false) =>
+        (await CarregarAnalises(db, analise, temporada, competicoes, ct, incluirExterior)).SelectMany(a => a.Times).ToList();
 
-    public static async Task<List<AnaliseTimesTemporada>> CarregarAnalises(IScoutDb db, AnaliseDeTimes analise, int? temporada, int[]? competicoes, CancellationToken ct)
+    public static async Task<List<AnaliseTimesTemporada>> CarregarAnalises(IScoutDb db, AnaliseDeTimes analise, int? temporada, int[]? competicoes, CancellationToken ct,
+        bool incluirExterior = false)
     {
         var analises = new List<AnaliseTimesTemporada>();
-        foreach (var (competicao, ano) in await BuscarPorPerfilHandler.CompeticoesAlvo(db, temporada, competicoes, ct))
+        foreach (var (competicao, ano) in await BuscarPorPerfilHandler.CompeticoesAlvo(db, temporada, competicoes, ct, incluirExterior: incluirExterior))
             if (await analise.Analisar(competicao, ano, ct) is { } r) analises.Add(r);
         return analises;
     }
@@ -116,7 +119,7 @@ public class ObterTimeHandler(IScoutDb db, AnaliseDeTimes analise, MotorDeAnalis
 {
     public async Task<DetalheTime?> Handle(ObterTime q, CancellationToken ct)
     {
-        var times = await ListarTimesHandler.CarregarTimes(db, analise, q.Temporada, q.CompeticaoId is { } c ? [c] : null, ct);
+        var times = await ListarTimesHandler.CarregarTimes(db, analise, q.Temporada, q.CompeticaoId is { } c ? [c] : null, ct, incluirExterior: true);
         // Sem competição pedida, vale a liga do time (as copas têm poucos jogos)
         var t = times.Where(x => x.ClubeId == q.ClubeId).OrderBy(x => x.Copa).ThenByDescending(x => x.Temporada).ThenByDescending(x => x.Jogos).FirstOrDefault();
         if (t is null) return null;

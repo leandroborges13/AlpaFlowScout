@@ -133,7 +133,7 @@ try
 
         default:
             Console.WriteLine("Comandos: migrar | cota | importar <liga> <temporada> [--sem-escalacoes] | criar-usuario <email> <nome> | remover-usuario <email>");
-            Console.WriteLine("Ligas: 71 Série A · 72 Série B · 75 Série C · 76 Série D");
+            Console.WriteLine("Ligas: 71 Série A · 72 Série B · 75 Série C · 76 Série D · 128 Argentina (Liga Profesional)");
             return 1;
     }
     return 0;
