@@ -63,7 +63,7 @@ export function PainelAtleta({ atleta, gravacao, onFechar, onAbrir, onAbrirTime 
             {a.funcao && <span className="funcao">{a.funcao}{a.esquemaMaisComum ? ` · ${a.esquemaMaisComum}` : ''}</span>}
           </div>
           {a.nota != null && <div className="nota"><b>{Math.round(a.nota)}</b><span>{a.notaSerieA != null ? 'nota na liga' : 'nota geral'}</span></div>}
-          {a.notaSerieA != null && <div className="nota" title="Nota convertida para a escala da Série A pelo nível da liga, medido nos confrontos de Libertadores e Sul-Americana"><b>{Math.round(a.notaSerieA)}</b><span>na Série A</span></div>}
+          {a.notaSerieA != null && <div className="nota" title="Nota convertida para a escala da Série A pelo nível da liga, medido nos confrontos de Libertadores e Sul-Americana"><b>{Math.round(a.notaSerieA)}</b><span>{a.notaSerieAEstimada ? '≈ na Série A' : 'na Série A'}</span></div>}
         </div>
         {a.nota != null && (
           <div className="prancheta-botoes">

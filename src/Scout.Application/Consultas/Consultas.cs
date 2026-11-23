@@ -80,14 +80,23 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
             .ToList();
 
         var observacoes = atributos.Select(a => a.atributo.Observacao).OfType<string>().Distinct().ToList();
+        var forcas = conversor is null ? null : await forca.Obter(ct);
         if (conversor is not null)
-            observacoes.Add("Atletas de ligas de fora: ordenados pela nota convertida para a Série A, pelo nível da liga medido nos confrontos de Libertadores e Sul-Americana.");
+        {
+            observacoes.Add("Atletas de ligas de fora: ordenados pela nota convertida para a Série A, pelo nível da liga medido nos confrontos de copa (Libertadores, Sul-Americana, Mundial de Clubes).");
+            var semRegua = candidatos.Where(l => conversor(l, Pontuar(l)) is null && Pontuar(l) is not null).Select(l => l.Competicao).Distinct().ToList();
+            if (semRegua.Count > 0)
+                observacoes.Add($"Fora da ordem por ainda não ter confrontos suficientes com clubes brasileiros para comparar: {string.Join(", ", semRegua)}. Peça a liga sozinha para ver os atletas dela.");
+            if (forcas!.Values.Where(f => f.Estimativa && pontuados.Any(p => p.linha.CompeticaoId == f.CompeticaoId)).Select(f => f.Competicao).ToList() is { Count: > 0 } estimadas)
+                observacoes.Add($"Nota na Série A estimada (poucos jogos diretos com clubes brasileiros): {string.Join(", ", estimadas)}.");
+        }
         if (q.Esquema is not null)
             observacoes.Add($"Esquema {q.Esquema}: a busca considera a função em campo; cada atleta traz quantos jogos fez com a mesma linha de defesa.");
 
         var resultado = pontuados.Take(Math.Clamp(q.Limite, 1, 30))
             .Select(x => Resumir.De(x.linha, x.nota, atributos.Count == 0 ? null : atributos.Select(a => a.atributo), q.Esquema,
-                x.serieA is { } s && s != x.nota ? s : null))
+                x.serieA is { } s && s != x.nota ? s : null,
+                forcas?.GetValueOrDefault(x.linha.CompeticaoId)?.Estimativa ?? false))
             .ToList();
         return new ResultadoBusca(pontuados.Count, resultado, observacoes);
     }
@@ -198,7 +207,8 @@ public class ObterAtletaHandler(IScoutDb db, MotorDeAnalise motor, IHistoricoDoA
         // Liga de fora: a nota também na escala da Série A
         var conversor = await forca.Conversor(linhas.Where(x => x.CompeticaoId == l.CompeticaoId).ToList(), x => x.Nota, ct);
         var serieA = conversor?.Invoke(l, l.Nota);
-        return new DetalheAtleta(Resumir.De(l, notaSerieA: serieA is { } s && s != l.Nota ? s : null), l.Escudo, l.Funcoes, l.Esquemas, atributos, indicadores,
+        var estimada = conversor is not null && (await forca.Obter(ct)).GetValueOrDefault(l.CompeticaoId)?.Estimativa == true;
+        return new DetalheAtleta(Resumir.De(l, notaSerieA: serieA is { } s && s != l.Nota ? s : null, notaSerieAEstimada: estimada), l.Escudo, l.Funcoes, l.Esquemas, atributos, indicadores,
             cartoes, CalcularPresenca(linhaDoTempo), linhaDoTempo, trajetoria, await Posicoes(l, ct), Estilo(l), await Copas(l, ct));
     }
 

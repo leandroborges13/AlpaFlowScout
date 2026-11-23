@@ -9,7 +9,10 @@ namespace Scout.Application.Analise;
 /// Diferença de nível de uma liga para a Série A, em gols por jogo, e o deslocamento que ela dá na nota dos atletas.
 /// `Deslocamento` é em desvios-padrão do atleta (negativo = liga mais fraca): GolsPorJogo / (desvio do saldo dos times da Série A × √11).
 /// </summary>
-public record ForcaDaLiga(int CompeticaoId, string Competicao, double GolsPorJogo, int Jogos, double Deslocamento);
+/// `Estimativa`: menos de 10 jogos direto contra clubes da Série A (a ligação vem por outras ligas, como México e MLS pelo Mundial
+/// de Clubes e pela Leagues Cup): o número serve de ordem de grandeza, e a tela mostra "≈".
+public record ForcaDaLiga(int CompeticaoId, string Competicao, double GolsPorJogo, int Jogos, double Deslocamento, bool Estimativa = false,
+    int JogosContraReferencia = 0);
 
 /// <summary>
 /// Força das ligas pelos confrontos nas copas continentais (Libertadores, Sul-Americana): saldo de gols de clubes de ligas diferentes,
@@ -80,10 +83,12 @@ public class ForcaDasLigas(IScoutDb db, MotorDeAnalise motor, IMemoryCache cache
             jogos.Add((lm.CompeticaoId, lv.CompeticaoId, c.Saldo - (nm - nv)));
         }
 
+        int Diretos(int liga) => jogos.Count(j => (j.LigaMandante == liga && j.LigaVisitante == Referencia) || (j.LigaMandante == Referencia && j.LigaVisitante == liga));
         return Estimar(jogos, Referencia, Prior)
             .Where(x => x.Value.Jogos >= JogosMinimos || x.Key == Referencia)
             .ToDictionary(x => x.Key, x => new ForcaDaLiga(x.Key, nacionais.GetValueOrDefault(x.Key)?.Nome ?? $"Liga {x.Key}",
-                Math.Round(x.Value.Gols, 2), x.Value.Jogos, x.Key == Referencia ? 0 : x.Value.Gols / (desvioTimes * RaizDeOnze)));
+                Math.Round(x.Value.Gols, 2), x.Value.Jogos, x.Key == Referencia ? 0 : x.Value.Gols / (desvioTimes * RaizDeOnze),
+                x.Key != Referencia && Diretos(x.Key) < 10, x.Key == Referencia ? 0 : Diretos(x.Key)));
     }
 
     /// <summary>

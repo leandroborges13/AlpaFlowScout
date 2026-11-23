@@ -26,6 +26,7 @@ export type ResumoAtleta = {
   notaEncaixe?: number | null
   /** Atleta de liga de fora: a nota convertida para a escala da Série A pela força da liga */
   notaSerieA?: number | null
+  notaSerieAEstimada?: boolean
   destaques: Destaque[]
   experienciaNoEsquema?: string | null
 }

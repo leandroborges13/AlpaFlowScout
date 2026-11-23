@@ -53,6 +53,6 @@ Se o `pull` pedir login, rode `docker login ghcr.io` com o seu usuário do GitHu
 ## Atualizações
 
 - **Código novo:** depois do push e do build no GitHub (~3 min): `docker compose pull && docker compose up -d`.
-- **Dados:** a própria API importa as rodadas novas todo dia às 6h (`SCOUT_ATUALIZAR` no `.env`). Ligas: 71 Série A, 72 Série B, 75 Série C, 128 Argentina, 239 Colômbia, 242 Equador (mercado: só entram nos rankings quando pedidas). Copas: 73 Copa do Brasil, 13 Libertadores, 11 Sul-Americana.
-- **Força das ligas (nota de atleta de fora na escala da Série A):** usa os placares de Libertadores e Sul-Americana de 2025 e 2026. Uma vez só: `./coleta.sh placares 13 2025` e `./coleta.sh placares 11 2025`.
+- **Dados:** a própria API importa as rodadas novas todo dia às 6h (`SCOUT_ATUALIZAR` no `.env`). Ligas: 71 Série A, 72 Série B, 75 Série C, 128 Argentina, 239 Colômbia, 242 Equador, 94 Portugal, 262 México, 253 MLS (mercado: só entram nos rankings quando pedidas). Copas: 73 Copa do Brasil, 13 Libertadores, 11 Sul-Americana.
+- **Força das ligas (nota de atleta de fora na escala da Série A):** usa os placares de Libertadores e Sul-Americana de 2025 e 2026. Uma vez só: `./coleta.sh placares 13 2025` e `./coleta.sh placares 11 2025`; para México, MLS e Portugal, a ponte é o Mundial de Clubes (`placares 15 2025`), a Leagues Cup (`placares 772 2025` e `2026`) e a Champions da Concacaf (`placares 16 2025` e `2026`).
 - **Usuários:** `./coleta.sh criar-usuario ...` (também troca a senha de quem já existe) e `./coleta.sh remover-usuario email`.

@@ -18,7 +18,9 @@ public record ResumoAtleta(
     double? Nota, double? NotaEncaixe, IReadOnlyList<Destaque> Destaques,
     string? ExperienciaNoEsquema = null,
     // Atleta de liga de fora: a nota convertida para a escala da Série A pela força da liga (ForcaDasLigas). Nulo para liga brasileira.
-    double? NotaSerieA = null);
+    double? NotaSerieA = null,
+    // A liga tem pouco confronto direto com a Série A: a nota convertida é ordem de grandeza (a tela mostra "≈")
+    bool NotaSerieAEstimada = false);
 
 public static class Resumir
 {
@@ -41,7 +43,7 @@ public static class Resumir
     }
 
     public static ResumoAtleta De(LinhaAnalise l, double? notaEncaixe = null, IEnumerable<Atributo>? atributos = null, string? esquema = null,
-        double? notaSerieA = null)
+        double? notaSerieA = null, bool notaSerieAEstimada = false)
     {
         // Destaques: os atributos pedidos na busca, ou os 3 melhores atributos do atleta
         var lista = (atributos ?? Catalogo.Atributos.Where(a => a.Chave != "goleiro" || l.Setor == Setor.Goleiro))
@@ -57,7 +59,7 @@ public static class Resumir
             l.Jogos, l.Titular, l.Minutos, l.Gols, l.Assistencias, (int)Math.Round(l.ParticipacaoMinutos * 100),
             Arredondar(l.Nota), Arredondar(notaEncaixe),
             lista.Select(x => new Destaque(x.a.Nome, Math.Round(x.nota!.Value), x.a.Observacao)).ToList(),
-            ExperienciaNoEsquema(l, esquema), Arredondar(notaSerieA));
+            ExperienciaNoEsquema(l, esquema), Arredondar(notaSerieA), notaSerieA is not null && notaSerieAEstimada);
     }
 
     static double? Arredondar(double? v) => v is null ? null : Math.Round(v.Value, 1);

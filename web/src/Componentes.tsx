@@ -30,7 +30,7 @@ export function CartaoAtleta({ atleta: a, onAbrir, semelhanca, gravacao }: Carta
   const naLiga = a.notaEncaixe ?? a.nota
   // Atleta de liga de fora: a nota principal é a convertida para a Série A; a da liga dele fica na linha de baixo
   const nota = semelhanca ?? a.notaSerieA ?? naLiga
-  const rotulo = semelhanca != null ? 'semelhança' : a.notaSerieA != null ? 'na Série A' : a.notaEncaixe != null ? 'encaixe' : 'nota'
+  const rotulo = semelhanca != null ? 'semelhança' : a.notaSerieA != null ? (a.notaSerieAEstimada ? '≈ na Série A' : 'na Série A') : a.notaEncaixe != null ? 'encaixe' : 'nota'
   return (
     <button className="card" onClick={onAbrir}>
       <div className="card-topo">

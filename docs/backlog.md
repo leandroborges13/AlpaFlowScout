@@ -195,6 +195,9 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
          percentil do atleta no setor da liga dele → normal → + deslocamento (força ÷ (desvio do saldo dos times da Série A × √11))
          → nota no mesmo percentil da Série A. Busca com liga de fora ordena por ela; card e painel mostram "na Série A" e "na liga".
          Ex.: Morelos 79,8 na Colômbia → 67,5 na Série A; Passerini 78,6 → 79,1.
+         **Portugal (94), México (262) e MLS (253), 2026: importação em 23/11 à noite, direto no servidor.** Ponte com o Brasil pelo
+         Mundial de Clubes 2025 (15), Leagues Cup (772) e Champions da Concacaf (16). Liga com menos de 10 jogos diretos contra a
+         Série A sai como estimativa ("≈"); sem 20 jogos na amostra, fica fora da busca misturada com aviso.
          Plano original:
          **Nota comparável entre ligas:** hoje a nota e o percentil são calculados dentro da competição. Um 85 na liga uruguaia não
          vale um 85 na Série A. Criar um fator de força da liga (Elo dos clubes, resultados em Libertadores e Sul-Americana) e
