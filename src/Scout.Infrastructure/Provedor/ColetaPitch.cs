@@ -33,7 +33,7 @@ public class ColetaPitch(HttpClient http, ScoutDbContext db, IConfiguration conf
         var partidas = await db.Partidas.Where(p => p.CompeticaoId == competicaoId && p.Temporada == temporada).ToListAsync(ct);
         var clubes = await db.Clubes.ToDictionaryAsync(c => c.Id, c => PitchApi.Nome(c.Nome), ct);
 
-        int jogos = 0, atletas = 0, ligados = 0, semPar = 0;
+        int jogos = 0, atletas = 0, ligados = 0, semPar = 0, semDados = 0;
         var finalizados = lista.Value.GetProperty("matches").EnumerateArray()
             .Where(m => Texto(m, "status") == "finished")
             .OrderByDescending(m => Texto(m, "time_utc"));
@@ -46,8 +46,17 @@ public class ColetaPitch(HttpClient http, ScoutDbContext db, IConfiguration conf
 
             var id = Texto(m, "id")!;
             var basico = await Buscar($"/v1/matches/{id}/players", chave, ct);
+            if (basico is null)
+            {
+                if (naoAchou) { semDados++; continue; } // a PitchAPI não tem este jogo: segue para o próximo
+                break; // freio (429) ou falha: continua amanhã
+            }
             var avancado = await Buscar($"/v1/matches/{id}/advanced/players", chave, ct);
-            if (basico is null || avancado is null) break; // freio da PitchAPI: continua amanhã
+            if (avancado is null)
+            {
+                if (!naoAchou) break;
+                avancado = SemAvancado; // sem a parte avançada (xT, VAEP...): grava o básico do jogo
+            }
 
             var times = new Dictionary<string, int>
             {
@@ -61,8 +70,8 @@ public class ColetaPitch(HttpClient http, ScoutDbContext db, IConfiguration conf
             jogos++; atletas += n; ligados += l;
             if (jogos % 20 == 0) log.LogInformation("  PitchAPI: {Jogos} jogos, {Ligados}/{Atletas} atletas ligados", jogos, ligados, atletas);
         }
-        log.LogInformation("PitchAPI {Competicao}/{Temporada}: {Jogos} jogos novos, {Ligados}/{Atletas} atletas ligados, {SemPar} jogos sem par na nossa base",
-            competicaoId, temporada, jogos, ligados, atletas, semPar);
+        log.LogInformation("PitchAPI {Competicao}/{Temporada}: {Jogos} jogos novos, {Ligados}/{Atletas} atletas ligados, {SemPar} jogos sem par na nossa base, {SemDados} sem dados na PitchAPI",
+            competicaoId, temporada, jogos, ligados, atletas, semPar, semDados);
         return new(jogos, atletas, ligados, semPar);
     }
 
@@ -90,7 +99,11 @@ public class ColetaPitch(HttpClient http, ScoutDbContext db, IConfiguration conf
             if (partida is null || !partida.Encerrada || feitos.Contains(partida.Id)) continue;
             var id = Texto(m, "id")!;
             var adv = await Buscar($"/v1/matches/{id}/advanced", chave, ct);
-            if (adv is null) break; // freio da PitchAPI: continua amanhã
+            if (adv is null)
+            {
+                if (naoAchou) continue; // a PitchAPI não tem este jogo
+                break; // freio (429) ou falha: continua amanhã
+            }
             var times = new Dictionary<string, int>
             {
                 [Texto(m, "home_team", "id") ?? "casa"] = partida.MandanteId,
@@ -224,10 +237,14 @@ public class ColetaPitch(HttpClient http, ScoutDbContext db, IConfiguration conf
     static int Total(Dictionary<string, (double Valor, double? Total)> s, string k) => s.TryGetValue(k, out var v) && v.Total is { } t ? (int)Math.Round(t) : 0;
 
     DateTime ultima = DateTime.MinValue;
+    /// <summary>A última busca deu 404: a PitchAPI não tem aquele jogo (comum em liga menor). Não é freio: a coleta segue.</summary>
+    bool naoAchou;
+    static readonly JsonElement SemAvancado = JsonDocument.Parse("{\"players\":[]}").RootElement.Clone();
 
-    /// <summary>GET com intervalo entre chamadas; nulo no 429 (freio) ou em falha, para a coleta parar e seguir no dia seguinte.</summary>
+    /// <summary>GET com intervalo entre chamadas; nulo no 429 (freio), em falha ou no 404 (com <see cref="naoAchou"/>).</summary>
     async Task<JsonElement?> Buscar(string caminho, string chave, CancellationToken ct)
     {
+        naoAchou = false;
         var espera = ultima.AddMilliseconds(IntervaloMs) - DateTime.UtcNow;
         if (espera > TimeSpan.Zero) await Task.Delay(espera, ct);
         ultima = DateTime.UtcNow;
@@ -237,6 +254,7 @@ public class ColetaPitch(HttpClient http, ScoutDbContext db, IConfiguration conf
             pedido.Headers.Add("X-API-KEY", chave);
             using var r = await http.SendAsync(pedido, ct);
             if (r.StatusCode == HttpStatusCode.TooManyRequests) { log.LogWarning("PitchAPI pediu para esperar (429) em {Caminho}", caminho); return null; }
+            if (r.StatusCode == HttpStatusCode.NotFound) { naoAchou = true; log.LogInformation("PitchAPI sem dados em {Caminho} (404): pulando", caminho); return null; }
             r.EnsureSuccessStatusCode();
             return (await r.Content.ReadFromJsonAsync<JsonElement>(ct)).GetProperty("data").Clone();
         }
