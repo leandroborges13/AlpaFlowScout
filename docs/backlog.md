@@ -211,6 +211,36 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
       - Não afirmar que o clube "vai contratar": é sugestão pelos números.
       - Conferir se o atleta ainda está no clube (item 21).
 
+24. **Mercado além da América do Sul: Leste Europeu, Oriente Médio e sul-americanos sem espaço na Europa** — combinado em 23/11/2026
+    - **Prazo:** antes do fim do API-Football Pro (~09/12/2026). A cota é de 7.500 consultas por dia e zera às 21h (meia-noite UTC).
+    - **Ordem combinada:**
+      1. **24/11:**
+         - terminar Portugal (`importar 94 2026`, que parou na cota em 23/11);
+         - placares das pontes (`placares 15 2025`, `772 2025`, `772 2026`, `16 2025`, `16 2026`);
+         - `pitch 262 2026`.
+      2. **25–26/11:** importação completa (~1.000 consultas cada) de:
+         - Rússia (235) e Ucrânia (333);
+         - Arábia Saudita (307), Emirados (301) e Catar (305).
+         Conferir os ids e a temporada atual em /leagues antes.
+         - Ponte com o Brasil quase nula (Fluminense x Al Hilal no Mundial de Clubes): nota na liga e "≈ na Série A" como
+           estimativa, ou fora da busca misturada se não houver 20 jogos na amostra.
+      3. **27/11: sul-americanos sem espaço na Europa.**
+         - **Ligas:** Inglaterra 39, Espanha 140, Itália 135, Alemanha 78, França 61, Turquia 203, Holanda 88, Bélgica 144.
+         - **Temporadas:** atual e anterior.
+         - **Importação:** `importar <liga> <temporada> --sem-escalacoes`. Só elencos e minutos da temporada, ~60–100 consultas
+           por liga; ~1.200 no total.
+         - **Consulta nova "sem espaço":**
+           - atleta de nacionalidade sul-americana com pouca participação na temporada atual (ex.: < 30% dos minutos possíveis);
+           - com o que fez na anterior, ou na última liga em que jogou com 450+ minutos;
+           - filtros de posição e idade.
+         - **Atenção:** o motor de nota exige 450 minutos. Quem está encostado não tem nota na temporada atual, então a lista usa
+           a temporada anterior. Sem escalação, a função vem da posição do provedor, que é mais grosseira.
+         - **Conferir transferência recente antes de citar** (item 21).
+    - **Para o canal:**
+      - "o centroavante que o Galo precisa" com América do Sul, Oriente Médio e os encostados na Europa;
+      - "brasileiros sem espaço na Europa que caberiam no Galo".
+      Sempre como sugestão pelos números, sem dizer que o clube vai contratar.
+
 ## Mapa de calor e finalizações no campo (levantamento de 03/11/2026)
 
 FEITO em 03/11/2026 com a PitchAPI (Série A 2023-2026 confirmada): 4º cartão do "Para vídeo" e contagens de finalização no roteiro.
