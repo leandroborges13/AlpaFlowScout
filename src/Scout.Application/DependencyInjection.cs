@@ -12,6 +12,7 @@ public static class DependencyInjection
         services.AddMemoryCache();
         services.AddScoped<MotorDeAnalise>();
         services.AddScoped<AnaliseDeTimes>();
+        services.AddScoped<ForcaDasLigas>();
         services.AddScoped<IQueryHandler<ListarCompeticoes, IReadOnlyList<CompeticaoDisponivel>>, ListarCompeticoesHandler>();
         services.AddScoped<IQueryHandler<ObterPrancheta, Prancheta?>, ObterPranchetaHandler>();
         services.AddScoped<IQueryHandler<ObterEstiloNaLiga, EstiloNaLiga?>, ObterEstiloNaLigaHandler>();

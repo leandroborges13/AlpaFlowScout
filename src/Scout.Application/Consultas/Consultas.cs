@@ -50,7 +50,7 @@ public record BuscarPorPerfil(
 
 public record ResultadoBusca(int Encontrados, IReadOnlyList<ResumoAtleta> Atletas, IReadOnlyList<string> Observacoes);
 
-public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor) : IQueryHandler<BuscarPorPerfil, ResultadoBusca>
+public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasLigas forca) : IQueryHandler<BuscarPorPerfil, ResultadoBusca>
 {
     public async Task<ResultadoBusca> Handle(BuscarPorPerfil q, CancellationToken ct)
     {
@@ -68,18 +68,26 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor) : IQueryH
             (q.IdadeMax is null || l.Idade <= q.IdadeMax) &&
             (q.ParticipacaoMinimaPercentual is null || l.ParticipacaoMinutos * 100 >= q.ParticipacaoMinimaPercentual));
 
+        double? Pontuar(LinhaAnalise l) => atributos.Count == 0 ? l.Nota : NotaPonderada(l, atributos);
+        // Com liga de fora na busca, a ordem é pela pontuação convertida para a Série A (as notas de ligas diferentes não se comparam)
+        var conversor = await forca.Conversor(linhas, Pontuar, ct);
         var pontuados = candidatos
-            .Select(l => (linha: l, nota: atributos.Count == 0 ? l.Nota : NotaPonderada(l, atributos)))
+            .Select(l => (linha: l, nota: Pontuar(l)))
             .Where(x => x.nota is not null)
-            .OrderByDescending(x => x.nota)
+            .Select(x => (x.linha, x.nota, serieA: conversor?.Invoke(x.linha, x.nota)))
+            .Where(x => conversor is null || x.serieA is not null)
+            .OrderByDescending(x => conversor is null ? x.nota : x.serieA)
             .ToList();
 
         var observacoes = atributos.Select(a => a.atributo.Observacao).OfType<string>().Distinct().ToList();
+        if (conversor is not null)
+            observacoes.Add("Atletas de ligas de fora: ordenados pela nota convertida para a Série A, pelo nível da liga medido nos confrontos de Libertadores e Sul-Americana.");
         if (q.Esquema is not null)
             observacoes.Add($"Esquema {q.Esquema}: a busca considera a função em campo; cada atleta traz quantos jogos fez com a mesma linha de defesa.");
 
         var resultado = pontuados.Take(Math.Clamp(q.Limite, 1, 30))
-            .Select(x => Resumir.De(x.linha, x.nota, atributos.Count == 0 ? null : atributos.Select(a => a.atributo), q.Esquema))
+            .Select(x => Resumir.De(x.linha, x.nota, atributos.Count == 0 ? null : atributos.Select(a => a.atributo), q.Esquema,
+                x.serieA is { } s && s != x.nota ? s : null))
             .ToList();
         return new ResultadoBusca(pontuados.Count, resultado, observacoes);
     }
@@ -162,7 +170,7 @@ public record DesempenhoEmCopa(int CompeticaoId, string Competicao, int Temporad
 
 public record ObterAtleta(int AtletaId, int? Temporada = null, int? CompeticaoId = null, bool ComTrajetoria = true) : IQuery<DetalheAtleta?>;
 
-public class ObterAtletaHandler(IScoutDb db, MotorDeAnalise motor, IHistoricoDoAtleta historico) : IQueryHandler<ObterAtleta, DetalheAtleta?>
+public class ObterAtletaHandler(IScoutDb db, MotorDeAnalise motor, IHistoricoDoAtleta historico, ForcaDasLigas forca) : IQueryHandler<ObterAtleta, DetalheAtleta?>
 {
     public async Task<DetalheAtleta?> Handle(ObterAtleta q, CancellationToken ct)
     {
@@ -187,7 +195,10 @@ public class ObterAtletaHandler(IScoutDb db, MotorDeAnalise motor, IHistoricoDoA
             l.Minutos > 0 ? Math.Round((l.Amarelos + l.Vermelhos) * 90.0 / l.Minutos, 2) : null);
         var trajetoria = q.ComTrajetoria ? await historico.Obter(l.AtletaId, ct) : null;
 
-        return new DetalheAtleta(Resumir.De(l), l.Escudo, l.Funcoes, l.Esquemas, atributos, indicadores,
+        // Liga de fora: a nota também na escala da Série A
+        var conversor = await forca.Conversor(linhas.Where(x => x.CompeticaoId == l.CompeticaoId).ToList(), x => x.Nota, ct);
+        var serieA = conversor?.Invoke(l, l.Nota);
+        return new DetalheAtleta(Resumir.De(l, notaSerieA: serieA is { } s && s != l.Nota ? s : null), l.Escudo, l.Funcoes, l.Esquemas, atributos, indicadores,
             cartoes, CalcularPresenca(linhaDoTempo), linhaDoTempo, trajetoria, await Posicoes(l, ct), Estilo(l), await Copas(l, ct));
     }
 

@@ -123,6 +123,8 @@ app.MapGet("/api/publico/jogos/{id:int}", async (int id, IQueryHandler<ObterPagi
 
 var api = app.MapGroup("/api").RequireAuthorization();
 
+api.MapGet("/ligas/forca", async (Scout.Application.Analise.ForcaDasLigas f, CancellationToken ct) =>
+    Results.Ok((await f.Obter(ct)).Values.OrderByDescending(x => x.GolsPorJogo)));
 api.MapGet("/competicoes", (IQueryHandler<ListarCompeticoes, IReadOnlyList<CompeticaoDisponivel>> h, CancellationToken ct) =>
     h.Handle(new ListarCompeticoes(), ct));
 

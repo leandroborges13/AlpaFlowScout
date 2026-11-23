@@ -118,6 +118,46 @@ public class Importador(ApiFootballClient api, ScoutDbContext db, ILogger<Import
             vistos.Count, partidas.Count, partidas.Values.Count(x => x.EscalacoesImportadas));
     }
 
+    /// <summary>
+    /// Só os placares de uma competição/temporada (1 consulta): para medir a força das ligas pelos confrontos de copa de anos
+    /// anteriores sem trazer elencos e estatísticas. Cria os clubes que faltarem; não mexe em jogo que já tenha escalação.
+    /// </summary>
+    public async Task<int> ImportarPlacares(int ligaId, int temporada, CancellationToken ct)
+    {
+        var liga = (await api.Consultar("/leagues", new Dictionary<string, object> { ["id"] = ligaId }, TimeSpan.FromDays(7), ct))
+            .GetProperty("response").EnumerateArray().First();
+        var competicao = await db.Competicoes.FindAsync([ligaId], ct) ?? db.Competicoes.Add(new Competicao { Id = ligaId }).Entity;
+        competicao.Nome = Texto(liga, "league", "name") ?? $"Liga {ligaId}";
+        competicao.Tipo = Texto(liga, "league", "type") ?? "";
+        competicao.Pais = Texto(liga, "country", "name") ?? "";
+        TimeSpan? validade = temporada >= DateTime.UtcNow.Year ? TimeSpan.FromHours(20) : null;
+        var jogos = (await api.Consultar("/fixtures", new Dictionary<string, object> { ["league"] = ligaId, ["season"] = temporada }, validade, ct))
+            .GetProperty("response").EnumerateArray().ToList();
+        var clubes = await db.Clubes.ToDictionaryAsync(c => c.Id, ct);
+        var partidas = await db.Partidas.Where(x => x.CompeticaoId == ligaId && x.Temporada == temporada).ToDictionaryAsync(x => x.Id, ct);
+        foreach (var f in jogos)
+        {
+            foreach (var lado in new[] { "home", "away" })
+            {
+                var cid = Int(f, "teams", lado, "id") ?? 0;
+                if (cid == 0 || clubes.ContainsKey(cid)) continue;
+                clubes[cid] = db.Clubes.Add(new Clube { Id = cid, Nome = Texto(f, "teams", lado, "name") ?? $"Clube {cid}", Escudo = Texto(f, "teams", lado, "logo") }).Entity;
+            }
+            var id = Int(f, "fixture", "id")!.Value;
+            if (!partidas.TryGetValue(id, out var partida))
+                partidas[id] = partida = db.Partidas.Add(new Partida { Id = id, CompeticaoId = ligaId, Temporada = temporada }).Entity;
+            partida.Data = DateTime.Parse(Texto(f, "fixture", "date")!, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal);
+            partida.Status = Texto(f, "fixture", "status", "short") ?? "";
+            partida.Rodada = Texto(f, "league", "round");
+            partida.MandanteId = Int(f, "teams", "home", "id") ?? 0;
+            partida.VisitanteId = Int(f, "teams", "away", "id") ?? 0;
+            partida.GolsMandante = Int(f, "goals", "home");
+            partida.GolsVisitante = Int(f, "goals", "away");
+        }
+        await db.SaveChangesAsync(ct);
+        return jogos.Count;
+    }
+
     /// <summary>Apaga e importa de novo escalações, treinadores e estatísticas (respostas guardadas há mais que `validade` são buscadas de novo).</summary>
     public async Task Revisar(List<Partida> partidas, TimeSpan validade, CancellationToken ct)
     {

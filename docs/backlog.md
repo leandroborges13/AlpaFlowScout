@@ -188,7 +188,15 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
          - depois Colômbia, Uruguai, Equador, Chile e Paraguai (conferir cobertura na PitchAPI e na Bzzoiro; a API-Football
            cobre todas enquanto o Pro durar, até ~09/12).
          - Começar só pelos atacantes e meias, para caber na cota.
-      2. **Nota comparável entre ligas:** hoje a nota e o percentil são calculados dentro da competição. Um 85 na liga uruguaia não
+      2. **FEITO em 23/11/2026 (ForcaDasLigas, NotaNaReferencia; GET /api/ligas/forca; comando `placares <liga> <temporada>`).**
+         Força pelos jogos de Libertadores e Sul-Americana de 2025 e 2026 entre clubes de ligas diferentes, com mando, descontando
+         o nível do clube na própria liga (saldo por jogo no nacional) e prior que puxa para zero (liga com menos de 20 jogos fica
+         sem ajuste). Em 23/11: Argentina −0,07 gol/jogo (97 jogos), Equador −0,21 (62), Colômbia −0,79 (50). Nota convertida:
+         percentil do atleta no setor da liga dele → normal → + deslocamento (força ÷ (desvio do saldo dos times da Série A × √11))
+         → nota no mesmo percentil da Série A. Busca com liga de fora ordena por ela; card e painel mostram "na Série A" e "na liga".
+         Ex.: Morelos 79,8 na Colômbia → 67,5 na Série A; Passerini 78,6 → 79,1.
+         Plano original:
+         **Nota comparável entre ligas:** hoje a nota e o percentil são calculados dentro da competição. Um 85 na liga uruguaia não
          vale um 85 na Série A. Criar um fator de força da liga (Elo dos clubes, resultados em Libertadores e Sul-Americana) e
          mostrar sempre "nota na liga dele" e "nota ajustada à Série A".
       3. **Busca "perfil de mercado":** função, idade máxima, minutos mínimos, liga e contrato/valor (Bzzoiro tem contrato e

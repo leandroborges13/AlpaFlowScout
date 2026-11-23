@@ -27,15 +27,17 @@ export function Retrato({ foto, nome, grande = false, oculto = false }: { foto?:
 type CartaoProps = { atleta: ResumoAtleta; onAbrir: () => void; semelhanca?: number; gravacao: boolean }
 
 export function CartaoAtleta({ atleta: a, onAbrir, semelhanca, gravacao }: CartaoProps) {
-  const nota = semelhanca ?? a.notaEncaixe ?? a.nota
-  const rotulo = semelhanca != null ? 'semelhança' : a.notaEncaixe != null ? 'encaixe' : 'nota'
+  const naLiga = a.notaEncaixe ?? a.nota
+  // Atleta de liga de fora: a nota principal é a convertida para a Série A; a da liga dele fica na linha de baixo
+  const nota = semelhanca ?? a.notaSerieA ?? naLiga
+  const rotulo = semelhanca != null ? 'semelhança' : a.notaSerieA != null ? 'na Série A' : a.notaEncaixe != null ? 'encaixe' : 'nota'
   return (
     <button className="card" onClick={onAbrir}>
       <div className="card-topo">
         <Retrato foto={a.foto} nome={a.nome} oculto={gravacao} />
         <div className="card-id">
           <div className="card-nome">{a.nome}</div>
-          <div className="card-sub">{a.idade} anos · {a.clube} · {a.competicao}</div>
+          <div className="card-sub">{a.idade} anos · {a.clube} · {a.competicao}{a.notaSerieA != null && semelhanca == null && naLiga != null ? ` · ${Math.round(naLiga)} na liga` : ''}</div>
         </div>
         {nota != null && (
           <div className="nota"><b>{Math.round(nota)}</b><span>{rotulo}</span></div>

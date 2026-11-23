@@ -1,6 +1,7 @@
 // Coleta de dados da API-Football para o banco do Scout e administração.
 //   dotnet run --project src/Scout.Coleta -- importar <liga> <temporada> [--sem-escalacoes]
 //   dotnet run --project src/Scout.Coleta -- cota
+//   dotnet run --project src/Scout.Coleta -- placares <liga> <temporada>   (só os placares; ex.: 13 2025 e 11 2025 para a força das ligas)
 //   dotnet run --project src/Scout.Coleta -- migrar
 //   dotnet run --project src/Scout.Coleta -- criar-usuario <email> <nome>   (pede a senha no terminal)
 //   dotnet run --project src/Scout.Coleta -- remover-usuario <email>
@@ -49,6 +50,12 @@ try
             var r = await sp.GetRequiredService<Importador>().Importar(liga, temporada, !args.Contains("--sem-escalacoes"), cts.Token);
             Console.WriteLine($"{r.Competicao} {r.Temporada}: {r.Clubes} clubes, {r.Atletas} atletas, {r.Partidas} partidas ({r.PartidasComEscalacao} com escalação)");
             Console.WriteLine($"Consultas hoje: {await sp.GetRequiredService<ApiFootballClient>().UsadasHoje(cts.Token)}");
+            break;
+
+        case "placares" when args.Length >= 3 && int.TryParse(args[1], out var ligaPl) && int.TryParse(args[2], out var temporadaPl):
+            // só os placares (ex.: Libertadores 13 e Sul-Americana 11 de 2025, para a força das ligas)
+            await sp.GetRequiredService<ScoutDbContext>().Database.MigrateAsync(cts.Token);
+            Console.WriteLine($"{await sp.GetRequiredService<Importador>().ImportarPlacares(ligaPl, temporadaPl, cts.Token)} jogos. Consultas hoje: {await sp.GetRequiredService<ApiFootballClient>().UsadasHoje(cts.Token)}");
             break;
 
         case "pitch" when args.Length >= 3 && int.TryParse(args[1], out var ligaP) && int.TryParse(args[2], out var temporadaP):
