@@ -17,7 +17,8 @@ namespace Scout.Infrastructure.Provedor;
 public class PitchApi(HttpClient http, IConfiguration config, IMemoryCache cache, ILogger<PitchApi> log) : IMapaDaPartida, IEstiloDaPartida
 {
     /// <summary>Nossas competições (ids da API-Football) e as ligas correspondentes na PitchAPI.</summary>
-    public static readonly IReadOnlyDictionary<int, string> Ligas = new Dictionary<int, string> { [71] = "l_1D8Xrl", [72] = "l_3qUkB8", [128] = "l_45VZuL" }; // 128 = Liga Profesional Argentina
+    public static readonly IReadOnlyDictionary<int, string> Ligas = new Dictionary<int, string> { [71] = "l_1D8Xrl", [72] = "l_3qUkB8", [128] = "l_45VZuL", [239] = "l_1xXulJ", [242] = "l_1dmt9H" };
+    // 128 Argentina, 239 Colômbia, 242 Equador (grátis). O Uruguai não está na PitchAPI.
 
     public async Task<MapaDaPartida?> Obter(ResumoPartida p, CancellationToken ct)
     {

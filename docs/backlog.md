@@ -179,6 +179,11 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
          lista de times quando pedida (`incluirExterior` em CarregarLinhas/CompeticoesAlvo/CarregarTimes); atleta, time e
          treinador de lá abrem normalmente. Centroavantes 900+ min com maior nota na liga: Passerini (Belgrano) 78,6, N. Fernández
          (Belgrano) 63,3, R. Martínez (Talleres, 14 gols) 60,9, Módica (Gimnasia M., 14 gols) 58,6, Merentiel 58,6.
+         **Colômbia (239) e Equador (242) FEITAS em 23/11/2026** (815 e 564 atletas; PitchAPI l_1xXulJ e l_1dmt9H). Centroavantes:
+         Bustos (Santa Fe) 81,5, Morelos (Nacional, 16 gols) 79,8, Sandoval (Tolima) 79,2, Muriel (Junior, 16 gols) 75,9;
+         Equador: Reasco (IDV) 66,7, Fajardo (U. Católica, 13 gols) 64,3. **Uruguai (268) fora:** a API-Football não traz
+         estatística de temporada por atleta da liga uruguaia (só da Libertadores), e nem a Bzzoiro nem a PitchAPI têm a liga.
+         Uruguaio que joga em outra liga aparece por ela. Chile: a Bzzoiro tem (liga 111); conferir na API-Football antes.
          - Argentina (PitchAPI l_45VZuL, Bzzoiro 85, API-Football 128);
          - depois Colômbia, Uruguai, Equador, Chile e Paraguai (conferir cobertura na PitchAPI e na Bzzoiro; a API-Football
            cobre todas enquanto o Pro durar, até ~09/12).

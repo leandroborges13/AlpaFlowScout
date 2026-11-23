@@ -217,7 +217,7 @@ public class AssistenteScout(
                 "copas_do_time",
                 "Campanha do time nas copas da temporada (Copa do Brasil, Libertadores, Sul-Americana): situação (vivo, eliminado, campeão), V/E/D, gols, resultados de cada fase, próximo jogo e a chance de título estimada pelo modelo AlpaFlow."),
             AIFunctionFactory.Create(
-                async ([Description("ID da liga (71 Série A, 72 Série B, 128 liga argentina); omita para a Série A")] int? competicao = null,
+                async ([Description("ID da liga (71 Série A, 72 Série B, 128 Argentina, 239 Colômbia, 242 Equador); omita para a Série A")] int? competicao = null,
                        int? temporada = null) =>
                 {
                     var c = await chancesNaLiga.Handle(new ObterChancesNaLiga(competicao, temporada), ct);
@@ -362,7 +362,7 @@ public class AssistenteScout(
                 async ([Description("Nome do time (oficial ou apelido, ex.: 'Galo')")] string time,
                        [Description("Data inicial (aaaa-mm-dd), só se o usuário disser a data; omita para a temporada")] string? de = null,
                        [Description("Data final (aaaa-mm-dd)")] string? ate = null,
-                       [Description("ID da competição, se pedirem só uma (ex.: 71 Série A, 128 liga argentina)")] int? competicao = null,
+                       [Description("ID da competição, se pedirem só uma (ex.: 71 Série A, 128 Argentina, 239 Colômbia, 242 Equador)")] int? competicao = null,
                        [Description("Nome ou apelido do técnico: só os jogos com ele no banco ('desde a chegada do Barba', 'com o Barba')")] string? treinador = null,
                        int? temporada = null) =>
                 {
