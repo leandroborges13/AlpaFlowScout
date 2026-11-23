@@ -335,6 +335,20 @@ A API-Football (a nossa) não tem coordenadas de lance. Opções vistas:
       adversário argentino (Boca na final) e, se quiser, cadastrar a liga no Scout.
     - Falta para 2027 sem o Pro: criar a partida a partir da Bzzoiro/PitchAPI quando a API-Football não tiver o jogo (hoje a
       coleta só complementa jogos que já estão na base) e montar escalação, placar e estatística do time a partir delas.
+    - **Cobertura da PitchAPI conferida em 23/11/2026 (grátis, 2026/27):**
+      - América do Sul: Brasil A/B, Argentina, Colômbia, Equador, Chile, Paraguai;
+      - Portugal, Liga MX, MLS;
+      - Arábia Saudita, Rússia, Emirados, Catar;
+      - Inglaterra (até a League Two), Espanha, Itália, Alemanha, França, Holanda, Bélgica.
+      - **Não tem:** Ucrânia e Turquia.
+      Então o mapa de mercado (itens 23 e 24) sobrevive sem o Pro.
+    - **Plano para o fim do Pro (~09/12):**
+      1. O que foi importado fica (estoque de 2026).
+      2. Em dezembro (entressafra), montar a estatística da temporada do atleta somando os jogos da PitchAPI
+         (desempenhos_avancados, com xG, xA e xT a mais), criar jogo e atleta quando a API-Football não tiver, e ligar
+         pelo nome (92% hoje).
+      3. Testar uma semana só com PitchAPI e Bzzoiro.
+      4. Se faltar, assinar o Pro só nos meses de janela (dez e jun, US$ 19).
 
 ## Imagem e direitos (escudos, fotos, cores)
 
