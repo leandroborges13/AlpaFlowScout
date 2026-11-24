@@ -42,6 +42,7 @@ public class AssistenteScout(
     IQueryHandler<AnalisarPartida, AnalisePartida?> analisarPartida,
     IQueryHandler<ObterFichaAtleta, FichaAtleta?> fichaAtleta,
     IQueryHandler<ObterElenco, ElencoDoTime?> elenco,
+    IQueryHandler<BuscarSemEspaco, ResultadoSemEspaco> semEspaco,
     IQueryHandler<ObterCopasDoTime, CopasDoTime?> copasDoTime,
     IQueryHandler<ObterChancesNaLiga, ChancesNaLiga?> chancesNaLiga,
     IQueryHandler<ObterArtilharia, Artilharia> artilharia,
@@ -146,6 +147,21 @@ public class AssistenteScout(
                 },
                 "procurar_atleta_por_nome",
                 "Encontra o ID de um atleta pelo nome, com o clube e a competição de cada resultado (para escolher o certo entre homônimos)."),
+            AIFunctionFactory.Create(
+                async ([Description("Goleiro, Defesa, Meio ou Ataque")] string? posicao = null, int? idadeMaxima = null,
+                       [Description("% máximo dos minutos do clube na temporada atual (padrão 30)")] int? participacaoMaxima = null,
+                       [Description("IDs das ligas; omita para as 8 da Europa (39, 140, 135, 78, 61, 203, 88, 144)")] int[]? ligas = null,
+                       [Description("Nacionalidades em inglês, ex.: ['Brazil']; omita para todos os sul-americanos")] string[]? nacionalidades = null,
+                       int? limite = null) =>
+                {
+                    var r = await semEspaco.Handle(new BuscarSemEspaco(ligas, nacionalidades, participacaoMaxima ?? 30, idadeMaxima,
+                        Enum.TryParse<Setor>(posicao, true, out var s) ? s : null, limite ?? 10), ct);
+                    Citar(r.Atletas.Select(a => a.Referencia).OfType<ResumoAtleta>().ToList());
+                    return r;
+                },
+                "sul_americanos_sem_espaco",
+                "Sul-americanos (ou a nacionalidade pedida) que jogam pouco na Europa na temporada atual, com a nota da última liga em que jogaram 450+ min. " +
+                "Use para \"brasileiros sem espaço na Europa que caberiam no Galo\". A nota é da liga de referência, não da Série A; pouco minuto pode ser lesão: avise."),
             AIFunctionFactory.Create(
                 async (int timeId, [Description("ID da competição; omita para a liga do time")] int? competicao = null, int? temporada = null,
                        [Description("Função para filtrar, ex.: 'Lateral esquerdo': o primeiro da lista é o titular, os demais são reservas")] string? funcao = null) =>

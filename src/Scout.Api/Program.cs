@@ -160,6 +160,12 @@ api.MapGet("/atletas/{id:int}/cartao", async (int id, int? temporada, IQueryHand
 api.MapGet("/atletas/{id:int}/lado-a-lado/{outro:int}", async (int id, int outro, int? temporada, IQueryHandler<ObterLadoALado, LadoALado?> h, CancellationToken ct) =>
     await h.Handle(new ObterLadoALado(id, outro, temporada), ct) is { } r ? Results.Ok(r) : Results.NotFound());
 
+// Sul-americanos sem espaço (padrão: as 8 ligas da Europa, < 30% dos minutos do clube), com a nota da última liga em que jogaram
+api.MapGet("/mercado/sem-espaco", (int? participacaoMaxima, int? idadeMax, string? posicao, string? ligas, IQueryHandler<BuscarSemEspaco, ResultadoSemEspaco> h, CancellationToken ct) =>
+    h.Handle(new BuscarSemEspaco(
+        ligas?.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToArray(), null, participacaoMaxima ?? 30, idadeMax,
+        Enum.TryParse<Scout.Domain.Setor>(posicao, true, out var s) ? s : null), ct));
+
 // Busca tolerante por nome (sem acento, com erro de digitação): só quem tem nota, com o clube e a liga mais recentes
 api.MapGet("/atletas/procurar", async (string nome, IScoutDb db, CancellationToken ct) =>
 {

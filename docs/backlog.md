@@ -230,6 +230,16 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
 
 24. **Mercado além da América do Sul: Leste Europeu, Oriente Médio e sul-americanos sem espaço na Europa** — combinado em 23/11/2026
     - **Prazo:** antes do fim do API-Football Pro (~09/12/2026). A cota é de 7.500 consultas por dia e zera às 21h (meia-noite UTC).
+    - **TUDO FEITO em 24/11/2026 (adiantado; ~2.560 consultas no dia), rodando no alpaflow-casa (`coleta-fila.sh`):**
+      - Portugal completo; pontes 15/772/16 importadas. `pitch 262 2026` deu 0 jogos (México não ligado na PitchAPI: falta).
+      - Rússia 235, Arábia 307, Ucrânia 333, Emirados 301 e Catar 305, temporada 2026 completa com escalação (120, 105, 96, 56 e 60
+        jogos; 223, 218, 164, 83 e 114 atletas com 450+ min), já na SCOUT_ATUALIZAR. Sem ponte com a Série A: nota só na liga.
+      - Europa (39, 140, 135, 78, 61, 203, 88, 144) temporadas 2026 e 2025 com `--sem-escalacoes` (~740 consultas, ~10 mil atletas).
+      - Consulta "sem espaço": BuscarSemEspaco (GET /api/mercado/sem-espaco e ferramenta sul_americanos_sem_espaco do chat).
+        Encostado = sul-americano (ou nacionalidade pedida) com menos de 30% dos minutos do clube na temporada atual (clube com 5+
+        jogos; jogos do clube ≈ máximo de jogos de um atleta dele, porque não há escalação); referência = a liga mais recente com
+        450+ min, com a nota daquela liga. Conferido em 24/11: Richarlison (Tottenham, 7%), Endrick (Real, 9%), Neres (Napoli, 12%).
+      - Atenção: nomes de liga repetidos ("Premier League" da Inglaterra, Rússia e Ucrânia; "Serie A" da Itália): mostrar o país junto.
     - **Ordem combinada:**
       1. **24/11:**
          - terminar Portugal (`importar 94 2026`, que parou na cota em 23/11);
