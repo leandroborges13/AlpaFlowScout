@@ -273,6 +273,21 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
       - "brasileiros sem espaço na Europa que caberiam no Galo".
       Sempre como sugestão pelos números, sem dizer que o clube vai contratar.
 
+25. **Trajetória com gols e assistências por clube** — pedido do Leandro em 24/11/2026 (no painel do Boyé)
+    - **Hoje:** a seção "Trajetória" do painel do atleta lista só clube e temporadas (HistoricoDoAtleta: /players/teams e
+      /transfers da API-Football). Não diz o que ele fez em cada passagem.
+    - **Por quê:** é o argumento de mercado: "fez 11 gols no Alavés, 9 no Oviedo, 15 no Elche". Mostra se o atleta repete o
+      desempenho de clube em clube ou se teve um ano fora da curva (caso do Arce: 5 gols em 2025, 9+9 em 2026).
+    - **Fazer:**
+      - em cada linha da trajetória: jogos, gols e assistências por clube e temporada (e minutos, para dar o gols por 90);
+      - temporadas que já estão na base: direto da tabela estatisticas (liga e copas), sem custo;
+      - temporadas antigas: /players?id={atleta}&season={ano} da API-Football (1 consulta por temporada, guardar em cache como as
+        respostas do provedor); fazer só sob demanda (quando o painel abre) e com limite, para não estourar a cota;
+      - depois do fim do Pro (~09/12): ver se a Bzzoiro tem o histórico por temporada (o elenco traz `transfers`); senão, fica
+        só o que já estiver em cache e o que está na base;
+      - cartão "Trajetória em gols" para vídeo (barras por clube), no visual do canal.
+    - **Cuidado:** seleção (Argentina 2022) aparece na trajetória: separar seleção de clube nos totais.
+
 ## Mapa de calor e finalizações no campo (levantamento de 03/11/2026)
 
 FEITO em 03/11/2026 com a PitchAPI (Série A 2023-2026 confirmada): 4º cartão do "Para vídeo" e contagens de finalização no roteiro.
