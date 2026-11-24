@@ -64,7 +64,13 @@ public record BuscarPorPerfil(
     // Oportunidade de mercado: contrato terminando até essa data (sem contrato conhecido, fica de fora quando pedido)
     DateOnly? ContratoAteMax = null,
     // Só atletas de ligas de fora do Brasil (o reforço "de fora", mais viável que tirar titular de rival)
-    bool SoLigasDeFora = false) : IQuery<ResultadoBusca>;
+    bool SoLigasDeFora = false,
+    // Piso de valor de mercado em euros (faixa de investimento "de 3 a 8 milhões"); sem valor conhecido, fica de fora quando pedido
+    long? ValorMinimo = null,
+    // Mínimo de gols na temporada, somando liga e copas da mesma temporada
+    int? GolsMinimos = null,
+    // Mínimo de gols por 90 min na liga (centroavante no mercado: 0,40 por padrão no chat, ~12 gols em 30 jogos)
+    double? GolsPor90Minimo = null) : IQuery<ResultadoBusca>;
 
 public record ResultadoBusca(int Encontrados, IReadOnlyList<ResumoAtleta> Atletas, IReadOnlyList<string> Observacoes);
 
@@ -105,10 +111,29 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
             (q.MinutosMinimos is null || l.Minutos >= q.MinutosMinimos) &&
             (q.ExcluirClubeId is null || !l.ClubeIds.Contains(q.ExcluirClubeId.Value)) &&
             (q.ContratoAteMax is null || (l.ContratoAte is { } fim && fim <= q.ContratoAteMax)) &&
+            (q.ValorMinimo is null || l.ValorMercado >= q.ValorMinimo) &&
+            (q.GolsPor90Minimo is null || (l.Minutos > 0 && l.Gols * 90.0 / l.Minutos >= q.GolsPor90Minimo)) &&
             // o teto é o da posição pedida (um meia que joga de centroavante paga o teto do ataque)
             CabeNoBolso(l.ValorMercado, (q.Funcao is { } f ? SetorDaFuncao(f) : q.Setor) ?? l.Setor, q.ValorMaximo, tetos));
 
-        double? Pontuar(LinhaAnalise l) => atributos.Count == 0 ? l.Nota : NotaPonderada(l, atributos);
+        // Gols na temporada somando as copas (Libertadores, Sul-Americana, Copa do Brasil...), para o mínimo de gols
+        Dictionary<(int, int), int> golsEmCopas = [];
+        if (q.GolsMinimos is not null)
+        {
+            var lista = candidatos.ToList();
+            candidatos = lista;
+            var ids = lista.Select(l => l.AtletaId).Distinct().ToList();
+            golsEmCopas = (await db.Estatisticas.AsNoTracking()
+                    .Where(e => ids.Contains(e.AtletaId) && e.Competicao.Tipo == Competicao.TipoCopa)
+                    .GroupBy(e => new { e.AtletaId, e.Temporada }).Select(g => new { g.Key.AtletaId, g.Key.Temporada, Gols = g.Sum(e => e.Gols) })
+                    .ToListAsync(ct))
+                .ToDictionary(x => (x.AtletaId, x.Temporada), x => x.Gols);
+            candidatos = lista.Where(l => l.Gols + golsEmCopas.GetValueOrDefault((l.AtletaId, l.Temporada)) >= q.GolsMinimos).ToList();
+        }
+
+        // Centroavante no mercado, sem atributos pedidos: gol pesa mais que tudo (o nota geral do ataque premia o atacante que cria)
+        var notaDeCentroavante = q.Mercado && atributos.Count == 0 && q.Funcao is { } fc && fc.Contains("centroavante", StringComparison.OrdinalIgnoreCase);
+        double? Pontuar(LinhaAnalise l) => notaDeCentroavante ? NotaDeCentroavante(l) : atributos.Count == 0 ? l.Nota : NotaPonderada(l, atributos);
         // Com liga de fora na busca, a ordem é pela pontuação convertida para a Série A (as notas de ligas diferentes não se comparam)
         var conversor = await forca.Conversor(linhas, Pontuar, ct);
         var forcas = conversor is null ? null : await forca.Obter(ct);
@@ -145,6 +170,11 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
         if (q.ContratoAteMax is { } ca)
             observacoes.Add($"Oportunidade: contrato terminando até {ca:MM/yyyy} (atleta sem contrato conhecido fica de fora). Fim de contrato costuma baratear ou zerar a transferência.");
         if (q.SoLigasDeFora) observacoes.Add("Só ligas de fora do Brasil.");
+        if (notaDeCentroavante)
+            observacoes.Add("Ordem de centroavante: 60% gols por 90, 20% finalizações no alvo por 90 e 20% assistências por 90, no percentil da liga, convertido para a régua da Série A.");
+        if (q.GolsPor90Minimo is { } g90) observacoes.Add($"Só quem faz pelo menos {g90:0.00} gol por 90 min na liga (≈ {g90 * 30:0} gols em 30 jogos completos).");
+        if (q.ValorMinimo is { } vmin) observacoes.Add($"Valor de mercado a partir de {Euros(vmin)} (sem valor conhecido, fica de fora).");
+        if (q.GolsMinimos is { } gm) observacoes.Add($"Pelo menos {gm} gols na temporada, somando liga e copas.");
         if (q.Esquema is not null)
             observacoes.Add($"Esquema {q.Esquema}: a busca considera a função em campo; cada atleta traz quantos jogos fez com a mesma linha de defesa.");
 
@@ -166,6 +196,15 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
                 forcas?.GetValueOrDefault(x.linha.CompeticaoId)?.Estimativa ?? false) with { Situacao = vinculos.GetValueOrDefault(x.linha.AtletaId)?.Situacao })
             .ToList();
         return new ResultadoBusca(pontuados.Count, resultado, observacoes);
+    }
+
+    /// <summary>Nota de centroavante: 60% o percentil de gols por 90, 20% finalizações no alvo por 90, 20% assistências por 90.</summary>
+    public static double? NotaDeCentroavante(LinhaAnalise l)
+    {
+        if (l.Percentis.GetValueOrDefault("gols90") is not { } gols) return null;
+        var alvo = l.Percentis.GetValueOrDefault("finalizacoesNoAlvo90") ?? gols;
+        var assist = l.Percentis.GetValueOrDefault("assistencias90") ?? gols;
+        return 0.6 * gols + 0.2 * alvo + 0.2 * assist;
     }
 
     static double? NotaPonderada(LinhaAnalise l, List<(Atributo atributo, double peso)> atributos)

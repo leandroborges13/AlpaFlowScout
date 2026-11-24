@@ -85,11 +85,14 @@ public class AssistenteScout(
                        [Description("Só quem cabe na realidade do futebol brasileiro (valor até os 10% mais caros da Série A no setor). Padrão: sim no modo mercado")] bool? realidadeBrasileira = null,
                        [Description("true para incluir ligas com régua só estimada (MLS, Liga MX...). Padrão no modo mercado: não")] bool? incluirEstimadas = null,
                        [Description("Oportunidade de mercado: contrato terminando até esta data (aaaa-mm-dd), ex.: '2027-06-30'")] string? contratoAte = null,
-                       [Description("OBRIGATÓRIO true quando o pedido disser \"de fora\", \"do exterior\", \"estrangeiro\" ou \"de outro país\": só atletas de ligas fora do Brasil")] bool? soLigasDeFora = null) =>
+                       [Description("OBRIGATÓRIO true quando o pedido disser \"de fora\", \"do exterior\", \"estrangeiro\" ou \"de outro país\": só atletas de ligas fora do Brasil")] bool? soLigasDeFora = null,
+                       [Description("Piso de valor de mercado em milhões de euros (ex.: 'entre 3 e 8 milhões' = valorMinimoMilhoes 3 e valorMaximoMilhoes 8)")] double? valorMinimoMilhoes = null,
+                       [Description("Mínimo de gols na temporada (liga + copas), ex.: 15")] int? golsMinimos = null,
+                       [Description("Mínimo de gols por 90 min na liga. Centroavante no modo mercado: padrão 0,40 (≈ 12 gols em 30 jogos)")] double? golsPor90Minimo = null) =>
                 {
                     log.LogInformation("buscar_atletas setor={Setor} funcao={Funcao} lado={Lado} esquema={Esquema} idade={Min}-{Max} part={Part} atributos={A} fortes={F} comp={C} temporada={T} mercado={Mercado} fora={Fora} contrato={Contrato} valor={Valor}",
                         setor, funcao, lado, esquema, idadeMinima, idadeMaxima, participacaoMinima, string.Join(",", atributos ?? []), string.Join(",", atributosMuitoImportantes ?? []), string.Join(",", competicoes ?? []), temporada,
-                        mercado, soLigasDeFora, contratoAte, valorMaximoMilhoes);
+                        mercado, soLigasDeFora, contratoAte, $"{valorMinimoMilhoes}-{valorMaximoMilhoes} gols>={golsMinimos} g90>={golsPor90Minimo}");
                     // A IA às vezes esquece o filtro: "de fora"/"exterior"/"estrangeiro" na última pergunta liga o "só ligas de fora"
                     var pergunta = conversa.LastOrDefault(m => m.Papel == "user")?.Texto.ToLowerInvariant() ?? "";
                     if (soLigasDeFora is null && new[] { "de fora", "exterior", "estrangeir", "de outro país", "gringo" }.Any(pergunta.Contains))
@@ -105,7 +108,9 @@ public class AssistenteScout(
                         mercado ?? false, minutosMinimos, excluirClube, soElencoAtual ?? false,
                         valorMaximoMilhoes is { } vm ? (long)(vm * 1_000_000) : null, realidadeBrasileira ?? (mercado ?? false),
                         incluirEstimadas ?? !(mercado ?? false),
-                        DateOnly.TryParse(contratoAte, out var fimContrato) ? fimContrato : null, soLigasDeFora ?? false), ct);
+                        DateOnly.TryParse(contratoAte, out var fimContrato) ? fimContrato : null, soLigasDeFora ?? false,
+                        valorMinimoMilhoes is { } vmin ? (long)(vmin * 1_000_000) : null, golsMinimos,
+                        golsPor90Minimo ?? (mercado == true && funcao?.Contains("centroavante", StringComparison.OrdinalIgnoreCase) == true ? 0.40 : null)), ct);
                     Citar(r.Atletas);
                     if (mercado != true) return (object)r;
                     // Gols e jogos em copas na mesma temporada (Libertadores, Sul-Americana...): a nota é só da liga
@@ -122,7 +127,8 @@ public class AssistenteScout(
                         {
                             a.Nome, a.Idade, a.Clube, Liga = a.Competicao, a.Funcao,
                             NotaNaReguaDaSerieA = a.NotaSerieA ?? a.Nota, ReguaEstimada = a.NotaSerieAEstimada, NotaNaLigaDele = a.Nota,
-                            a.Jogos, a.Minutos, a.Gols, a.Assistencias,
+                            a.Jogos, a.Minutos, GolsNaLiga = a.Gols, a.Assistencias,
+                            GolsPor90 = a.Minutos > 0 ? Math.Round(a.Gols * 90.0 / a.Minutos, 2) : 0,
                             ValorDeMercado = a.ValorMercado is { } v ? BuscarPorPerfilHandler.Euros(v) : "não informado",
                             ContratoAte = a.ContratoAte?.ToString("MM/yyyy"), a.Situacao, a.Destaques,
                             EmCopas = copas[a.Id].Where(c => c.Temporada == a.Temporada).Select(c => $"{c.Copa}: {c.Jogos} jogos, {c.Gols} gols").ToList(),
@@ -139,7 +145,9 @@ public class AssistenteScout(
                 "No modo mercado, só vem quem cabe no bolso de um clube brasileiro; cite o ValorMercado (euros, estimativa pública) e o ContratoAte quando vierem " +
                 "(contrato acabando em até 1 ano = mais barato). Cite também os gols em copas (EmCopas) quando houver. " +
                 "Pedido de \"oportunidade\" ou \"fim de contrato\": use contratoAte (ex.: 6 meses à frente). Pedido de reforço \"de fora\": soLigasDeFora=true. " +
-                "Sem idade pedida, não limite a idade. " +
+                "Sem idade pedida, não limite a idade. Passe TODOS os filtros pedidos (faixa de valor, mínimo de gols, idade, de fora); " +
+                "a ferramenta já devolve só quem cumpre: nunca inclua na resposta quem não cumpre (\"quase 15 gols\" não serve). " +
+                "Se vier pouca gente, diga quantos cumprem e sugira qual filtro afrouxar. " +
                 "Nunca diga que um clube vai contratar alguém: é sugestão pelos números."),
             AIFunctionFactory.Create(
                 async (int atletaId, int? temporada = null) =>

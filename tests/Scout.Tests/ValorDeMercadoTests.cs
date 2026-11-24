@@ -36,6 +36,18 @@ public class ValorDeMercadoTests
         Assert.True(BuscarPorPerfilHandler.CabeNoBolso(4_000_000, Setor.Ataque, 5_000_000, tetos));
     }
 
+    [Fact]
+    public void Nota_de_centroavante_pesa_o_gol()
+    {
+        // O "Passerini": cria muito (assistências no topo) mas faz pouco gol; o artilheiro faz gol e cria pouco
+        var criador = new Scout.Application.Analise.LinhaAnalise();
+        criador.Percentis["gols90"] = 40; criador.Percentis["finalizacoesNoAlvo90"] = 60; criador.Percentis["assistencias90"] = 97;
+        var artilheiro = new Scout.Application.Analise.LinhaAnalise();
+        artilheiro.Percentis["gols90"] = 95; artilheiro.Percentis["finalizacoesNoAlvo90"] = 85; artilheiro.Percentis["assistencias90"] = 40;
+        Assert.True(BuscarPorPerfilHandler.NotaDeCentroavante(artilheiro) > BuscarPorPerfilHandler.NotaDeCentroavante(criador));
+        Assert.Equal(0.6 * 95 + 0.2 * 85 + 0.2 * 40, BuscarPorPerfilHandler.NotaDeCentroavante(artilheiro)!.Value, 6);
+    }
+
     [Theory]
     [InlineData("Centroavante", Setor.Ataque)]
     [InlineData("Ponta esquerda", Setor.Ataque)]
