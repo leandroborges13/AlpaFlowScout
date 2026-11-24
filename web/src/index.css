@@ -359,6 +359,10 @@ button.lt-quad:hover, button.lt-quad:focus-visible { outline: 2px solid var(--in
 .galeria { max-width: min(1200px, 96vw); }
 .galeria-topo { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .galeria-topo h3 { margin: 0; }
+.galeria-texto { margin: 10px 0 14px; display: grid; gap: 6px; }
+.galeria-texto textarea { width: 100%; font: inherit; font-size: 14px; line-height: 1.4; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); resize: vertical; }
+.galeria-texto .pos-jogo-acoes { align-items: center; justify-content: space-between; }
+.galeria-texto .legenda { margin: 0; }
 .galeria-lista { display: flex; gap: 12px; overflow-x: auto; padding: 6px 2px 12px; }
 .galeria-item { flex: none; padding: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #0a0a0a; cursor: zoom-in; }
 .galeria-item img { display: block; height: min(62vh, 560px); width: auto; }

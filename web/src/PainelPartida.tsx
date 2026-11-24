@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api, type AnalisePartida, type ResultadoPalpite, type DesempenhoNoJogo, type EventoDaPartida, type LadoDaPartida, type MapaDaPartida, type ResumoPartida, type RoteiroPosJogo } from './api'
 import { GaleriaVideo } from './GaleriaVideo'
 import { PranchetaTatica } from './Prancheta'
-import { cartaoDoJogador, cartaoDoPalpite, cartaoPlacarDoModelo, cartoesDaPartida, cartoesDoPlacar, coletar, ligarJogador, recortesDoMapa, type Cartao } from './ParaVideo'
+import { cartaoDoJogador, cartaoDoPalpite, cartaoPlacarDoModelo, cartoesDaPartida, cartoesDoPlacar, coletar, textoDoPlacar, ligarJogador, recortesDoMapa, type Cartao } from './ParaVideo'
 import { coresDoJogo } from './Cores'
 import { Escudo } from './PainelTime'
 import { CampoDaPartida, DesempenhoNaPartida, Destaques, LinhaDoTempo } from './PartidaVisual'
@@ -385,6 +385,7 @@ function PalpiteDoJogo({ id, gravacao }: { id: number; gravacao: boolean }) {
  */
 function PlacarAgora({ id }: { id: number }) {
   const [galeria, setGaleria] = useState<Cartao[] | null>(null)
+  const [texto, setTexto] = useState('')
   const [estado, setEstado] = useState<'pronto' | 'buscando' | 'erro'>('pronto')
   return (
     <>
@@ -393,13 +394,14 @@ function PlacarAgora({ id }: { id: number }) {
           setEstado('buscando')
           try {
             const [placar, palpite] = await Promise.all([api.aoVivo(id), api.palpite(id).catch(() => null)])
+            setTexto(textoDoPlacar(placar, palpite?.palpite ?? null))
             setGaleria(await coletar(() => cartoesDoPlacar(placar, palpite?.palpite ?? null)))
             setEstado('pronto')
           } catch { setEstado('erro') }
         }}>
         {estado === 'buscando' ? 'Buscando…' : estado === 'erro' ? '📺 Placar agora (tentar de novo)' : '📺 Placar agora'}
       </button>
-      {galeria && <GaleriaVideo titulo="Placar agora: X e Short" cartoes={galeria} onFechar={() => setGaleria(null)} />}
+      {galeria && <GaleriaVideo titulo="Placar agora: X e Short" cartoes={galeria} texto={texto} onFechar={() => setGaleria(null)} />}
     </>
   )
 }

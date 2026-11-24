@@ -8,13 +8,17 @@ import { baixarCartao, type Cartao } from './ParaVideo'
  * botões, F põe em tela cheia, Esc volta. "Baixar" continua para quem quiser os arquivos.
  */
 /** Desenhada no body (portal): dentro do painel da partida, o modal e a tela cheia ficariam presos a ele. */
-export function GaleriaVideo(props: { cartoes: Cartao[]; titulo: string; onFechar: () => void }) {
+type Props = { cartoes: Cartao[]; titulo: string; onFechar: () => void; /** texto do post para copiar junto (ex.: X) */ texto?: string }
+
+export function GaleriaVideo(props: Props) {
   return createPortal(<Galeria {...props} />, document.body)
 }
 
-function Galeria({ cartoes, titulo, onFechar }: { cartoes: Cartao[]; titulo: string; onFechar: () => void }) {
+function Galeria({ cartoes, titulo, onFechar, texto }: Props) {
   const urls = useMemo(() => cartoes.map((c) => c.canvas.toDataURL('image/png')), [cartoes])
-  const [aberto, setAberto] = useState<number | null>(cartoes.length === 1 ? 0 : null)
+  const [aberto, setAberto] = useState<number | null>(cartoes.length === 1 && !texto ? 0 : null)
+  const [post, setPost] = useState(texto ?? '')
+  const [copiado, setCopiado] = useState(false)
   const [semBotoes, setSemBotoes] = useState(false)
   const palco = useRef<HTMLDivElement>(null)
 
@@ -73,6 +77,17 @@ function Galeria({ cartoes, titulo, onFechar }: { cartoes: Cartao[]; titulo: str
             <button className="btn" onClick={onFechar}>Fechar</button>
           </div>
         </div>
+        {texto != null && (
+          <div className="galeria-texto">
+            <textarea value={post} onChange={(e) => { setPost(e.target.value); setCopiado(false) }} rows={7} aria-label="Texto do post" />
+            <div className="pos-jogo-acoes">
+              <span className="legenda">{post.length} de 280 caracteres</span>
+              <button className="btn" onClick={() => navigator.clipboard.writeText(post).then(() => setCopiado(true)).catch(() => {})}>
+                {copiado ? '✅ Copiado' : '📋 Copiar texto'}
+              </button>
+            </div>
+          </div>
+        )}
         <p className="legenda">Clique num cartão para ver grande e gravar. No modo grande: ← → passam, H esconde os botões, F põe em tela cheia.</p>
         <div className="galeria-lista">
           {cartoes.map((c, i) => (

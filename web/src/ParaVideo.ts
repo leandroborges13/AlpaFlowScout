@@ -836,6 +836,30 @@ function vereditoDoModelo(p: PlacarAoVivo, palpite: Palpite | null, nome: (n: st
   return res === palpite.favorito ? ['O modelo acertou: ', `deu ${fav} ✅`] : ['O modelo errou: ', `deu ${fav} e ${palpite.placarProvavel}`]
 }
 
+/**
+ * O texto do post do X que acompanha o cartão (pós-jogo relâmpago): placar, 2 ou 3 números e o veredito do modelo, curto
+ * para caber nos 280 caracteres, pronto para copiar e colar. No intervalo, sem veredito.
+ */
+export function textoDoPlacar(p: PlacarAoVivo, palpite: Palpite | null): string {
+  const nome = (n: string, id: number) => (id === TIME_DO_CANAL ? 'Galo' : n)
+  const [nm, nv] = [nome(p.mandante.time, p.mandante.clubeId), nome(p.visitante.time, p.visitante.clubeId)]
+  const placar = `${nm} ${p.mandante.gols ?? 0} x ${p.visitante.gols ?? 0} ${nv}`
+  const xg = (v: number | null) => (v == null ? null : v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
+  const pct = (v: number | null) => (v == null ? null : `${v}%`)
+  const par = (rot: string, a: number | string | null, b: number | string | null) => (a == null || b == null ? null : `${rot} ${a} x ${b}`)
+  const numeros = [
+    par('finalizações', p.mandante.finalizacoes, p.visitante.finalizacoes),
+    par('no alvo', p.mandante.noAlvo, p.visitante.noAlvo),
+    par('xG', xg(p.mandante.xg), xg(p.visitante.xg)) ?? par('posse', pct(p.mandante.posse), pct(p.visitante.posse)),
+  ].filter(Boolean).join(' · ')
+  const linhas = [p.encerrado ? `Fim de jogo: ${placar}. 🐓` : p.intervalo ? `Intervalo: ${placar}.` : `${p.minuto ?? ''}': ${placar}.`]
+  if (numeros) linhas.push(`📊 ${numeros.charAt(0).toUpperCase()}${numeros.slice(1)}`)
+  const v = vereditoDoModelo(p, palpite, nome)
+  if (v && p.encerrado) linhas.push(v[0] + v[1])
+  linhas.push(p.encerrado ? 'Os números completos saem amanhã cedo. Segue @galonalupa 🔍' : 'Segue @galonalupa 🔍')
+  return linhas.join('\n\n')
+}
+
 const selosDoJogo = (p: PlacarAoVivo): [string, string] =>
   p.encerrado ? ['Fim de jogo', COR.destaque] : p.intervalo ? ['Intervalo', '#ff4d3d'] : [`Ao vivo${p.minuto ? ` · ${p.minuto}'` : ''}`, '#ff4d3d']
 
