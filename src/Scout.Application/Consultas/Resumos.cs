@@ -25,7 +25,9 @@ public record ResumoAtleta(
     string? Situacao = null,
     // Valor de mercado em euros e fim de contrato (Bzzoiro); nulos quando a fonte não tem
     long? ValorMercado = null,
-    DateOnly? ContratoAte = null);
+    DateOnly? ContratoAte = null,
+    // Liga de fora sem régua da Série A (Europa, Rússia, Oriente Médio): a nota é só a da própria liga
+    bool SemReguaSerieA = false);
 
 public static class Resumir
 {

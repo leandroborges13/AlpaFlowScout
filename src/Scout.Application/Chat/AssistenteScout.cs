@@ -88,7 +88,8 @@ public class AssistenteScout(
                        [Description("OBRIGATÓRIO true quando o pedido disser \"de fora\", \"do exterior\", \"estrangeiro\" ou \"de outro país\": só atletas de ligas fora do Brasil")] bool? soLigasDeFora = null,
                        [Description("Piso de valor de mercado em milhões de euros (ex.: 'entre 3 e 8 milhões' = valorMinimoMilhoes 3 e valorMaximoMilhoes 8)")] double? valorMinimoMilhoes = null,
                        [Description("Mínimo de gols na temporada (liga + copas), ex.: 15")] int? golsMinimos = null,
-                       [Description("Mínimo de gols por 90 min na liga. Centroavante no modo mercado: padrão 0,40 (≈ 12 gols em 30 jogos)")] double? golsPor90Minimo = null) =>
+                       [Description("Mínimo de gols por 90 min na liga. Centroavante no modo mercado: padrão 0,40 (≈ 12 gols em 30 jogos)")] double? golsPor90Minimo = null,
+                       [Description("Nacionalidades em inglês, ex.: ['Argentina','Uruguay']. \"Sul-americanos\" = Brazil, Argentina, Uruguay, Colombia, Chile, Paraguay, Peru, Ecuador, Venezuela, Bolivia")] string[]? nacionalidades = null) =>
                 {
                     log.LogInformation("buscar_atletas setor={Setor} funcao={Funcao} lado={Lado} esquema={Esquema} idade={Min}-{Max} part={Part} atributos={A} fortes={F} comp={C} temporada={T} mercado={Mercado} fora={Fora} contrato={Contrato} valor={Valor}",
                         setor, funcao, lado, esquema, idadeMinima, idadeMaxima, participacaoMinima, string.Join(",", atributos ?? []), string.Join(",", atributosMuitoImportantes ?? []), string.Join(",", competicoes ?? []), temporada,
@@ -110,7 +111,8 @@ public class AssistenteScout(
                         incluirEstimadas ?? !(mercado ?? false),
                         DateOnly.TryParse(contratoAte, out var fimContrato) ? fimContrato : null, soLigasDeFora ?? false,
                         valorMinimoMilhoes is { } vmin ? (long)(vmin * 1_000_000) : null, golsMinimos,
-                        golsPor90Minimo ?? (mercado == true && funcao?.Contains("centroavante", StringComparison.OrdinalIgnoreCase) == true ? 0.40 : null)), ct);
+                        golsPor90Minimo ?? (mercado == true && funcao?.Contains("centroavante", StringComparison.OrdinalIgnoreCase) == true ? 0.40 : null),
+                        nacionalidades), ct);
                     Citar(r.Atletas);
                     if (mercado != true) return (object)r;
                     // Gols e jogos em copas na mesma temporada (Libertadores, Sul-Americana...): a nota é só da liga
@@ -126,7 +128,8 @@ public class AssistenteScout(
                         Atletas = r.Atletas.Select(a => new
                         {
                             a.Nome, a.Idade, a.Clube, Liga = a.Competicao, a.Funcao,
-                            NotaNaReguaDaSerieA = a.NotaSerieA ?? a.Nota, ReguaEstimada = a.NotaSerieAEstimada, NotaNaLigaDele = a.Nota,
+                            NotaNaReguaDaSerieA = a.SemReguaSerieA ? null : a.NotaSerieA ?? a.Nota, ReguaEstimada = a.NotaSerieAEstimada,
+                            NotaNaLigaDele = a.Nota, SemReguaDaSerieA = a.SemReguaSerieA, a.Temporada,
                             a.Jogos, a.Minutos, GolsNaLiga = a.Gols, a.Assistencias,
                             GolsPor90 = a.Minutos > 0 ? Math.Round(a.Gols * 90.0 / a.Minutos, 2) : 0,
                             ValorDeMercado = a.ValorMercado is { } v ? BuscarPorPerfilHandler.Euros(v) : "não informado",
@@ -180,20 +183,33 @@ public class AssistenteScout(
                 "oportunidades",
                 "Jovens que já jogam bastante no clube e estão entre os melhores da posição."),
             AIFunctionFactory.Create(
-                async ([Description("Nome ou parte do nome do atleta")] string nome) =>
+                async ([Description("Nome ou parte do nome do atleta")] string nome,
+                       [Description("Pista dita pelo usuário para escolher entre homônimos: clube, liga ou posição (ex.: 'atacante Palmeiras', 'Independiente Rivadavia')")] string? pista = null) =>
                 {
                     // Poucos milhares de nomes: a busca tolerante (sem acento, com erro de digitação) roda em memória
                     var atletas = await db.Atletas.AsNoTracking().Select(a => new { a.Id, a.Nome, a.NomeCompleto }).ToListAsync(ct);
                     var achados = atletas.Select(a => (a, pontos: BuscaPorNome.PontuarAtleta(nome, a.Nome, a.NomeCompleto)))
-                        .Where(x => x.pontos > 0).OrderByDescending(x => x.pontos).Take(8).Select(x => x.a).ToList();
-                    // Clube e competição de cada um, para escolher o certo entre homônimos ("Fernando do Bragantino")
-                    var fichas = (await ObterFichaAtletaHandler.Fichas(db, achados.Select(a => a.Id).ToList(), ct)).ToDictionary(f => f.Id);
-                    return achados.Select(a => fichas.GetValueOrDefault(a.Id) is { } f
-                        ? (object)new { a.Id, a.Nome, a.NomeCompleto, f.Idade, f.TemNota, f.Motivo, Clubes = f.Registros.Take(3).Select(r => $"{r.Clube} ({r.Competicao} {r.Temporada}, {r.Minutos} min)") }
+                        .Where(x => x.pontos > 0).OrderByDescending(x => x.pontos).Take(15).Select(x => x.a).ToList();
+                    // Clube, competição, posição e gols de cada um, para escolher o certo entre homônimos ("Arce" atacante x "Arce" meia)
+                    var ids = achados.Select(a => a.Id).ToList();
+                    var fichas = (await ObterFichaAtletaHandler.Fichas(db, ids, ct)).ToDictionary(f => f.Id);
+                    var posicoes = (await db.Estatisticas.AsNoTracking().Where(e => ids.Contains(e.AtletaId) && e.PosicaoProvedor != null)
+                            .Select(e => new { e.AtletaId, e.PosicaoProvedor, e.Minutos }).ToListAsync(ct))
+                        .GroupBy(e => e.AtletaId).ToDictionary(g => g.Key, g => g.OrderByDescending(e => e.Minutos).First().PosicaoProvedor switch
+                        {
+                            "Attacker" => "Atacante", "Midfielder" => "Meio-campista", "Defender" => "Defensor", "Goalkeeper" => "Goleiro", var p => p,
+                        });
+                    string Texto(int id) => $"{posicoes.GetValueOrDefault(id)} {string.Join(" ", fichas.GetValueOrDefault(id)?.Registros.Select(r => $"{r.Clube} {r.Competicao}") ?? [])}";
+                    var termos = (pista ?? "").ToLowerInvariant().Split(' ', ',', StringSplitOptions.RemoveEmptyEntries).Where(t => t.Length >= 3).ToList();
+                    int Acertos(int id) { var t = Texto(id).ToLowerInvariant(); return termos.Count(t.Contains); }
+                    return achados.OrderByDescending(a => Acertos(a.Id)).Take(8).Select(a => fichas.GetValueOrDefault(a.Id) is { } f
+                        ? (object)new { a.Id, a.Nome, a.NomeCompleto, f.Idade, Posicao = posicoes.GetValueOrDefault(a.Id), f.TemNota, f.Motivo,
+                            Clubes = f.Registros.Take(4).Select(r => $"{r.Clube} ({r.Competicao} {r.Temporada}, {r.Jogos} jogos, {r.Minutos} min, {r.Gols} gols)") }
                         : new { a.Id, a.Nome, a.NomeCompleto }).ToList();
                 },
                 "procurar_atleta_por_nome",
-                "Encontra o ID de um atleta pelo nome, com o clube e a competição de cada resultado (para escolher o certo entre homônimos)."),
+                "Encontra o ID de um atleta pelo nome, com posição, clube, competição, minutos e gols de cada resultado. Sempre passe a pista que o usuário deu " +
+                "(clube, posição) e escolha o homônimo que bate com ela; sem pista, prefira o de mais minutos recentes e diga qual escolheu."),
             AIFunctionFactory.Create(
                 async ([Description("Goleiro, Defesa, Meio ou Ataque")] string? posicao = null, int? idadeMaxima = null,
                        [Description("% máximo dos minutos do clube na temporada atual (padrão 30)")] int? participacaoMaxima = null,

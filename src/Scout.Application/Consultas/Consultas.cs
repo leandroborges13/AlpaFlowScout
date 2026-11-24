@@ -70,7 +70,9 @@ public record BuscarPorPerfil(
     // Mínimo de gols na temporada, somando liga e copas da mesma temporada
     int? GolsMinimos = null,
     // Mínimo de gols por 90 min na liga (centroavante no mercado: 0,40 por padrão no chat, ~12 gols em 30 jogos)
-    double? GolsPor90Minimo = null) : IQuery<ResultadoBusca>;
+    double? GolsPor90Minimo = null,
+    // Nacionalidades em inglês, como o provedor ("Argentina", "Uruguay"); "sul-americanos" = as 10 da Conmebol
+    string[]? Nacionalidades = null) : IQuery<ResultadoBusca>;
 
 public record ResultadoBusca(int Encontrados, IReadOnlyList<ResumoAtleta> Atletas, IReadOnlyList<string> Observacoes);
 
@@ -79,6 +81,9 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
     public async Task<ResultadoBusca> Handle(BuscarPorPerfil q, CancellationToken ct)
     {
         var linhas = await CarregarLinhas(db, motor, q.Temporada, q.Competicoes, ct, incluirExterior: q.Mercado || q.SoLigasDeFora);
+        if (q.Mercado && q.Temporada is null) linhas = await ComTemporadaAnterior(linhas, ct);
+        if (q.Nacionalidades is { Length: > 0 } nacs)
+            linhas = linhas.Where(l => l.Nacionalidade is { } n && nacs.Contains(n, StringComparer.OrdinalIgnoreCase)).ToList();
         if (q.Mercado && q.Competicoes is not { Length: > 0 })
         {
             var ids = linhas.Select(l => l.CompeticaoId).Distinct().ToList();
@@ -145,8 +150,9 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
             .Select(l => (linha: l, nota: Pontuar(l)))
             .Where(x => x.nota is not null)
             .Select(x => (x.linha, x.nota, serieA: conversor?.Invoke(x.linha, x.nota)))
-            .Where(x => conversor is null || x.serieA is not null)
-            .OrderByDescending(x => conversor is null ? x.nota : x.serieA)
+            // Mercado: liga sem régua da Série A (Europa, Rússia, Oriente Médio) entra com a nota da própria liga, em vez de sumir
+            .Where(x => conversor is null || x.serieA is not null || q.Mercado)
+            .OrderByDescending(x => conversor is null ? x.nota : x.serieA ?? x.nota)
             .ToList();
 
         var observacoes = atributos.Select(a => a.atributo.Observacao).OfType<string>().Distinct().ToList();
@@ -158,7 +164,10 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
             observacoes.Add("Atletas de ligas de fora: ordenados pela nota convertida para a Série A, pelo nível da liga medido nos confrontos de copa (Libertadores, Sul-Americana, Mundial de Clubes).");
             var semRegua = candidatos.Where(l => conversor(l, Pontuar(l)) is null && Pontuar(l) is not null).Select(l => l.Competicao).Distinct().ToList();
             if (semRegua.Count > 0)
-                observacoes.Add($"Fora da ordem por ainda não ter confrontos suficientes com clubes brasileiros para comparar: {string.Join(", ", semRegua)}. Peça a liga sozinha para ver os atletas dela.");
+                observacoes.Add(q.Mercado
+                    ? $"Sem régua da Série A (pouco confronto com clubes brasileiros), com a nota na própria liga: {string.Join(", ", semRegua)}. Diga \"nota X na <liga>\" para esses."
+                    : $"Fora da ordem por ainda não ter confrontos suficientes com clubes brasileiros para comparar: {string.Join(", ", semRegua)}. Peça a liga sozinha para ver os atletas dela.");
+            observacoes.Add("Mercado: quando a temporada atual da liga ainda tem menos de 900 min do atleta, vale a temporada anterior completa (veja a Temporada de cada um).");
             if (forcas!.Values.Where(f => f.Estimativa && pontuados.Any(p => p.linha.CompeticaoId == f.CompeticaoId)).Select(f => f.Competicao).ToList() is { Count: > 0 } estimadas)
                 observacoes.Add($"Nota na Série A estimada (poucos jogos diretos com clubes brasileiros): {string.Join(", ", estimadas)}.");
         }
@@ -193,9 +202,25 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
             .Take(limite)
             .Select(x => Resumir.De(x.linha, x.nota, atributos.Count == 0 ? null : atributos.Select(a => a.atributo), q.Esquema,
                 x.serieA is { } s && s != x.nota ? s : null,
-                forcas?.GetValueOrDefault(x.linha.CompeticaoId)?.Estimativa ?? false) with { Situacao = vinculos.GetValueOrDefault(x.linha.AtletaId)?.Situacao })
+                forcas?.GetValueOrDefault(x.linha.CompeticaoId)?.Estimativa ?? false)
+                with { Situacao = vinculos.GetValueOrDefault(x.linha.AtletaId)?.Situacao, SemReguaSerieA = conversor is not null && x.serieA is null })
             .ToList();
         return new ResultadoBusca(pontuados.Count, resultado, observacoes);
+    }
+
+    /// <summary>
+    /// Mercado: a temporada atual de muitas ligas está pela metade (a Europa começou em agosto). Junta a temporada anterior de cada
+    /// liga e, para cada atleta, fica a linha atual se ela já tem 900+ min; senão, a de mais minutos (a temporada passada completa).
+    /// </summary>
+    async Task<List<LinhaAnalise>> ComTemporadaAnterior(List<LinhaAnalise> linhas, CancellationToken ct)
+    {
+        var todas = new List<LinhaAnalise>(linhas);
+        foreach (var (comp, ano) in linhas.Select(l => (l.CompeticaoId, l.Temporada)).Distinct().ToList())
+            if (await motor.Analisar(comp, ano - 1, ct) is { } anterior) todas.AddRange(anterior.Linhas);
+        return todas.GroupBy(l => l.AtletaId)
+            .Select(g => g.Where(l => l.Minutos >= 900).OrderByDescending(l => l.Temporada).FirstOrDefault()
+                         ?? g.OrderByDescending(l => l.Minutos).First())
+            .ToList();
     }
 
     /// <summary>Nota de centroavante: 60% o percentil de gols por 90, 20% finalizações no alvo por 90, 20% assistências por 90.</summary>
@@ -264,7 +289,8 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
     public static bool FuncaoPrincipal(LinhaAnalise l, string funcao)
     {
         var total = l.Funcoes.Values.Sum();
-        if (total == 0) return l.Funcao?.Contains(funcao, StringComparison.OrdinalIgnoreCase) ?? false;
+        // Liga importada sem escalação (Europa): só se sabe o setor do provedor; vale o setor da função pedida
+        if (total == 0) return l.Funcao?.Contains(funcao, StringComparison.OrdinalIgnoreCase) ?? l.Setor == SetorDaFuncao(funcao);
         var nela = l.Funcoes.Where(f => f.Key.Contains(funcao, StringComparison.OrdinalIgnoreCase)).Sum(f => f.Value);
         return nela >= 3 && nela >= total * 0.4;
     }
