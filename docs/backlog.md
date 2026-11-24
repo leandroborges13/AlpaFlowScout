@@ -312,6 +312,19 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
           por posição, um por faixa de preço, e entre eles o **Arce**, o mesmo do nosso vídeo de 27/11.
         - **O que nos falta para ficar nesse nível:** radar e percentil por grupo, dispersão livre, "vence X de Y", evolução por
           temporada (item 25), lesões e planejador com saldo (a prancheta já existe).
+        - **Telas que o Leandro gostou (prints de 24/11, comparação Bareiro x Arce e Venn):**
+          - **Cabeçalho da comparação:** cartão por atleta com foto, "VENCE 9 de 13" e "parecido com X: 63%"; abaixo, a barra
+            "placar" de quem vai melhor em cada indicador (4 x 9, com os empates à parte).
+          - **Radar:** sobreposto, com curva suavizada e preenchimento translúcido na cor de cada atleta.
+          - **Linhas de bolinhas:** por indicador, uma bolinha por atleta no percentil, um traço na mediana e o valor de quem
+            vence em destaque. Ficam em "Fundamentais da posição" e depois em "Outros indicadores", por grupo (chutes, criação,
+            xG, passes, duelos).
+          - **Venn:** até 3 limiares (ex.: gols ≥ 5, assistências ≥ 4, chances criadas ≥ 15), com o avatar de cada atleta na
+            interseção e "+N" quando não cabe.
+          - **Fraqueza:** o percentil é "na posição, todas as ligas", sem ajuste pelo nível da liga. Nós temos a régua da Série A:
+            mostrar os dois percentis (na liga dele e na régua).
+          - **Cuidado com amostra pequena:** "passes decisivos certos 100%" aparece para os dois. Esconder percentual com poucas
+            tentativas.
         - **Nosso diferencial:** régua entre ligas (ForcaDasLigas), teto financeiro pela Série A, contrato, palpite do modelo e
           chat em linguagem natural.
       - o que os clubes usam para garimpar: Wyscout, Hudl StatsBomb, SkillCorner (físico), TransferRoom (mercado),
