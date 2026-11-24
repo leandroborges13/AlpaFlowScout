@@ -72,12 +72,20 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
 {
     public async Task<ResultadoBusca> Handle(BuscarPorPerfil q, CancellationToken ct)
     {
-        var linhas = await CarregarLinhas(db, motor, q.Temporada, q.Competicoes, ct, incluirExterior: q.Mercado);
+        var linhas = await CarregarLinhas(db, motor, q.Temporada, q.Competicoes, ct, incluirExterior: q.Mercado || q.SoLigasDeFora);
         if (q.Mercado && q.Competicoes is not { Length: > 0 })
         {
             var ids = linhas.Select(l => l.CompeticaoId).Distinct().ToList();
             var brasileiras = await db.Competicoes.AsNoTracking()
                 .Where(c => ids.Contains(c.Id) && (c.Pais == "Brazil" || c.Pais == "") && (q.SoLigasDeFora || c.Id != ForcaDasLigas.Referencia))
+                .Select(c => c.Id).ToListAsync(ct);
+            linhas = linhas.Where(l => !brasileiras.Contains(l.CompeticaoId)).ToList();
+        }
+        if (q.SoLigasDeFora)
+        {
+            // vale também com liga pedida ou fora do modo mercado: nada de liga brasileira
+            var ids = linhas.Select(l => l.CompeticaoId).Distinct().ToList();
+            var brasileiras = await db.Competicoes.AsNoTracking().Where(c => ids.Contains(c.Id) && (c.Pais == "Brazil" || c.Pais == ""))
                 .Select(c => c.Id).ToListAsync(ct);
             linhas = linhas.Where(l => !brasileiras.Contains(l.CompeticaoId)).ToList();
         }

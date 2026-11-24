@@ -84,10 +84,15 @@ public class AssistenteScout(
                        [Description("Só quem cabe na realidade do futebol brasileiro (valor até os 10% mais caros da Série A no setor). Padrão: sim no modo mercado")] bool? realidadeBrasileira = null,
                        [Description("true para incluir ligas com régua só estimada (MLS, Liga MX...). Padrão no modo mercado: não")] bool? incluirEstimadas = null,
                        [Description("Oportunidade de mercado: contrato terminando até esta data (aaaa-mm-dd), ex.: '2027-06-30'")] string? contratoAte = null,
-                       [Description("true para só atletas de ligas de fora do Brasil")] bool? soLigasDeFora = null) =>
+                       [Description("OBRIGATÓRIO true quando o pedido disser \"de fora\", \"do exterior\", \"estrangeiro\" ou \"de outro país\": só atletas de ligas fora do Brasil")] bool? soLigasDeFora = null) =>
                 {
-                    log.LogInformation("buscar_atletas setor={Setor} funcao={Funcao} lado={Lado} esquema={Esquema} idade={Min}-{Max} part={Part} atributos={A} fortes={F} comp={C} temporada={T}",
-                        setor, funcao, lado, esquema, idadeMinima, idadeMaxima, participacaoMinima, string.Join(",", atributos ?? []), string.Join(",", atributosMuitoImportantes ?? []), string.Join(",", competicoes ?? []), temporada);
+                    log.LogInformation("buscar_atletas setor={Setor} funcao={Funcao} lado={Lado} esquema={Esquema} idade={Min}-{Max} part={Part} atributos={A} fortes={F} comp={C} temporada={T} mercado={Mercado} fora={Fora} contrato={Contrato} valor={Valor}",
+                        setor, funcao, lado, esquema, idadeMinima, idadeMaxima, participacaoMinima, string.Join(",", atributos ?? []), string.Join(",", atributosMuitoImportantes ?? []), string.Join(",", competicoes ?? []), temporada,
+                        mercado, soLigasDeFora, contratoAte, valorMaximoMilhoes);
+                    // A IA às vezes esquece o filtro: "de fora"/"exterior"/"estrangeiro" na última pergunta liga o "só ligas de fora"
+                    var pergunta = conversa.LastOrDefault(m => m.Papel == "user")?.Texto.ToLowerInvariant() ?? "";
+                    if (soLigasDeFora is null && new[] { "de fora", "exterior", "estrangeir", "de outro país", "gringo" }.Any(pergunta.Contains))
+                        soLigasDeFora = true;
                     var pesos = new Dictionary<string, double>();
                     foreach (var a in atributos ?? []) pesos[a] = 1;
                     foreach (var a in atributosMuitoImportantes ?? []) pesos[a] = 2;
