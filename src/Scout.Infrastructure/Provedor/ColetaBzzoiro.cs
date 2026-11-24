@@ -228,6 +228,7 @@ public class ColetaBzzoiro(HttpClient http, ScoutDbContext db, IConfiguration co
             {
                 if (clubes++ >= maxClubes) break;
                 var bz = times.Where(t => MesmoClube(clube, t.Value.Nome, t.Value.Curto)).Select(t => t.Key).ToList();
+                if (bz.Count != 1 && MelhorPar(clube, times) is { } par) bz = [par];
                 if (bz.Count != 1) { log.LogInformation("  valor: {Clube} sem par único na Bzzoiro ({N})", clube, bz.Count); continue; }
                 ligados++;
                 foreach (var p in await TodasAsPaginas($"/api/players/?team={bz[0]}", chave, ct))
@@ -245,6 +246,34 @@ public class ColetaBzzoiro(HttpClient http, ScoutDbContext db, IConfiguration co
         }
         log.LogInformation("Bzzoiro valores: {ComValor} de {Atletas} atletas com valor ({Ligados}/{Clubes} clubes ligados)", comValor, atletas, ligados, clubes);
         return new(clubes, ligados, atletas, comValor);
+    }
+
+    static readonly HashSet<string> Genericas =
+    [
+        "fc", "sc", "ec", "cf", "ac", "afc", "club", "clube", "de", "del", "la", "el", "do", "da", "the", "saudi", "united", "city",
+        "sporting", "real", "atletico", "athletic", "deportivo", "deportes", "cd", "ca", "sd", "ud", "rc", "al", "fk", "sk", "sv", "bsc",
+        "esporte", "futebol", "football", "calcio", "us", "as", "ss", "cordoba", "santiago", "recife", "ssc", "y",
+    ];
+
+    static string[] Palavras(string nome) => (nome ?? "").Normalize(System.Text.NormalizationForm.FormD)
+        .Where(c => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.NonSpacingMark)
+        .Aggregate(new System.Text.StringBuilder(), (s, c) => s.Append(char.IsLetterOrDigit(c) ? char.ToLowerInvariant(c) : ' ')).ToString()
+        .Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(p => p.Length >= 3 && !Genericas.Contains(p)).ToArray();
+
+    /// <summary>
+    /// Segunda tentativa quando o nome não bate inteiro ("Independ. Rivadavia" x "Independiente Rivadavia", "Bayern München" x
+    /// "Bayern Munich", "Al-Hilal Saudi FC" x "Al Hilal"): quantas palavras distintivas nossas aparecem no nome de lá (igual ou
+    /// prefixo, com 4+ letras). Escolhe o time com mais acertos, só se for único.
+    /// </summary>
+    public static int? MelhorPar(string nosso, IReadOnlyDictionary<int, (string Nome, string? Curto)> times)
+    {
+        var nossas = Palavras(nosso);
+        if (nossas.Length == 0) return null;
+        static bool Casa(string a, string b) => a == b || (Math.Min(a.Length, b.Length) >= 4 && (a.StartsWith(b) || b.StartsWith(a)));
+        var pontos = times.Select(t => (t.Key, n: nossas.Count(p => Palavras($"{t.Value.Nome} {t.Value.Curto}").Any(q => Casa(p, q)))))
+            .Where(x => x.n > 0).OrderByDescending(x => x.n).ToList();
+        if (pontos.Count == 0 || (pontos.Count > 1 && pontos[0].n == pontos[1].n)) return null;
+        return pontos[0].Key;
     }
 
     /// <summary>"Atletico-MG" = "Atlético Mineiro"/"Atlético-MG"; "RB Bragantino" = "Red Bull Bragantino"/"Bragantino".</summary>

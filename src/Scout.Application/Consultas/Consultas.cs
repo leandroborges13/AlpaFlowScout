@@ -60,7 +60,11 @@ public record BuscarPorPerfil(
     // Realidade do futebol brasileiro: no máximo o valor dos 10% mais caros da Série A no mesmo setor (TetosDaSerieA)
     bool RealidadeBrasileira = false,
     // false: tira as ligas cuja régua da Série A é só estimativa (MLS, Liga MX...), que podem inflar a nota convertida
-    bool IncluirEstimadas = true) : IQuery<ResultadoBusca>;
+    bool IncluirEstimadas = true,
+    // Oportunidade de mercado: contrato terminando até essa data (sem contrato conhecido, fica de fora quando pedido)
+    DateOnly? ContratoAteMax = null,
+    // Só atletas de ligas de fora do Brasil (o reforço "de fora", mais viável que tirar titular de rival)
+    bool SoLigasDeFora = false) : IQuery<ResultadoBusca>;
 
 public record ResultadoBusca(int Encontrados, IReadOnlyList<ResumoAtleta> Atletas, IReadOnlyList<string> Observacoes);
 
@@ -72,7 +76,8 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
         if (q.Mercado && q.Competicoes is not { Length: > 0 })
         {
             var ids = linhas.Select(l => l.CompeticaoId).Distinct().ToList();
-            var brasileiras = await db.Competicoes.AsNoTracking().Where(c => ids.Contains(c.Id) && (c.Pais == "Brazil" || c.Pais == "") && c.Id != ForcaDasLigas.Referencia)
+            var brasileiras = await db.Competicoes.AsNoTracking()
+                .Where(c => ids.Contains(c.Id) && (c.Pais == "Brazil" || c.Pais == "") && (q.SoLigasDeFora || c.Id != ForcaDasLigas.Referencia))
                 .Select(c => c.Id).ToListAsync(ct);
             linhas = linhas.Where(l => !brasileiras.Contains(l.CompeticaoId)).ToList();
         }
@@ -91,6 +96,7 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
             (q.ParticipacaoMinimaPercentual is null || l.ParticipacaoMinutos * 100 >= q.ParticipacaoMinimaPercentual) &&
             (q.MinutosMinimos is null || l.Minutos >= q.MinutosMinimos) &&
             (q.ExcluirClubeId is null || !l.ClubeIds.Contains(q.ExcluirClubeId.Value)) &&
+            (q.ContratoAteMax is null || (l.ContratoAte is { } fim && fim <= q.ContratoAteMax)) &&
             // o teto é o da posição pedida (um meia que joga de centroavante paga o teto do ataque)
             CabeNoBolso(l.ValorMercado, (q.Funcao is { } f ? SetorDaFuncao(f) : q.Setor) ?? l.Setor, q.ValorMaximo, tetos));
 
@@ -128,6 +134,9 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
                 string.Join(", ", tetos.OrderBy(t => t.Key).Select(t => $"{Resumir.NomeSetor(t.Key).ToLowerInvariant()} até {Euros(t.Value)}")) +
                 "). Valor de mercado é estimativa pública (Bzzoiro); sem valor conhecido, o atleta entra e vem sem o número.");
         if (q.ValorMaximo is { } vm) observacoes.Add($"Valor de mercado até {Euros(vm)}.");
+        if (q.ContratoAteMax is { } ca)
+            observacoes.Add($"Oportunidade: contrato terminando até {ca:MM/yyyy} (atleta sem contrato conhecido fica de fora). Fim de contrato costuma baratear ou zerar a transferência.");
+        if (q.SoLigasDeFora) observacoes.Add("Só ligas de fora do Brasil.");
         if (q.Esquema is not null)
             observacoes.Add($"Esquema {q.Esquema}: a busca considera a função em campo; cada atleta traz quantos jogos fez com a mesma linha de defesa.");
 

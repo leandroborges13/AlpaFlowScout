@@ -82,7 +82,9 @@ public class AssistenteScout(
                        [Description("true para listar só quem continua no clube (tira quem saiu ou não joga há 60 dias)")] bool? soElencoAtual = null,
                        [Description("Teto de valor de mercado em milhões de euros (ex.: 5)")] double? valorMaximoMilhoes = null,
                        [Description("Só quem cabe na realidade do futebol brasileiro (valor até os 10% mais caros da Série A no setor). Padrão: sim no modo mercado")] bool? realidadeBrasileira = null,
-                       [Description("true para incluir ligas com régua só estimada (MLS, Liga MX...). Padrão no modo mercado: não")] bool? incluirEstimadas = null) =>
+                       [Description("true para incluir ligas com régua só estimada (MLS, Liga MX...). Padrão no modo mercado: não")] bool? incluirEstimadas = null,
+                       [Description("Oportunidade de mercado: contrato terminando até esta data (aaaa-mm-dd), ex.: '2027-06-30'")] string? contratoAte = null,
+                       [Description("true para só atletas de ligas de fora do Brasil")] bool? soLigasDeFora = null) =>
                 {
                     log.LogInformation("buscar_atletas setor={Setor} funcao={Funcao} lado={Lado} esquema={Esquema} idade={Min}-{Max} part={Part} atributos={A} fortes={F} comp={C} temporada={T}",
                         setor, funcao, lado, esquema, idadeMinima, idadeMaxima, participacaoMinima, string.Join(",", atributos ?? []), string.Join(",", atributosMuitoImportantes ?? []), string.Join(",", competicoes ?? []), temporada);
@@ -96,9 +98,16 @@ public class AssistenteScout(
                         idadeMinima, idadeMaxima, participacaoMinima, pesos, limite ?? 5,
                         mercado ?? false, minutosMinimos, excluirClube, soElencoAtual ?? false,
                         valorMaximoMilhoes is { } vm ? (long)(vm * 1_000_000) : null, realidadeBrasileira ?? (mercado ?? false),
-                        incluirEstimadas ?? !(mercado ?? false)), ct);
+                        incluirEstimadas ?? !(mercado ?? false),
+                        DateOnly.TryParse(contratoAte, out var fimContrato) ? fimContrato : null, soLigasDeFora ?? false), ct);
                     Citar(r.Atletas);
                     if (mercado != true) return (object)r;
+                    // Gols e jogos em copas na mesma temporada (Libertadores, Sul-Americana...): a nota é só da liga
+                    var idsMercado = r.Atletas.Select(a => a.Id).ToList();
+                    var copas = (await db.Estatisticas.AsNoTracking()
+                            .Where(e => idsMercado.Contains(e.AtletaId) && e.Competicao.Tipo == Competicao.TipoCopa && e.Jogos > 0)
+                            .Select(e => new { e.AtletaId, e.Temporada, Copa = e.Competicao.Nome, e.Jogos, e.Gols }).ToListAsync(ct))
+                        .ToLookup(e => e.AtletaId);
                     // Mercado: a nota que a resposta deve citar é a da régua da Série A (a mesma do card), com o nome explícito
                     return new
                     {
@@ -110,6 +119,7 @@ public class AssistenteScout(
                             a.Jogos, a.Minutos, a.Gols, a.Assistencias,
                             ValorDeMercado = a.ValorMercado is { } v ? BuscarPorPerfilHandler.Euros(v) : "não informado",
                             ContratoAte = a.ContratoAte?.ToString("MM/yyyy"), a.Situacao, a.Destaques,
+                            EmCopas = copas[a.Id].Where(c => c.Temporada == a.Temporada).Select(c => $"{c.Copa}: {c.Jogos} jogos, {c.Gols} gols").ToList(),
                         }),
                         r.Observacoes,
                     };
@@ -121,7 +131,9 @@ public class AssistenteScout(
                 "Se NotaSerieAEstimada for true, avise que a liga tem pouco confronto com clubes brasileiros e a nota é só ordem de grandeza. " +
                 "Atleta com Situacao preenchida saiu do clube ou não joga há 60 dias: diga isso. " +
                 "No modo mercado, só vem quem cabe no bolso de um clube brasileiro; cite o ValorMercado (euros, estimativa pública) e o ContratoAte quando vierem " +
-                "(contrato acabando em até 1 ano = mais barato). " +
+                "(contrato acabando em até 1 ano = mais barato). Cite também os gols em copas (EmCopas) quando houver. " +
+                "Pedido de \"oportunidade\" ou \"fim de contrato\": use contratoAte (ex.: 6 meses à frente). Pedido de reforço \"de fora\": soLigasDeFora=true. " +
+                "Sem idade pedida, não limite a idade. " +
                 "Nunca diga que um clube vai contratar alguém: é sugestão pelos números."),
             AIFunctionFactory.Create(
                 async (int atletaId, int? temporada = null) =>
