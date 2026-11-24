@@ -81,7 +81,8 @@ public class AssistenteScout(
                        [Description("ID do clube a excluir (ex.: o próprio time que procura reforço)")] int? excluirClube = null,
                        [Description("true para listar só quem continua no clube (tira quem saiu ou não joga há 60 dias)")] bool? soElencoAtual = null,
                        [Description("Teto de valor de mercado em milhões de euros (ex.: 5)")] double? valorMaximoMilhoes = null,
-                       [Description("Só quem cabe na realidade do futebol brasileiro (valor até os 10% mais caros da Série A no setor). Padrão: sim no modo mercado")] bool? realidadeBrasileira = null) =>
+                       [Description("Só quem cabe na realidade do futebol brasileiro (valor até os 10% mais caros da Série A no setor). Padrão: sim no modo mercado")] bool? realidadeBrasileira = null,
+                       [Description("true para incluir ligas com régua só estimada (MLS, Liga MX...). Padrão no modo mercado: não")] bool? incluirEstimadas = null) =>
                 {
                     log.LogInformation("buscar_atletas setor={Setor} funcao={Funcao} lado={Lado} esquema={Esquema} idade={Min}-{Max} part={Part} atributos={A} fortes={F} comp={C} temporada={T}",
                         setor, funcao, lado, esquema, idadeMinima, idadeMaxima, participacaoMinima, string.Join(",", atributos ?? []), string.Join(",", atributosMuitoImportantes ?? []), string.Join(",", competicoes ?? []), temporada);
@@ -94,9 +95,24 @@ public class AssistenteScout(
                         Enum.TryParse<Lado>(lado, true, out var l) ? l : null, esquema,
                         idadeMinima, idadeMaxima, participacaoMinima, pesos, limite ?? 5,
                         mercado ?? false, minutosMinimos, excluirClube, soElencoAtual ?? false,
-                        valorMaximoMilhoes is { } vm ? (long)(vm * 1_000_000) : null, realidadeBrasileira ?? (mercado ?? false)), ct);
+                        valorMaximoMilhoes is { } vm ? (long)(vm * 1_000_000) : null, realidadeBrasileira ?? (mercado ?? false),
+                        incluirEstimadas ?? !(mercado ?? false)), ct);
                     Citar(r.Atletas);
-                    return r;
+                    if (mercado != true) return (object)r;
+                    // Mercado: a nota que a resposta deve citar é a da régua da Série A (a mesma do card), com o nome explícito
+                    return new
+                    {
+                        r.Encontrados,
+                        Atletas = r.Atletas.Select(a => new
+                        {
+                            a.Nome, a.Idade, a.Clube, Liga = a.Competicao, a.Funcao,
+                            NotaNaReguaDaSerieA = a.NotaSerieA ?? a.Nota, ReguaEstimada = a.NotaSerieAEstimada, NotaNaLigaDele = a.Nota,
+                            a.Jogos, a.Minutos, a.Gols, a.Assistencias,
+                            ValorDeMercado = a.ValorMercado is { } v ? BuscarPorPerfilHandler.Euros(v) : "não informado",
+                            ContratoAte = a.ContratoAte?.ToString("MM/yyyy"), a.Situacao, a.Destaques,
+                        }),
+                        r.Observacoes,
+                    };
                 },
                 "buscar_atletas",
                 "Busca atletas por perfil (função, lado, idade, atributos) e devolve os mais aderentes com nota de encaixe 0–100. " +

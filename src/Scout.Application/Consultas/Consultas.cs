@@ -58,7 +58,9 @@ public record BuscarPorPerfil(
     // Teto de valor de mercado em euros (ex.: 5_000_000)
     long? ValorMaximo = null,
     // Realidade do futebol brasileiro: no máximo o valor dos 10% mais caros da Série A no mesmo setor (TetosDaSerieA)
-    bool RealidadeBrasileira = false) : IQuery<ResultadoBusca>;
+    bool RealidadeBrasileira = false,
+    // false: tira as ligas cuja régua da Série A é só estimativa (MLS, Liga MX...), que podem inflar a nota convertida
+    bool IncluirEstimadas = true) : IQuery<ResultadoBusca>;
 
 public record ResultadoBusca(int Encontrados, IReadOnlyList<ResumoAtleta> Atletas, IReadOnlyList<string> Observacoes);
 
@@ -89,12 +91,18 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
             (q.ParticipacaoMinimaPercentual is null || l.ParticipacaoMinutos * 100 >= q.ParticipacaoMinimaPercentual) &&
             (q.MinutosMinimos is null || l.Minutos >= q.MinutosMinimos) &&
             (q.ExcluirClubeId is null || !l.ClubeIds.Contains(q.ExcluirClubeId.Value)) &&
-            CabeNoBolso(l.ValorMercado, l.Setor, q.ValorMaximo, tetos));
+            // o teto é o da posição pedida (um meia que joga de centroavante paga o teto do ataque)
+            CabeNoBolso(l.ValorMercado, (q.Funcao is { } f ? SetorDaFuncao(f) : q.Setor) ?? l.Setor, q.ValorMaximo, tetos));
 
         double? Pontuar(LinhaAnalise l) => atributos.Count == 0 ? l.Nota : NotaPonderada(l, atributos);
         // Com liga de fora na busca, a ordem é pela pontuação convertida para a Série A (as notas de ligas diferentes não se comparam)
         var conversor = await forca.Conversor(linhas, Pontuar, ct);
+        var forcas = conversor is null ? null : await forca.Obter(ct);
+        // Liga com régua estimada (pouco confronto direto com a Série A) pode inflar a nota convertida: fica de fora se pedido
+        var estimadasFora = q.IncluirEstimadas || forcas is null ? [] :
+            forcas.Values.Where(f => f.Estimativa && candidatos.Any(l => l.CompeticaoId == f.CompeticaoId)).ToList();
         var pontuados = candidatos
+            .Where(l => estimadasFora.All(f => f.CompeticaoId != l.CompeticaoId))
             .Select(l => (linha: l, nota: Pontuar(l)))
             .Where(x => x.nota is not null)
             .Select(x => (x.linha, x.nota, serieA: conversor?.Invoke(x.linha, x.nota)))
@@ -103,7 +111,9 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
             .ToList();
 
         var observacoes = atributos.Select(a => a.atributo.Observacao).OfType<string>().Distinct().ToList();
-        var forcas = conversor is null ? null : await forca.Obter(ct);
+        if (estimadasFora.Count > 0)
+            observacoes.Add($"Ficaram de fora as ligas com régua só estimada (pouco confronto direto com clubes brasileiros, a nota convertida pode inflar): " +
+                $"{string.Join(", ", estimadasFora.Select(f => f.Competicao))}. Peça incluindo as estimadas para vê-las.");
         if (conversor is not null)
         {
             observacoes.Add("Atletas de ligas de fora: ordenados pela nota convertida para a Série A, pelo nível da liga medido nos confrontos de copa (Libertadores, Sul-Americana, Mundial de Clubes).");
@@ -178,6 +188,15 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
     /// <summary>Sem valor conhecido, passa (fica sem o número no card); com valor, respeita o teto pedido e o da Série A.</summary>
     public static bool CabeNoBolso(long? valor, Setor setor, long? maximo, IReadOnlyDictionary<Setor, long>? tetos) =>
         valor is null || ((maximo is null || valor <= maximo) && (tetos is null || !tetos.TryGetValue(setor, out var t) || valor <= t));
+
+    /// <summary>Setor de uma função em campo ("Centroavante" → Ataque, "Lateral esquerdo" → Defesa).</summary>
+    public static Setor SetorDaFuncao(string funcao) => funcao.ToLowerInvariant() switch
+    {
+        var f when f.Contains("goleiro") => Setor.Goleiro,
+        var f when f.Contains("zagueiro") || f.Contains("lateral") || f.Contains("ala ") || f == "ala" || f.StartsWith("ala ") => Setor.Defesa,
+        var f when f.Contains("centroavante") || f.Contains("atacante") || f.Contains("ponta") => Setor.Ataque,
+        _ => Setor.Meio,
+    };
 
     public static string Euros(long v) => string.Format(System.Globalization.CultureInfo.GetCultureInfo("pt-BR"),
         v >= 1_000_000 ? "€ {0:0.#} mi" : "€ {1:0} mil", v / 1_000_000.0, v / 1_000.0);

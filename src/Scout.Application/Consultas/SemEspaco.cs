@@ -78,8 +78,25 @@ public class BuscarSemEspacoHandler(IScoutDb db, MotorDeAnalise motor) : IQueryH
             .Where(x => x.r.jogosDoClube >= 5 && x.participacao < q.ParticipacaoMaxima)
             .ToList();
 
-        // A referência: a liga mais recente (fora a atual) em que jogou 450+ min, com a nota daquela liga
+        // Elenco europeu desatualizado: quem entrou em campo por outro clube nos últimos 60 dias não está encostado lá
+        // (ex.: o goleiro listado no Juventus que joga pelo Botafogo)
         var ids = candidatos.Select(c => c.r.e.AtletaId).ToList();
+        var desde = DateTime.UtcNow.AddDays(-ElencoAtual.DiasSemJogar);
+        var recentes = (await (from e in db.Escalacoes.AsNoTracking()
+                               join p in db.Partidas.AsNoTracking() on e.PartidaId equals p.Id
+                               where ids.Contains(e.AtletaId) && p.Data >= desde
+                               select new { e.AtletaId, e.ClubeId })
+                .Concat(from d in db.DesempenhosAvancados.AsNoTracking()
+                        join p in db.Partidas.AsNoTracking() on d.PartidaId equals p.Id
+                        where d.AtletaId != null && ids.Contains(d.AtletaId.Value) && d.Minutos > 0 && p.Data >= desde
+                        select new { AtletaId = d.AtletaId!.Value, d.ClubeId })
+                .ToListAsync(ct))
+            .ToLookup(x => x.AtletaId, x => x.ClubeId);
+        var foraDaEuropa = candidatos.Count(c => recentes[c.r.e.AtletaId].Any(clube => clube != c.r.e.ClubeId));
+        candidatos = candidatos.Where(c => !recentes[c.r.e.AtletaId].Any(clube => clube != c.r.e.ClubeId)).ToList();
+        ids = candidatos.Select(c => c.r.e.AtletaId).ToList();
+
+        // A referência: a liga mais recente (fora a atual) em que jogou 450+ min, com a nota daquela liga
         var anteriores = (await db.Estatisticas.AsNoTracking()
                 .Where(e => ids.Contains(e.AtletaId) && e.Minutos >= MotorDeAnalise.MinutosMinimos && e.Competicao.Tipo != Competicao.TipoCopa)
                 .Select(e => new { e.AtletaId, e.CompeticaoId, e.Temporada, e.Minutos }).ToListAsync(ct))
@@ -111,6 +128,8 @@ public class BuscarSemEspacoHandler(IScoutDb db, MotorDeAnalise motor) : IQueryH
             "A nota é da última liga em que ele jogou 450+ min, comparado com o setor daquela liga; não é nota na Série A.",
             "Pouco minuto pode ser lesão ou chegada recente: conferir antes de citar em vídeo.",
         };
+        if (foraDaEuropa > 0)
+            observacoes.Add($"{foraDaEuropa} atleta(s) listados num clube europeu, mas com jogo recente por outro clube, ficaram de fora (elenco do provedor desatualizado).");
         if (tetos is { Count: > 0 })
             observacoes.Add("Só quem cabe na realidade do futebol brasileiro: valor de mercado até o dos 10% mais caros da Série A no setor (" +
                 string.Join(", ", tetos.OrderBy(t => t.Key).Select(t => $"{Resumir.NomeSetor(t.Key).ToLowerInvariant()} até {BuscarPorPerfilHandler.Euros(t.Value)}")) +

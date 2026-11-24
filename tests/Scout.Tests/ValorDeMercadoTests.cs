@@ -37,6 +37,17 @@ public class ValorDeMercadoTests
     }
 
     [Theory]
+    [InlineData("Centroavante", Setor.Ataque)]
+    [InlineData("Ponta esquerda", Setor.Ataque)]
+    [InlineData("Lateral direito", Setor.Defesa)]
+    [InlineData("Ala esquerdo", Setor.Defesa)]
+    [InlineData("Volante", Setor.Meio)]
+    [InlineData("Meio-campista pela esquerda", Setor.Meio)]
+    [InlineData("Goleiro", Setor.Goleiro)]
+    public void O_teto_segue_o_setor_da_funcao_pedida(string funcao, Setor setor) =>
+        Assert.Equal(setor, BuscarPorPerfilHandler.SetorDaFuncao(funcao));
+
+    [Theory]
     [InlineData(5_700_000L, "€ 5,7 mi")]
     [InlineData(620_000L, "€ 620 mil")]
     public void Valor_por_extenso(long valor, string texto) =>
