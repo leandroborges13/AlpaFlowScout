@@ -1,6 +1,11 @@
 import type { ResumoAtleta } from './api'
 
 /** Barra de percentil. Com `mediana`, marca o 50 (atleta mediano do setor) como referência. */
+/** Valor de mercado por extenso: "€ 5,7 mi", "€ 620 mil". */
+export function euros(v: number) {
+  return v >= 1_000_000 ? `€ ${(v / 1_000_000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mi` : `€ ${Math.round(v / 1000)} mil`
+}
+
 export function Medidor({ nome, valor, mediana = false }: { nome: string; valor: number; mediana?: boolean }) {
   return (
     <div className="medidor" title={`Melhor que ${Math.round(valor)}% dos atletas do mesmo setor`}>
@@ -38,6 +43,11 @@ export function CartaoAtleta({ atleta: a, onAbrir, semelhanca, gravacao }: Carta
         <div className="card-id">
           <div className="card-nome">{a.nome}</div>
           <div className="card-sub">{a.idade} anos · {a.clube} · {a.competicao}{a.notaSerieA != null && semelhanca == null && naLiga != null ? ` · ${Math.round(naLiga)} na liga` : ''}</div>
+          {(a.valorMercado != null || a.contratoAte) && (
+            <div className="card-sub" title="Valor de mercado: estimativa pública (Bzzoiro)">
+              {[a.valorMercado != null ? euros(a.valorMercado) : null, a.contratoAte ? `contrato até ${a.contratoAte.slice(5, 7)}/${a.contratoAte.slice(0, 4)}` : null].filter(Boolean).join(' · ')}
+            </div>
+          )}
           {a.situacao && <div className="card-sub" style={{ color: 'var(--aviso)' }}>⚠ {a.situacao}</div>}
         </div>
         {nota != null && (

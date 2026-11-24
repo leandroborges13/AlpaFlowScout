@@ -11,7 +11,8 @@ namespace Scout.Application.Consultas;
 /// jogou de verdade (450+ min), com a nota daquela liga em `Referencia`. `Referencia` nulo: nunca jogou 450 min numa liga da base.
 /// </summary>
 public record AtletaSemEspaco(int Id, string Nome, int Idade, string? Nacionalidade, string? Posicao, string ClubeAtual, string LigaAtual,
-    int TemporadaAtual, int JogosAtual, int MinutosAtual, int ParticipacaoAtual, ResumoAtleta? Referencia);
+    int TemporadaAtual, int JogosAtual, int MinutosAtual, int ParticipacaoAtual, ResumoAtleta? Referencia,
+    long? ValorMercado = null, DateOnly? ContratoAte = null);
 
 public record ResultadoSemEspaco(IReadOnlyList<AtletaSemEspaco> Atletas, IReadOnlyList<string> Observacoes);
 
@@ -19,8 +20,9 @@ public record ResultadoSemEspaco(IReadOnlyList<AtletaSemEspaco> Atletas, IReadOn
 /// `Ligas`: onde procurar (padrão: as 8 da Europa); `Nacionalidades`: padrão, as da América do Sul.
 /// `ParticipacaoMaxima`: % dos minutos do clube na temporada atual (padrão 30). `Posicao`: Goleiro, Defesa, Meio ou Ataque.
 /// </summary>
+/// `RealidadeBrasileira` (padrão sim): só quem vale até os 10% mais caros da Série A no setor; `ValorMaximo`: teto em euros.
 public record BuscarSemEspaco(int[]? Ligas = null, string[]? Nacionalidades = null, int ParticipacaoMaxima = 30, int? IdadeMax = null,
-    Setor? Posicao = null, int Limite = 20) : IQuery<ResultadoSemEspaco>;
+    Setor? Posicao = null, int Limite = 20, bool RealidadeBrasileira = true, long? ValorMaximo = null) : IQuery<ResultadoSemEspaco>;
 
 public class BuscarSemEspacoHandler(IScoutDb db, MotorDeAnalise motor) : IQueryHandler<BuscarSemEspaco, ResultadoSemEspaco>
 {
@@ -56,8 +58,11 @@ public class BuscarSemEspacoHandler(IScoutDb db, MotorDeAnalise motor) : IQueryH
             registros.AddRange(daLiga.Select(e => (e, jogosDoClube[e.ClubeId])));
         }
 
+        var tetos = q.RealidadeBrasileira ? await BuscarPorPerfilHandler.TetosDaSerieA(db, motor, ct) : null;
         // Encostado: da nacionalidade pedida, 18+, e com menos que a participação máxima. Atleta em dois clubes da liga soma os minutos.
         var candidatos = registros
+            .Where(r => BuscarPorPerfilHandler.CabeNoBolso(r.e.Atleta.ValorMercado,
+                SetorDoProvedor.GetValueOrDefault(r.e.PosicaoProvedor ?? "", Setor.Meio), q.ValorMaximo, tetos))
             .Where(r => r.e.Atleta.Nacionalidade is { } nac && nacionalidades.Contains(nac, StringComparer.OrdinalIgnoreCase))
             .Where(r => r.e.Atleta.PodeSerAnalisado(hoje) && (q.IdadeMax is null || r.e.Atleta.IdadeEm(hoje) <= q.IdadeMax))
             .Where(r => q.Posicao is null || SetorDoProvedor.GetValueOrDefault(r.e.PosicaoProvedor ?? "") == q.Posicao)
@@ -94,7 +99,8 @@ public class BuscarSemEspacoHandler(IScoutDb db, MotorDeAnalise motor) : IQueryH
                 break;
             }
             lista.Add(new AtletaSemEspaco(e.AtletaId, e.Atleta.Nome, e.Atleta.IdadeEm(hoje)!.Value, e.Atleta.Nacionalidade, e.PosicaoProvedor,
-                e.Clube.Nome, e.Competicao.Nome, e.Temporada, c.jogos, c.minutos, c.participacao, referencia));
+                e.Clube.Nome, e.Competicao.Nome, e.Temporada, c.jogos, c.minutos, c.participacao, referencia,
+                e.Atleta.ValorMercado, e.Atleta.ContratoAte));
         }
 
         // Primeiro quem já mostrou nível (maior nota na referência), depois quem nunca teve 450 min
@@ -105,6 +111,10 @@ public class BuscarSemEspacoHandler(IScoutDb db, MotorDeAnalise motor) : IQueryH
             "A nota é da última liga em que ele jogou 450+ min, comparado com o setor daquela liga; não é nota na Série A.",
             "Pouco minuto pode ser lesão ou chegada recente: conferir antes de citar em vídeo.",
         };
+        if (tetos is { Count: > 0 })
+            observacoes.Add("Só quem cabe na realidade do futebol brasileiro: valor de mercado até o dos 10% mais caros da Série A no setor (" +
+                string.Join(", ", tetos.OrderBy(t => t.Key).Select(t => $"{Resumir.NomeSetor(t.Key).ToLowerInvariant()} até {BuscarPorPerfilHandler.Euros(t.Value)}")) +
+                "). Sem valor conhecido, entra sem o número.");
         return new ResultadoSemEspaco(ordenados, observacoes);
     }
 }

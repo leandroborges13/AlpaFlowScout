@@ -36,6 +36,10 @@ namespace Scout.Infrastructure.Dados.Migracoes
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("atualizado_em");
 
+                    b.Property<DateOnly?>("ContratoAte")
+                        .HasColumnType("date")
+                        .HasColumnName("contrato_ate");
+
                     b.Property<string>("FonteNascimento")
                         .HasColumnType("text")
                         .HasColumnName("fonte_nascimento");
@@ -64,6 +68,14 @@ namespace Scout.Infrastructure.Dados.Migracoes
                     b.Property<int?>("PesoKg")
                         .HasColumnType("integer")
                         .HasColumnName("peso_kg");
+
+                    b.Property<DateTime?>("ValorLidoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("valor_lido_em");
+
+                    b.Property<long?>("ValorMercado")
+                        .HasColumnType("bigint")
+                        .HasColumnName("valor_mercado");
 
                     b.HasKey("Id")
                         .HasName("pk_atletas");

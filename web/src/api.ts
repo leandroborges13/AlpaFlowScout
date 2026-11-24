@@ -29,6 +29,9 @@ export type ResumoAtleta = {
   notaSerieAEstimada?: boolean
   /** Saiu do clube ou não joga há mais de 60 dias ("saiu: joga pelo Fluminense desde 09/2026") */
   situacao?: string | null
+  /** Valor de mercado em euros e fim de contrato (Bzzoiro, estimativa pública) */
+  valorMercado?: number | null
+  contratoAte?: string | null
   destaques: Destaque[]
   experienciaNoEsquema?: string | null
 }

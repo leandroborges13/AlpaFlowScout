@@ -180,6 +180,73 @@ public class ColetaBzzoiro(HttpClient http, ScoutDbContext db, IConfiguration co
         return (n, ligados);
     }
 
+    /// <summary>Nossas ligas (ids da API-Football) → ligas da Bzzoiro, para o valor de mercado. Rússia, Ucrânia, Catar e Emirados não têm.</summary>
+    public static readonly Dictionary<int, int> LigasDeValor = new()
+    {
+        [71] = 9, [72] = 34, [128] = 85, [239] = 80, [242] = 112, [94] = 2, [262] = 19, [253] = 18, [307] = 17,
+        [39] = 1, [140] = 3, [135] = 4, [78] = 5, [61] = 6, [203] = 11, [88] = 10, [144] = 14,
+    };
+
+    public record ResultadoValores(int Clubes, int ClubesLigados, int Atletas, int ComValor);
+
+    /// <summary>
+    /// Valor de mercado e fim de contrato (backlog 23.3, "realidade financeira do futebol brasileiro"): elenco de cada clube das
+    /// nossas ligas na Bzzoiro (/api/players/?team=), ligado pelo nome entre os atletas do clube. Relê um clube só depois de 7 dias.
+    /// `maxClubes` limita a rodada (a Bzzoiro pede calma: meio segundo entre consultas).
+    /// </summary>
+    public async Task<ResultadoValores> PreencherValores(int maxClubes, CancellationToken ct)
+    {
+        var chave = config["BZZOIRO_KEY"];
+        if (string.IsNullOrWhiteSpace(chave)) return new(0, 0, 0, 0);
+        var limite = DateTime.UtcNow.AddDays(-7);
+        int clubes = 0, ligados = 0, atletas = 0, comValor = 0;
+        var de = DateTime.UtcNow.AddDays(-120).ToString("yyyy-MM-dd");
+        var ate = DateTime.UtcNow.AddDays(1).ToString("yyyy-MM-dd");
+
+        foreach (var (nossa, liga) in LigasDeValor)
+        {
+            if (clubes >= maxClubes) break;
+            var temporada = await db.Estatisticas.AsNoTracking().Where(e => e.CompeticaoId == nossa).Select(e => (int?)e.Temporada).MaxAsync(ct);
+            if (temporada is null) continue;
+            // Clubes com algum atleta sem valor lido nos últimos 7 dias
+            var doClube = (await db.Estatisticas.AsNoTracking()
+                    .Where(e => e.CompeticaoId == nossa && e.Temporada == temporada && e.Minutos > 0)
+                    .Select(e => new { e.ClubeId, Clube = e.Clube.Nome, e.AtletaId, e.Atleta.Nome, e.Atleta.NomeCompleto, e.Atleta.ValorLidoEm })
+                    .ToListAsync(ct))
+                .GroupBy(x => (x.ClubeId, x.Clube))
+                .Where(g => g.Any(x => x.ValorLidoEm is null || x.ValorLidoEm < limite))
+                .ToDictionary(g => g.Key, g => g.Select(x => (x.AtletaId, x.Nome, x.NomeCompleto)).Distinct().ToList());
+            if (doClube.Count == 0) continue;
+
+            var times = new Dictionary<int, (string Nome, string? Curto)>();
+            foreach (var ev in await TodasAsPaginas($"/api/events/?league={liga}&date_from={de}&date_to={ate}", chave, ct))
+                foreach (var lado in new[] { "home_team_obj", "away_team_obj" })
+                    if (ev.TryGetProperty(lado, out var t) && t.ValueKind == JsonValueKind.Object && Int(t, "id") is { } id)
+                        times[id] = (Texto(t, "name") ?? "", Texto(t, "short_name"));
+
+            foreach (var ((clubeId, clube), candidatos) in doClube)
+            {
+                if (clubes++ >= maxClubes) break;
+                var bz = times.Where(t => MesmoClube(clube, t.Value.Nome, t.Value.Curto)).Select(t => t.Key).ToList();
+                if (bz.Count != 1) { log.LogInformation("  valor: {Clube} sem par único na Bzzoiro ({N})", clube, bz.Count); continue; }
+                ligados++;
+                foreach (var p in await TodasAsPaginas($"/api/players/?team={bz[0]}", chave, ct))
+                {
+                    var nosso = LigarNomes.Ligar(Texto(p, "name") ?? "", candidatos) ?? LigarNomes.Ligar(Texto(p, "short_name") ?? "", candidatos);
+                    if (nosso is not { } atletaId || await db.Atletas.FindAsync([atletaId], ct) is not { } atleta) continue;
+                    atleta.ValorMercado = Num(p, "market_value") is { } v && v > 0 ? (long)v : null;
+                    atleta.ContratoAte = DateOnly.TryParse(Texto(p, "contract_until"), out var fim) ? fim : null;
+                    atleta.ValorLidoEm = DateTime.UtcNow;
+                    atletas++;
+                    if (atleta.ValorMercado is not null) comValor++;
+                }
+                await db.SaveChangesAsync(ct);
+            }
+        }
+        log.LogInformation("Bzzoiro valores: {ComValor} de {Atletas} atletas com valor ({Ligados}/{Clubes} clubes ligados)", comValor, atletas, ligados, clubes);
+        return new(clubes, ligados, atletas, comValor);
+    }
+
     /// <summary>"Atletico-MG" = "Atlético Mineiro"/"Atlético-MG"; "RB Bragantino" = "Red Bull Bragantino"/"Bragantino".</summary>
     public static bool MesmoClube(string nosso, string nome, string? curto)
     {

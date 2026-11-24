@@ -28,6 +28,9 @@ public class LinhaAnalise
     public Lado? Lado { get; init; }
     public Dictionary<string, int> Funcoes { get; init; } = [];
     public string? EsquemaMaisComum { get; init; }
+    /// <summary>Valor de mercado (euros) e fim de contrato, da Bzzoiro. Nulo = não se sabe.</summary>
+    public long? ValorMercado { get; init; }
+    public DateOnly? ContratoAte { get; init; }
     /// <summary>Quantas vezes foi titular em cada esquema ("3-4-3": 12).</summary>
     public Dictionary<string, int> Esquemas { get; init; } = [];
     public int Jogos { get; init; }
@@ -149,6 +152,7 @@ public class MotorDeAnalise(IScoutDb db, IMemoryCache cache)
             {
                 AtletaId = atleta.Id, Nome = atleta.Nome, NomeCompleto = atleta.NomeCompleto, Nascimento = atleta.Nascimento,
                 Idade = atleta.IdadeEm(referencia)!.Value, AlturaCm = atleta.AlturaCm, Nacionalidade = atleta.Nacionalidade, Foto = atleta.Foto,
+                ValorMercado = atleta.ValorMercado, ContratoAte = atleta.ContratoAte,
                 CompeticaoId = competicaoId, Competicao = competicao.Nome, Temporada = temporada,
                 Clube = principal.Clube.Nome, Clubes = g.Select(e => e.Clube.Nome).Distinct().ToArray(),
                 ClubeIds = g.Select(e => e.ClubeId).Distinct().ToArray(), Escudo = principal.Clube.Escudo,

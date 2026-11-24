@@ -54,7 +54,11 @@ public record BuscarPorPerfil(
     // Tira os atletas desse clube (ex.: o próprio Galo, ao procurar reforço)
     int? ExcluirClubeId = null,
     // Só quem continua no clube da linha (ver ElencoAtual); sem isso, quem saiu aparece com a Situacao preenchida
-    bool SoElencoAtual = false) : IQuery<ResultadoBusca>;
+    bool SoElencoAtual = false,
+    // Teto de valor de mercado em euros (ex.: 5_000_000)
+    long? ValorMaximo = null,
+    // Realidade do futebol brasileiro: no máximo o valor dos 10% mais caros da Série A no mesmo setor (TetosDaSerieA)
+    bool RealidadeBrasileira = false) : IQuery<ResultadoBusca>;
 
 public record ResultadoBusca(int Encontrados, IReadOnlyList<ResumoAtleta> Atletas, IReadOnlyList<string> Observacoes);
 
@@ -70,6 +74,7 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
                 .Select(c => c.Id).ToListAsync(ct);
             linhas = linhas.Where(l => !brasileiras.Contains(l.CompeticaoId)).ToList();
         }
+        var tetos = q.RealidadeBrasileira ? await TetosDaSerieA(db, motor, ct) : null;
         var atributos = (q.Atributos ?? [])
             .Where(a => Catalogo.AtributoPorChave.ContainsKey(a.Key) && a.Value > 0)
             .Select(a => (atributo: Catalogo.AtributoPorChave[a.Key], peso: a.Value))
@@ -83,7 +88,8 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
             (q.IdadeMax is null || l.Idade <= q.IdadeMax) &&
             (q.ParticipacaoMinimaPercentual is null || l.ParticipacaoMinutos * 100 >= q.ParticipacaoMinimaPercentual) &&
             (q.MinutosMinimos is null || l.Minutos >= q.MinutosMinimos) &&
-            (q.ExcluirClubeId is null || !l.ClubeIds.Contains(q.ExcluirClubeId.Value)));
+            (q.ExcluirClubeId is null || !l.ClubeIds.Contains(q.ExcluirClubeId.Value)) &&
+            CabeNoBolso(l.ValorMercado, l.Setor, q.ValorMaximo, tetos));
 
         double? Pontuar(LinhaAnalise l) => atributos.Count == 0 ? l.Nota : NotaPonderada(l, atributos);
         // Com liga de fora na busca, a ordem é pela pontuação convertida para a Série A (as notas de ligas diferentes não se comparam)
@@ -107,6 +113,11 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
             if (forcas!.Values.Where(f => f.Estimativa && pontuados.Any(p => p.linha.CompeticaoId == f.CompeticaoId)).Select(f => f.Competicao).ToList() is { Count: > 0 } estimadas)
                 observacoes.Add($"Nota na Série A estimada (poucos jogos diretos com clubes brasileiros): {string.Join(", ", estimadas)}.");
         }
+        if (tetos is { Count: > 0 })
+            observacoes.Add("Realidade do futebol brasileiro: só entra quem vale até o que valem os 10% mais caros da Série A no mesmo setor (" +
+                string.Join(", ", tetos.OrderBy(t => t.Key).Select(t => $"{Resumir.NomeSetor(t.Key).ToLowerInvariant()} até {Euros(t.Value)}")) +
+                "). Valor de mercado é estimativa pública (Bzzoiro); sem valor conhecido, o atleta entra e vem sem o número.");
+        if (q.ValorMaximo is { } vm) observacoes.Add($"Valor de mercado até {Euros(vm)}.");
         if (q.Esquema is not null)
             observacoes.Add($"Esquema {q.Esquema}: a busca considera a função em campo; cada atleta traz quantos jogos fez com a mesma linha de defesa.");
 
@@ -146,6 +157,30 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
         (l.Funcao?.Contains(funcao, StringComparison.OrdinalIgnoreCase) ?? false) ||
         // Também vale quem fez pelo menos 3 jogos na função pedida, mesmo não sendo a principal
         l.Funcoes.Any(f => f.Key.Contains(funcao, StringComparison.OrdinalIgnoreCase) && f.Value >= 3);
+
+    /// <summary>
+    /// Teto de valor por setor = percentil 90 dos valores de mercado conhecidos na Série A mais recente (precisa de 10 valores
+    /// no setor). É a "realidade financeira do futebol brasileiro": acima disso, nenhum clube daqui costuma pagar.
+    /// </summary>
+    public static async Task<Dictionary<Setor, long>> TetosDaSerieA(IScoutDb db, MotorDeAnalise motor, CancellationToken ct)
+    {
+        var alvo = (await CompeticoesAlvo(db, null, [ForcaDasLigas.Referencia], ct)).FirstOrDefault();
+        if (alvo == default || await motor.Analisar(alvo.Competicao, alvo.Temporada, ct) is not { } a) return [];
+        return Tetos(a.Linhas.Select(l => (l.Setor, l.ValorMercado)));
+    }
+
+    public static Dictionary<Setor, long> Tetos(IEnumerable<(Setor Setor, long? Valor)> valores) =>
+        valores.Where(v => v.Valor is > 0).GroupBy(v => v.Setor)
+            .Select(g => (g.Key, ordenados: g.Select(v => v.Valor!.Value).OrderBy(v => v).ToList()))
+            .Where(x => x.ordenados.Count >= 10)
+            .ToDictionary(x => x.Key, x => x.ordenados[(int)Math.Ceiling(0.9 * x.ordenados.Count) - 1]);
+
+    /// <summary>Sem valor conhecido, passa (fica sem o número no card); com valor, respeita o teto pedido e o da Série A.</summary>
+    public static bool CabeNoBolso(long? valor, Setor setor, long? maximo, IReadOnlyDictionary<Setor, long>? tetos) =>
+        valor is null || ((maximo is null || valor <= maximo) && (tetos is null || !tetos.TryGetValue(setor, out var t) || valor <= t));
+
+    public static string Euros(long v) => string.Format(System.Globalization.CultureInfo.GetCultureInfo("pt-BR"),
+        v >= 1_000_000 ? "€ {0:0.#} mi" : "€ {1:0} mil", v / 1_000_000.0, v / 1_000.0);
 
     /// <summary>
     /// Mercado: a função pedida é a dele, não um quebra-galho. Pelo menos 40% das titularidades nela

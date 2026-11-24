@@ -22,7 +22,10 @@ public record ResumoAtleta(
     // A liga tem pouco confronto direto com a Série A: a nota convertida é ordem de grandeza (a tela mostra "≈")
     bool NotaSerieAEstimada = false,
     // Saiu do clube ou não joga há mais de 60 dias (ElencoAtual): a frase pronta. Nulo = segue no clube (ou não se sabe).
-    string? Situacao = null);
+    string? Situacao = null,
+    // Valor de mercado em euros e fim de contrato (Bzzoiro); nulos quando a fonte não tem
+    long? ValorMercado = null,
+    DateOnly? ContratoAte = null);
 
 public static class Resumir
 {
@@ -61,7 +64,8 @@ public static class Resumir
             l.Jogos, l.Titular, l.Minutos, l.Gols, l.Assistencias, (int)Math.Round(l.ParticipacaoMinutos * 100),
             Arredondar(l.Nota), Arredondar(notaEncaixe),
             lista.Select(x => new Destaque(x.a.Nome, Math.Round(x.nota!.Value), x.a.Observacao)).ToList(),
-            ExperienciaNoEsquema(l, esquema), Arredondar(notaSerieA), notaSerieA is not null && notaSerieAEstimada);
+            ExperienciaNoEsquema(l, esquema), Arredondar(notaSerieA), notaSerieA is not null && notaSerieAEstimada)
+            { ValorMercado = l.ValorMercado, ContratoAte = l.ContratoAte };
     }
 
     static double? Arredondar(double? v) => v is null ? null : Math.Round(v.Value, 1);

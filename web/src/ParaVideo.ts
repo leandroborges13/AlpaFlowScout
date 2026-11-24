@@ -681,6 +681,13 @@ export async function cartaoLadoALado(c: LadoALado) {
     for (const t of linhas(ctx, `${s.r.clube} · ${s.r.competicao}`, largura).slice(0, 2)) { ctx.fillText(t, s.x, y); y += 28 }
     fonte(ctx, 22, 600); ctx.fillStyle = COR.suave
     ctx.fillText(`${s.r.idade} anos · ${s.r.minutos} min · ${s.r.gols} gols`, s.x, y + 4)
+    if (s.r.valorMercado != null) {
+      fonte(ctx, 22, 800); ctx.fillStyle = COR.destaque
+      const v = s.r.valorMercado
+      const contrato = s.r.contratoAte ? ` · contrato até ${s.r.contratoAte.slice(0, 4)}` : ''
+      ctx.fillText(`${v >= 1_000_000 ? `€ ${(v / 1_000_000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mi` : `€ ${Math.round(v / 1000)} mil`}${contrato}`, s.x, y + 32)
+      y += 28
+    }
     if (s.r.situacao) { fonte(ctx, 19, 700); ctx.fillStyle = '#ffb347'; ctx.fillText(`⚠ ${s.r.situacao}`.slice(0, 48), s.x, y + 36) }
     if (s.nota != null) {
       ctx.beginPath(); ctx.arc(s.bola, y0 + 110, 62, 0, Math.PI * 2); ctx.fillStyle = corDaNota(s.nota); ctx.fill()

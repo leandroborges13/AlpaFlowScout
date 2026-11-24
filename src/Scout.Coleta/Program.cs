@@ -14,6 +14,7 @@
 //   dotnet run --project src/Scout.Coleta -- estilo <clube>   (estilo do time na liga: pressão, recuperações altas, com o ranking)
 //   dotnet run --project src/Scout.Coleta -- nascimentos-bzzoiro <temporada>   (data de nascimento de quem está sem, pela Bzzoiro)
 //   dotnet run --project src/Scout.Coleta -- copas-bzzoiro <temporada> [max]   (desempenho dos atletas nos jogos de copa, pela Bzzoiro)
+//   dotnet run --project src/Scout.Coleta -- valores-bzzoiro [max-clubes]   (valor de mercado e fim de contrato, pela Bzzoiro)
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -74,6 +75,12 @@ try
         case "nascimentos-bzzoiro" when args.Length >= 2 && int.TryParse(args[1], out var temporadaB):
             var rb = await sp.GetRequiredService<ColetaBzzoiro>().PreencherNascimentos(temporadaB, cts.Token);
             Console.WriteLine($"Bzzoiro: {rb.Preenchidos} de {rb.SemData} atletas sem data preenchidos; {rb.ClubesLigados}/{rb.Clubes} clubes ligados; {rb.Duvidosos} com datas conflitantes");
+            break;
+
+        case "valores-bzzoiro":
+            await sp.GetRequiredService<ScoutDbContext>().Database.MigrateAsync(cts.Token);
+            var rv = await sp.GetRequiredService<ColetaBzzoiro>().PreencherValores(args.Length >= 2 && int.TryParse(args[1], out var maxV) ? maxV : 1000, cts.Token);
+            Console.WriteLine($"Bzzoiro: {rv.ComValor} de {rv.Atletas} atletas com valor de mercado; {rv.ClubesLigados}/{rv.Clubes} clubes ligados");
             break;
 
         case "copas-bzzoiro" when args.Length >= 2 && int.TryParse(args[1], out var temporadaC):

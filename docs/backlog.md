@@ -214,8 +214,13 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
          **FEITO em 24/11/2026 (menos contrato e valor):** BuscarPorPerfil ganhou `Mercado` (sem liga pedida: Série A + todas as
          ligas de fora na régua da Série A; Série B e C saem por não terem conversão), `MinutosMinimos`, `ExcluirClubeId` (o próprio
          Galo) e `SoElencoAtual`; cada resultado traz `Situacao` (item 21). POST /api/busca e a ferramenta buscar_atletas do chat
-         (mercado, minutosMinimos, excluirClube, soElencoAtual). Falta: contrato e valor de mercado (o Scout não guarda; Bzzoiro tem)
-         e o modo mercado na tela de busca.
+         (mercado, minutosMinimos, excluirClube, soElencoAtual). Falta: o modo mercado na tela de busca.
+         **Valor de mercado e contrato FEITO em 24/11/2026** (pedido do Leandro: "não dá pra propor um Mbappé; o valor tem que ser
+         equiparado ao de quem atua no Brasil"): colunas valor_mercado (euros), contrato_ate e valor_lido_em em atletas;
+         ColetaBzzoiro.PreencherValores (elenco /api/players/?team=, ligado por nome; LigasDeValor mapeia 17 ligas, sem Rússia,
+         Ucrânia, Catar e Emirados; cada clube relido a cada 7 dias, 60 clubes/dia na AtualizacaoDiaria; comando `valores-bzzoiro`).
+         Busca: `RealidadeBrasileira` (teto por setor = percentil 90 dos valores conhecidos da Série A; padrão no chat em modo mercado
+         e no "sem espaço") e `ValorMaximo`. Sem valor conhecido, entra sem o número. Card e lado a lado mostram valor e contrato.
       4. **Cartão "lado a lado" para vídeo:** candidato x Cassierra, com gols por 90, finalização, duelos aéreos e participação.
          **FEITO em 24/11/2026:** GET /api/atletas/{id}/lado-a-lado/{outro} (ObterLadoALado: 8 linhas do setor do candidato, número por
          90 min ou %, percentil no setor da liga de cada um, quem vence pelo número; notas na régua da Série A com "≈"; Situacao de

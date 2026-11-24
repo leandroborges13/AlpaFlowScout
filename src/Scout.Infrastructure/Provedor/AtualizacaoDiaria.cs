@@ -71,6 +71,8 @@ public class AtualizacaoDiaria(IServiceScopeFactory escopos, IConfiguration conf
                 await escopo.ServiceProvider.GetRequiredService<ColetaBzzoiro>().PreencherNascimentos(competicoes.Max(c => c.Temporada), ct);
                 // e o desempenho dos atletas nos jogos de copa (até 40 por dia)
                 await escopo.ServiceProvider.GetRequiredService<ColetaBzzoiro>().ColetarCopas(competicoes.Max(c => c.Temporada), 40, ct);
+                // e o valor de mercado (cada clube relido a cada 7 dias; até 60 clubes por dia)
+                await escopo.ServiceProvider.GetRequiredService<ColetaBzzoiro>().PreencherValores(60, ct);
             }
             catch (Exception e) when (e is not OperationCanceledException)
             {

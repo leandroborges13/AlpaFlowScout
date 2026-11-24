@@ -79,7 +79,9 @@ public class AssistenteScout(
                        [Description("true para mapa de mercado / reforço: junta a Série A e as ligas de fora (Argentina, Colômbia, Portugal...) na régua da Série A")] bool? mercado = null,
                        [Description("Minutos mínimos jogados na liga (ex.: 900)")] int? minutosMinimos = null,
                        [Description("ID do clube a excluir (ex.: o próprio time que procura reforço)")] int? excluirClube = null,
-                       [Description("true para listar só quem continua no clube (tira quem saiu ou não joga há 60 dias)")] bool? soElencoAtual = null) =>
+                       [Description("true para listar só quem continua no clube (tira quem saiu ou não joga há 60 dias)")] bool? soElencoAtual = null,
+                       [Description("Teto de valor de mercado em milhões de euros (ex.: 5)")] double? valorMaximoMilhoes = null,
+                       [Description("Só quem cabe na realidade do futebol brasileiro (valor até os 10% mais caros da Série A no setor). Padrão: sim no modo mercado")] bool? realidadeBrasileira = null) =>
                 {
                     log.LogInformation("buscar_atletas setor={Setor} funcao={Funcao} lado={Lado} esquema={Esquema} idade={Min}-{Max} part={Part} atributos={A} fortes={F} comp={C} temporada={T}",
                         setor, funcao, lado, esquema, idadeMinima, idadeMaxima, participacaoMinima, string.Join(",", atributos ?? []), string.Join(",", atributosMuitoImportantes ?? []), string.Join(",", competicoes ?? []), temporada);
@@ -91,7 +93,8 @@ public class AssistenteScout(
                         Enum.TryParse<Setor>(setor, true, out var s) ? s : null, funcao,
                         Enum.TryParse<Lado>(lado, true, out var l) ? l : null, esquema,
                         idadeMinima, idadeMaxima, participacaoMinima, pesos, limite ?? 5,
-                        mercado ?? false, minutosMinimos, excluirClube, soElencoAtual ?? false), ct);
+                        mercado ?? false, minutosMinimos, excluirClube, soElencoAtual ?? false,
+                        valorMaximoMilhoes is { } vm ? (long)(vm * 1_000_000) : null, realidadeBrasileira ?? (mercado ?? false)), ct);
                     Citar(r.Atletas);
                     return r;
                 },
@@ -101,6 +104,8 @@ public class AssistenteScout(
                 "Na resposta, a nota de atleta de liga de fora é a NotaSerieA (a mesma do card), dita como \"por volta de X na régua da Série A\"; cite a nota na liga só como complemento. " +
                 "Se NotaSerieAEstimada for true, avise que a liga tem pouco confronto com clubes brasileiros e a nota é só ordem de grandeza. " +
                 "Atleta com Situacao preenchida saiu do clube ou não joga há 60 dias: diga isso. " +
+                "No modo mercado, só vem quem cabe no bolso de um clube brasileiro; cite o ValorMercado (euros, estimativa pública) e o ContratoAte quando vierem " +
+                "(contrato acabando em até 1 ano = mais barato). " +
                 "Nunca diga que um clube vai contratar alguém: é sugestão pelos números."),
             AIFunctionFactory.Create(
                 async (int atletaId, int? temporada = null) =>
@@ -152,10 +157,13 @@ public class AssistenteScout(
                        [Description("% máximo dos minutos do clube na temporada atual (padrão 30)")] int? participacaoMaxima = null,
                        [Description("IDs das ligas; omita para as 8 da Europa (39, 140, 135, 78, 61, 203, 88, 144)")] int[]? ligas = null,
                        [Description("Nacionalidades em inglês, ex.: ['Brazil']; omita para todos os sul-americanos")] string[]? nacionalidades = null,
-                       int? limite = null) =>
+                       int? limite = null,
+                       [Description("Teto de valor de mercado em milhões de euros (ex.: 8)")] double? valorMaximoMilhoes = null,
+                       [Description("false para incluir quem vale mais que os 10% mais caros da Série A (padrão: só quem cabe no futebol brasileiro)")] bool? realidadeBrasileira = null) =>
                 {
                     var r = await semEspaco.Handle(new BuscarSemEspaco(ligas, nacionalidades, participacaoMaxima ?? 30, idadeMaxima,
-                        Enum.TryParse<Setor>(posicao, true, out var s) ? s : null, limite ?? 10), ct);
+                        Enum.TryParse<Setor>(posicao, true, out var s) ? s : null, limite ?? 10, realidadeBrasileira ?? true,
+                        valorMaximoMilhoes is { } vm ? (long)(vm * 1_000_000) : null), ct);
                     Citar(r.Atletas.Select(a => a.Referencia).OfType<ResumoAtleta>().ToList());
                     return r;
                 },

@@ -17,6 +17,12 @@ public class Atleta
     public int? PesoKg { get; set; }
     public string? Foto { get; set; }
     public DateTime AtualizadoEm { get; set; }
+    /// <summary>Valor de mercado em euros (Bzzoiro, estimativa pública no estilo Transfermarkt). Nulo = não se sabe.</summary>
+    public long? ValorMercado { get; set; }
+    /// <summary>Fim do contrato com o clube atual, quando a fonte informa.</summary>
+    public DateOnly? ContratoAte { get; set; }
+    /// <summary>Quando o valor e o contrato foram lidos (a coleta só relê depois de uma semana).</summary>
+    public DateTime? ValorLidoEm { get; set; }
 
     public int? IdadeEm(DateOnly referencia)
     {
