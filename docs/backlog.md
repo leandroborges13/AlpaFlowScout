@@ -217,6 +217,11 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
          (mercado, minutosMinimos, excluirClube, soElencoAtual). Falta: contrato e valor de mercado (o Scout não guarda; Bzzoiro tem)
          e o modo mercado na tela de busca.
       4. **Cartão "lado a lado" para vídeo:** candidato x Cassierra, com gols por 90, finalização, duelos aéreos e participação.
+         **FEITO em 24/11/2026:** GET /api/atletas/{id}/lado-a-lado/{outro} (ObterLadoALado: 8 linhas do setor do candidato, número por
+         90 min ou %, percentil no setor da liga de cada um, quem vence pelo número; notas na régua da Série A com "≈"; Situacao de
+         cada um) e GET /api/atletas/procurar?nome= (busca tolerante, só quem tem nota). Na tela: botão "⚖️ Lado a lado" no painel do
+         atleta → digita o nome → escolhe → cartão 1080x1920 (cartaoLadoALado no ParaVideo.ts). Duelo aéreo ainda é aproximação
+         (duelos ganhos no geral; o provedor não separa).
     - **Depois (internacional):** Portugal, México, MLS e ligas de onde o Brasil costuma comprar (Bzzoiro e PitchAPI cobrem várias).
       Avaliar custo antes.
     - **Cuidados:**

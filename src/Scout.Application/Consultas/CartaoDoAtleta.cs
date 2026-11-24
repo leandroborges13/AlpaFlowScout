@@ -89,7 +89,7 @@ public class ObterCartaoDoAtletaHandler(IScoutDb db, MotorDeAnalise motor) : IQu
     }
 
     /// <summary>Nome curto para caber no cartão (o "por 90 min" vai no cabeçalho).</summary>
-    static string Rotulo(string chave) => chave switch
+    public static string Rotulo(string chave) => chave switch
     {
         "gols90" => "Gols", "assistencias90" => "Assistências", "finalizacoesNoAlvo90" => "Finalizações no alvo",
         "aproveitamentoFinalizacoes" => "% no alvo", "passes90" => "Passes", "precisaoPasses" => "Precisão de passe",

@@ -156,6 +156,21 @@ api.MapGet("/palpites/proximo", async (string time, IQueryHandler<ObterPalpite, 
 api.MapGet("/atletas/{id:int}/cartao", async (int id, int? temporada, IQueryHandler<ObterCartaoDoAtleta, CartaoDoAtleta?> h, CancellationToken ct) =>
     await h.Handle(new ObterCartaoDoAtleta(id, temporada), ct) is { } c ? Results.Ok(c) : Results.NotFound());
 
+// Cartão "lado a lado": candidato (id) x outro atleta (outro), cada um no setor da própria liga; nota na régua da Série A
+api.MapGet("/atletas/{id:int}/lado-a-lado/{outro:int}", async (int id, int outro, int? temporada, IQueryHandler<ObterLadoALado, LadoALado?> h, CancellationToken ct) =>
+    await h.Handle(new ObterLadoALado(id, outro, temporada), ct) is { } r ? Results.Ok(r) : Results.NotFound());
+
+// Busca tolerante por nome (sem acento, com erro de digitação): só quem tem nota, com o clube e a liga mais recentes
+api.MapGet("/atletas/procurar", async (string nome, IScoutDb db, CancellationToken ct) =>
+{
+    var atletas = await db.Atletas.AsNoTracking().Select(a => new { a.Id, a.Nome, a.NomeCompleto }).ToListAsync(ct);
+    var achados = atletas.Select(a => (a, pontos: BuscaPorNome.PontuarAtleta(nome, a.Nome, a.NomeCompleto)))
+        .Where(x => x.pontos > 0).OrderByDescending(x => x.pontos).Take(8).Select(x => x.a).ToList();
+    var fichas = (await ObterFichaAtletaHandler.Fichas(db, achados.Select(a => a.Id).ToList(), ct)).ToDictionary(f => f.Id);
+    return achados.Where(a => fichas.GetValueOrDefault(a.Id) is { TemNota: true })
+        .Select(a => new { a.Id, a.Nome, Onde = fichas[a.Id].Registros.Select(r => $"{r.Clube} · {r.Competicao} {r.Temporada}").FirstOrDefault() }).ToList();
+});
+
 api.MapGet("/atletas/{id:int}/parecidos", async (int id, int? temporada, int? idadeMax, IQueryHandler<AtletasParecidos, ResultadoParecidos?> h, CancellationToken ct) =>
     await h.Handle(new AtletasParecidos(id, temporada, idadeMax), ct) is { } r ? Results.Ok(r) : Results.NotFound());
 

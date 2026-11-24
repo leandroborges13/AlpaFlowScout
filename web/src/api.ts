@@ -69,6 +69,11 @@ export type CartaoDoAtleta = {
   outrasCompeticoes?: string[] | null
 }
 
+/** Uma linha do "lado a lado": número de cada um (por 90 min ou %), percentil no setor da liga dele e quem vence ("a", "b" ou null). */
+export type LinhaLadoALado = { chave: string; nome: string; porcentagem: boolean; valorA: number | null; percentilA: number | null; valorB: number | null; percentilB: number | null; vence: 'a' | 'b' | null }
+/** Candidato (a) x outro atleta (b); notas na régua da Série A ("≈" quando estimada). */
+export type LadoALado = { a: ResumoAtleta; b: ResumoAtleta; notaA: number | null; notaB: number | null; estimadaA: boolean; estimadaB: boolean; linhas: LinhaLadoALado[]; explicacao: string }
+
 export type Parecidos = { referencia: ResumoAtleta; parecidos: { atleta: ResumoAtleta; semelhanca: number }[] }
 
 export type ResumoTime = {
@@ -168,6 +173,8 @@ export const api = {
   atleta: (id: number, temporada: number) => pedir<DetalheAtleta>(`/api/atletas/${id}?temporada=${temporada}`),
   cartaoDoAtleta: (id: number, temporada: number) => pedir<CartaoDoAtleta>(`/api/atletas/${id}/cartao?temporada=${temporada}`),
   parecidos: (id: number, temporada: number) => pedir<Parecidos>(`/api/atletas/${id}/parecidos?temporada=${temporada}`),
+  ladoALado: (id: number, outro: number) => pedir<LadoALado>(`/api/atletas/${id}/lado-a-lado/${outro}`),
+  procurarAtleta: (nome: string) => pedir<{ id: number; nome: string; onde?: string | null }[]>(`/api/atletas/procurar?nome=${encodeURIComponent(nome)}`),
   resumoIa: (id: number, temporada: number) => pedir<{ texto: string }>(`/api/atletas/${id}/resumo-ia?temporada=${temporada}`),
   time: (id: number, competicao: number, temporada: number) =>
     pedir<DetalheTime>(`/api/times/${id}?competicao=${competicao}&temporada=${temporada}`),

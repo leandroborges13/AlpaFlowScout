@@ -1,4 +1,4 @@
-import type { AnalisePartida, CartaoDoAtleta, HistoricoDePalpites, Palpite, PlacarAoVivo, CalorDoJogador, DesempenhoNoJogo, FinalizacaoNoMapa, MapaDaPartida } from './api'
+import type { AnalisePartida, CartaoDoAtleta, LadoALado, HistoricoDePalpites, Palpite, PlacarAoVivo, CalorDoJogador, DesempenhoNoJogo, FinalizacaoNoMapa, MapaDaPartida } from './api'
 import { comAlfa, coresDoClube, coresDoJogo } from './Cores'
 
 // "Para vídeo": cartões 1080x1920 (9:16) para os Shorts do canal Galo na Lupa (@galonalupa), desenhados em canvas e baixados como PNG.
@@ -649,6 +649,73 @@ export async function cartaoDoAtleta(c: CartaoDoAtleta) {
   fonte(ctx, 20, 600); ctx.fillStyle = COR.suave; ctx.textBaseline = 'top'
   ctx.fillText('Barra = percentil no setor: azul elite · verde bom · amarelo regular · laranja abaixo', x0 + 50, y0 + h - 44)
   await baixar(tela, `cartao-${nomeDeArquivo(a.nome)}`)
+}
+
+/**
+ * Cartão "lado a lado" (item 23.4): o candidato (esquerda) x outro atleta (direita), com a nota na régua da Série A no topo e,
+ * em cada linha, o número de cada um por 90 min (dourado = quem vence) e a barra do percentil no setor da liga dele.
+ */
+export async function cartaoLadoALado(c: LadoALado) {
+  await prontoParaDesenhar()
+  const [tela, ctx] = novaTela()
+  moldura(ctx, 'Lado a lado · por 90 min', `${c.a.nome} x ${c.b.nome}`, 60)
+  const x0 = JANELA.x, y0 = JANELA.y, w = JANELA.w, h = A - 200 - JANELA.y
+  caixa(ctx, x0, y0, w, h, 32, COR.painel)
+  const meio = L / 2
+  const cores = [coresDoClube(c.a.clube).destaque, coresDoClube(c.b.clube).destaque]
+
+  // cabeçalho de cada lado: nome, clube e liga, idade e minutos, a nota (na régua da Série A) e a situação, se saiu do clube
+  const lados = [
+    { r: c.a, nota: c.notaA, estimada: c.estimadaA, x: x0 + 40, alinha: 'left' as CanvasTextAlign, bola: x0 + w / 2 - 110 },
+    { r: c.b, nota: c.notaB, estimada: c.estimadaB, x: x0 + w - 40, alinha: 'right' as CanvasTextAlign, bola: x0 + w / 2 + 110 },
+  ]
+  lados.forEach((s, i) => {
+    caixa(ctx, i === 0 ? x0 : x0 + w - 14, y0 + 30, 14, 200, 7, cores[i])
+    ctx.textAlign = s.alinha; ctx.textBaseline = 'top'
+    const largura = w / 2 - 230
+    fonte(ctx, 38, 900); ctx.fillStyle = COR.texto
+    const nomes = linhas(ctx, s.r.nome, largura).slice(0, 2)
+    nomes.forEach((n, k) => ctx.fillText(n, s.x, y0 + 34 + k * 44))
+    let y = y0 + 34 + nomes.length * 44 + 6
+    fonte(ctx, 22, 700); ctx.fillStyle = cores[i]
+    for (const t of linhas(ctx, `${s.r.clube} · ${s.r.competicao}`, largura).slice(0, 2)) { ctx.fillText(t, s.x, y); y += 28 }
+    fonte(ctx, 22, 600); ctx.fillStyle = COR.suave
+    ctx.fillText(`${s.r.idade} anos · ${s.r.minutos} min · ${s.r.gols} gols`, s.x, y + 4)
+    if (s.r.situacao) { fonte(ctx, 19, 700); ctx.fillStyle = '#ffb347'; ctx.fillText(`⚠ ${s.r.situacao}`.slice(0, 48), s.x, y + 36) }
+    if (s.nota != null) {
+      ctx.beginPath(); ctx.arc(s.bola, y0 + 110, 62, 0, Math.PI * 2); ctx.fillStyle = corDaNota(s.nota); ctx.fill()
+      ctx.lineWidth = 6; ctx.strokeStyle = cores[i]; ctx.stroke()
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+      fonte(ctx, 56, 900); ctx.fillStyle = '#fff'; ctx.fillText(`${s.estimada ? '≈' : ''}${Math.round(s.nota)}`, s.bola, y0 + 106)
+      fonte(ctx, 19, 800); ctx.fillStyle = COR.suave; ctx.fillText('na Série A', s.bola, y0 + 192)
+    }
+  })
+
+  // as linhas: rótulo no meio, número de cada lado e a barra do percentil crescendo para fora a partir do centro
+  const topo = y0 + 300, rodape = 70
+  const passo = Math.min(130, (h - (topo - y0) - rodape) / c.linhas.length)
+  const barraMax = 300
+  c.linhas.forEach((l, k) => {
+    const y = topo + k * passo
+    ctx.fillStyle = COR.linha; ctx.fillRect(x0 + 40, y - 12, w - 80, 2)
+    fonte(ctx, 26, 800); ctx.fillStyle = COR.suave; ctx.textAlign = 'center'; ctx.textBaseline = 'top'
+    ctx.fillText(l.nome, meio, y + 4)
+    const fmt = (v: number | null) => v == null ? '–' : l.porcentagem ? `${Math.round(v)}%` : v.toFixed(v >= 10 ? 1 : 2).replace('.', ',')
+    const yb = y + passo * 0.62
+    ;([['a', l.valorA, l.percentilA, -1], ['b', l.valorB, l.percentilB, 1]] as const).forEach(([lado, valor, pct, dir]) => {
+      const inicio = meio + dir * 20
+      caixa(ctx, dir < 0 ? inicio - barraMax : inicio, yb - 10, barraMax, 20, 10, COR.linha)
+      if (pct != null) { const bw = Math.max(20, (barraMax * pct) / 100); caixa(ctx, dir < 0 ? inicio - bw : inicio, yb - 10, bw, 20, 10, corDaNota(pct)) }
+      fonte(ctx, 46, 900); ctx.textBaseline = 'middle'
+      ctx.fillStyle = l.vence === lado ? COR.destaque : COR.texto
+      ctx.textAlign = dir < 0 ? 'left' : 'right'
+      ctx.fillText(fmt(valor), dir < 0 ? x0 + 40 : x0 + w - 40, yb)
+    })
+  })
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top'
+  textoNaCaixa(ctx, `${c.explicacao} Dourado = quem leva a melhor.`,
+    x0 + 40, y0 + h - rodape + 4, w - 80, rodape - 12, 19, 15, COR.suave, 600)
+  await baixar(tela, `lado-a-lado-${nomeDeArquivo(c.a.nome)}-x-${nomeDeArquivo(c.b.nome)}`)
 }
 
 /**

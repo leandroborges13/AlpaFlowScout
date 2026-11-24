@@ -4,7 +4,7 @@ import { BarraDeEstilo, CampoDePosicoes } from './Campo'
 import { CartaoAtleta, Medidor, Retrato } from './Componentes'
 import { GaleriaVideo } from './GaleriaVideo'
 import { CartaoTime } from './PainelTime'
-import { cartaoDoAtleta, coletar, type Cartao } from './ParaVideo'
+import { cartaoDoAtleta, cartaoLadoALado, coletar, type Cartao } from './ParaVideo'
 
 type Props = {
   atleta: ResumoAtleta
@@ -26,6 +26,22 @@ export function PainelAtleta({ atleta, gravacao, onFechar, onAbrir, onAbrirTime 
   async function paraVideo() {
     setGerando(true)
     try { const c = await api.cartaoDoAtleta(atleta.id, atleta.temporada); setGaleria(await coletar(() => cartaoDoAtleta(c))) }
+    catch (e) { setErro(e instanceof Error ? e.message : 'Não deu para gerar o cartão.') }
+    finally { setGerando(false) }
+  }
+
+  // Lado a lado: digita o nome do outro atleta, escolhe entre os achados e sai o cartão (este atleta à esquerda)
+  const [comparar, setComparar] = useState<string | null>(null)
+  const [achados, setAchados] = useState<{ id: number; nome: string; onde?: string | null }[]>([])
+
+  async function procurar() {
+    if (!comparar?.trim()) return
+    try { setAchados(await api.procurarAtleta(comparar.trim())) } catch (e) { setErro(e instanceof Error ? e.message : 'Não deu para procurar.') }
+  }
+
+  async function ladoALado(outro: number) {
+    setGerando(true)
+    try { const c = await api.ladoALado(atleta.id, outro); setGaleria(await coletar(() => cartaoLadoALado(c))); setComparar(null); setAchados([]) }
     catch (e) { setErro(e instanceof Error ? e.message : 'Não deu para gerar o cartão.') }
     finally { setGerando(false) }
   }
@@ -68,6 +84,20 @@ export function PainelAtleta({ atleta, gravacao, onFechar, onAbrir, onAbrirTime 
         {a.nota != null && (
           <div className="prancheta-botoes">
             <button className="botao-prancheta" onClick={paraVideo} disabled={gerando}>{gerando ? 'Gerando…' : '🎬 Cartão para vídeo'}</button>
+            <button className="botao-prancheta" onClick={() => { setComparar(comparar === null ? '' : null); setAchados([]) }} disabled={gerando}>⚖️ Lado a lado</button>
+          </div>
+        )}
+        {comparar !== null && (
+          <div className="lado-a-lado">
+            <form onSubmit={(e) => { e.preventDefault(); procurar() }} style={{ display: 'flex', gap: 8 }}>
+              <input autoFocus value={comparar} onChange={(e) => setComparar(e.target.value)} placeholder="Comparar com… (ex.: Cassierra)" style={{ flex: 1 }} />
+              <button type="submit" className="botao-prancheta">Procurar</button>
+            </form>
+            {achados.map((x) => (
+              <button key={x.id} className="botao-prancheta" style={{ display: 'block', width: '100%', textAlign: 'left', marginTop: 6 }} onClick={() => ladoALado(x.id)} disabled={gerando || x.id === atleta.id}>
+                {x.nome}{x.onde ? ` · ${x.onde}` : ''}
+              </button>
+            ))}
           </div>
         )}
         {galeria && <GaleriaVideo titulo={`${a.nome}: para vídeo`} cartoes={galeria} onFechar={() => setGaleria(null)} />}
