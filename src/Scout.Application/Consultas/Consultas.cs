@@ -77,7 +77,7 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
 
         var candidatos = linhas.Where(l =>
             (q.Setor is null || l.Setor == q.Setor) &&
-            (q.Funcao is null || JogaNaFuncao(l, q.Funcao)) &&
+            (q.Funcao is null || (q.Mercado ? FuncaoPrincipal(l, q.Funcao) : JogaNaFuncao(l, q.Funcao))) &&
             (q.Lado is null || l.Lado == q.Lado || l.Funcoes.Keys.Any(f => f.Contains(NomeLado(q.Lado.Value), StringComparison.OrdinalIgnoreCase))) &&
             (q.IdadeMin is null || l.Idade >= q.IdadeMin) &&
             (q.IdadeMax is null || l.Idade <= q.IdadeMax) &&
@@ -146,6 +146,18 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
         (l.Funcao?.Contains(funcao, StringComparison.OrdinalIgnoreCase) ?? false) ||
         // Também vale quem fez pelo menos 3 jogos na função pedida, mesmo não sendo a principal
         l.Funcoes.Any(f => f.Key.Contains(funcao, StringComparison.OrdinalIgnoreCase) && f.Value >= 3);
+
+    /// <summary>
+    /// Mercado: a função pedida é a dele, não um quebra-galho. Pelo menos 40% das titularidades nela
+    /// (um meia que fez 14 de 33 jogos como centroavante não entra como centroavante). Sem escalação, vale a função principal.
+    /// </summary>
+    public static bool FuncaoPrincipal(LinhaAnalise l, string funcao)
+    {
+        var total = l.Funcoes.Values.Sum();
+        if (total == 0) return l.Funcao?.Contains(funcao, StringComparison.OrdinalIgnoreCase) ?? false;
+        var nela = l.Funcoes.Where(f => f.Key.Contains(funcao, StringComparison.OrdinalIgnoreCase)).Sum(f => f.Value);
+        return nela >= 3 && nela >= total * 0.4;
+    }
 
     static string NomeLado(Lado lado) => lado == Lado.Esquerda ? "esquerd" : lado == Lado.Direita ? "direit" : "central";
 

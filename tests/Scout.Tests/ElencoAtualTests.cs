@@ -60,6 +60,21 @@ public class ElencoAtualTests
         Assert.True(v.NoElenco);
     }
 
+    [Theory]
+    [InlineData(22, 18, true)]   // J. López: 22 de 40 como centroavante
+    [InlineData(14, 19, true)]   // 14 de 33 (42%)
+    [InlineData(8, 15, false)]   // Estrada: 8 de 23 (35%), é ponta
+    [InlineData(2, 0, false)]    // só 2 jogos na função
+    public void Mercado_exige_a_funcao_como_principal(int naFuncao, int outras, bool entra)
+    {
+        var l = new Scout.Application.Analise.LinhaAnalise
+        {
+            Funcao = "Centroavante",
+            Funcoes = new() { ["Centroavante"] = naFuncao, ["Atacante esquerdo"] = outras },
+        };
+        Assert.Equal(entra, BuscarPorPerfilHandler.FuncaoPrincipal(l, "Centroavante"));
+    }
+
     [Fact]
     public void Mais_de_um_clube_na_linha_conta_como_o_mesmo()
     {

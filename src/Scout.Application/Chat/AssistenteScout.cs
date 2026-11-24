@@ -96,8 +96,10 @@ public class AssistenteScout(
                 },
                 "buscar_atletas",
                 "Busca atletas por perfil (função, lado, idade, atributos) e devolve os mais aderentes com nota de encaixe 0–100. " +
-                "Para reforço ou mapa de mercado (\"quem o Galo deveria contratar\"), use mercado=true e excluirClube com o ID do time: a nota de liga de fora vem em NotaSerieA " +
-                "(fale \"por volta de\", é estimativa). Atleta com Situacao preenchida saiu do clube ou não joga há 60 dias: diga isso. " +
+                "Para reforço ou mapa de mercado (\"quem o Galo deveria contratar\"), use mercado=true e excluirClube com o ID do time (só entra quem tem a função como principal). " +
+                "Na resposta, a nota de atleta de liga de fora é a NotaSerieA (a mesma do card), dita como \"por volta de X na régua da Série A\"; cite a nota na liga só como complemento. " +
+                "Se NotaSerieAEstimada for true, avise que a liga tem pouco confronto com clubes brasileiros e a nota é só ordem de grandeza. " +
+                "Atleta com Situacao preenchida saiu do clube ou não joga há 60 dias: diga isso. " +
                 "Nunca diga que um clube vai contratar alguém: é sugestão pelos números."),
             AIFunctionFactory.Create(
                 async (int atletaId, int? temporada = null) =>
