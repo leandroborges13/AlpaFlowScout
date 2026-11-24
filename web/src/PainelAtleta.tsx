@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type DetalheAtleta, type JogoNaLinhaDoTempo, type Parecidos, type ResumoAtleta, type ResumoTime, type TimesParaAtleta } from './api'
 import { BarraDeEstilo, CampoDePosicoes } from './Campo'
-import { CartaoAtleta, Medidor, Retrato } from './Componentes'
+import { CartaoAtleta, Medidor, Retrato, euros } from './Componentes'
 import { GaleriaVideo } from './GaleriaVideo'
 import { CartaoTime } from './PainelTime'
 import { cartaoDoAtleta, cartaoLadoALado, coletar, type Cartao } from './ParaVideo'
@@ -81,6 +81,24 @@ export function PainelAtleta({ atleta, gravacao, onFechar, onAbrir, onAbrirTime 
           {a.nota != null && <div className="nota"><b>{Math.round(a.nota)}</b><span>{a.notaSerieA != null ? 'nota na liga' : 'nota geral'}</span></div>}
           {a.notaSerieA != null && <div className="nota" title="Nota convertida para a escala da Série A pelo nível da liga, medido nos confrontos de Libertadores e Sul-Americana"><b>{Math.round(a.notaSerieA)}</b><span>{a.notaSerieAEstimada ? '≈ na Série A' : 'na Série A'}</span></div>}
         </div>
+        {/* Os números da temporada na liga, a participação em gols por 90 min, as copas da mesma temporada, valor e contrato */}
+        <div className="tiles numeros-temporada">
+          <Tile valor={`${a.jogos}`} rotulo={`jogos (${a.titular} como titular)`} />
+          <Tile valor={a.minutos.toLocaleString('pt-BR')} rotulo="minutos" />
+          <Tile valor={`${a.gols}`} rotulo="gols" />
+          <Tile valor={`${a.assistencias}`} rotulo="assistências" />
+          <Tile valor={a.minutos > 0 ? (((a.gols + a.assistencias) * 90) / a.minutos).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) : '—'}
+            rotulo="participações em gol por 90 min" />
+          {(() => {
+            const copas = (detalhe?.copas ?? []).filter((c) => c.temporada === a.temporada)
+            if (copas.length === 0) return null
+            const gols = copas.reduce((n, c) => n + c.gols, 0), jogos = copas.reduce((n, c) => n + c.jogos, 0)
+            return <Tile valor={`${gols}`} rotulo={`gols em copas (${jogos} jogos: ${copas.map((c) => c.competicao.replace('CONMEBOL ', '')).join(', ')})`} />
+          })()}
+          {a.valorMercado != null && <Tile valor={euros(a.valorMercado)} rotulo="valor de mercado (estimativa)" />}
+          {a.contratoAte && <Tile valor={`${a.contratoAte.slice(5, 7)}/${a.contratoAte.slice(0, 4)}`} rotulo="fim do contrato" />}
+        </div>
+        {a.situacao && <p className="card-sub" style={{ color: 'var(--aviso)' }}>⚠ {a.situacao}</p>}
         {a.nota != null && (
           <div className="prancheta-botoes">
             <button className="botao-prancheta" onClick={paraVideo} disabled={gerando}>{gerando ? 'Gerando…' : '🎬 Cartão para vídeo'}</button>
