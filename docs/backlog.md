@@ -292,7 +292,28 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
     - **Por quê:** é o produto que a lista de espera vai receber (degrau 3: Scout aberto, torcedor e pro). Hoje o Scout é bom em
       dado e em cartão de vídeo (canvas), mas a tela de análise é texto e tabela. Quem paga quer explorar sozinho.
     - **Referências para estudar antes de desenhar:**
-      - o conteúdo do Simonetti (pedir o @ ao Leandro): que gráficos ele usa, que dados de atleta mostra, o que engaja;
+      - **Simonetti (Felipe Simonetti, Futebol Máximo 939 mil inscritos e Simonetti Análises 106 mil)**. Vídeo de 24/11/2026,
+        "3 contratações arrumam o Galo para 2027" (youtu.be/r8bfJhMf4AQ): ele usa a própria ferramenta, simonettistats.com.br.
+        - **Perfil:** radar e barras de percentil por posição e liga, ou contra todas as ligas, em grupos com nomes simples:
+          ameaça criativa, defesa proativa, eficiência no desarme, progressão por passe, jogo de ligação e volume aéreo. Tem
+          tabela verde/vermelho e as "bolinhas" com a distribuição da liga.
+        - **"Gêmeo":** % de similaridade, com filtro de liga e posição (nós temos /parecidos).
+        - **Comparar:** "vence em 17 de 24 indicadores", lista de quais ganha e "pontos de atenção" (os 6 piores).
+        - **Gráficos:** dispersão com eixos livres, Venn de até 3 limiares e evolução de um indicador por temporada.
+        - **Ranking:** total ou por 90; ranking só com quem jogou ≥ 40% dos minutos do mais usado da posição.
+        - **Mais:** 200+ indicadores e 12 ligas (as 5 grandes, Holanda, Portugal, Rússia, Brasil A/B, Argentina, Colômbia e Chile).
+          Grátis com anúncio; "Stats vitalício R$ 97" na Black Friday.
+        - **Planejador de elencos (planejadordeelencos.com.br):**
+          - FICA, SAI ou EMPRESTA por jogador, com saldo de compra e venda em €;
+          - reforço buscado na base;
+          - escalação com titular, reserva e 3ª opção, que vira imagem;
+          - dados do SportsBase, Transfermarkt e 365Scores.
+        - **No vídeo:** cita o histórico de lesões (Transfermarkt) e a carreira temporada a temporada (365Scores). Indica 3 nomes
+          por posição, um por faixa de preço, e entre eles o **Arce**, o mesmo do nosso vídeo de 27/11.
+        - **O que nos falta para ficar nesse nível:** radar e percentil por grupo, dispersão livre, "vence X de Y", evolução por
+          temporada (item 25), lesões e planejador com saldo (a prancheta já existe).
+        - **Nosso diferencial:** régua entre ligas (ForcaDasLigas), teto financeiro pela Série A, contrato, palpite do modelo e
+          chat em linguagem natural.
       - o que os clubes usam para garimpar: Wyscout, Hudl StatsBomb, SkillCorner (físico), TransferRoom (mercado),
         SciSports e Scout7. O fluxo deles: filtro por dado → vídeo → observação ao vivo → lista curta → "time sombra"
         (shadow team) por posição → relatório.
