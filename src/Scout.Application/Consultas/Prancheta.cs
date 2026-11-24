@@ -50,6 +50,9 @@ public class ObterPranchetaHandler(IScoutDb db) : IQueryHandler<ObterPrancheta, 
         var ids = escalacoes.Select(e => e.AtletaId).Distinct().ToList();
         var atletas = (await db.Atletas.AsNoTracking().Where(a => ids.Contains(a.Id)).ToListAsync(ct))
             .Where(a => a.PodeSerAnalisado(hoje)).ToDictionary(a => a.Id, a => a.Nome);
+        // Quem saiu do clube (ou não joga há 60 dias) não entra na escalação provável nem no elenco
+        var vinculos = await ElencoAtual.Avaliar(db, atletas.Keys.ToDictionary(id => id, _ => new[] { q.ClubeId }), ct);
+        foreach (var fora in vinculos.Values.Where(v => !v.NoElenco)) atletas.Remove(fora.AtletaId);
 
         var esquemas = escalacoes.Where(e => recentes.Contains(e.PartidaId)).GroupBy(e => e.PartidaId).Select(g => g.First().Esquema)
             .GroupBy(e => e).Select(g => new EsquemaRecente(g.Key, g.Count())).OrderByDescending(e => e.Jogos).ToList();
@@ -66,7 +69,7 @@ public class ObterPranchetaHandler(IScoutDb db) : IQueryHandler<ObterPrancheta, 
 
         return new Prancheta(clube.Id, clube.Nome, temporada, esquema, esquemas, vagas, elenco,
             $"Escalação provável: para cada posição do {esquema}, quem mais começou jogando nela (os últimos {JogosRecentes} jogos pesam seis vezes mais), " +
-            "depois quem joga numa função parecida (lateral na ala, zagueiro na linha de 3) ou no mesmo setor e lado. Só titulares com 18 anos ou mais aparecem; outros nomes podem ser digitados.");
+            "depois quem joga numa função parecida (lateral na ala, zagueiro na linha de 3) ou no mesmo setor e lado. Só titulares com 18 anos ou mais aparecem, e quem saiu do clube ou não joga há mais de 60 dias fica de fora; outros nomes podem ser digitados.");
     }
 
     public static bool Valido(string? esquema) =>

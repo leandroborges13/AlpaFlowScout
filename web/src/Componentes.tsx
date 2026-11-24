@@ -38,6 +38,7 @@ export function CartaoAtleta({ atleta: a, onAbrir, semelhanca, gravacao }: Carta
         <div className="card-id">
           <div className="card-nome">{a.nome}</div>
           <div className="card-sub">{a.idade} anos · {a.clube} · {a.competicao}{a.notaSerieA != null && semelhanca == null && naLiga != null ? ` · ${Math.round(naLiga)} na liga` : ''}</div>
+          {a.situacao && <div className="card-sub" style={{ color: 'var(--aviso)' }}>⚠ {a.situacao}</div>}
         </div>
         {nota != null && (
           <div className="nota"><b>{Math.round(nota)}</b><span>{rotulo}</span></div>

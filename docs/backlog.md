@@ -132,6 +132,13 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
       - Falta um cartão "time x time" no Para vídeo, aproveitando o lado a lado do raio-x de atletas.
 
 21. **Atleta que saiu do clube continua no elenco** (achado em 21/11/2026, véspera da final)
+    - **FEITO em 24/11/2026 (ElencoAtual.Avaliar/Decidir):** jogo = titular na escalação ou minutos na estatística por partida
+      (PitchAPI, pega quem saiu do banco). Fora do elenco: jogou por outro clube depois do último jogo pelo clube ("saiu: joga pelo
+      X desde MM/AAAA"), ou sem jogo pelo clube há mais de 60 dias contados até o último jogo do clube ("fora dos jogos desde...";
+      saída, empréstimo ou lesão). Sem jogo registrado (liga sem escalação), fica. Aplicado na prancheta (some), no elenco do time
+      e no chat (lista à parte ForaDoElenco, só na temporada atual) e na busca (campo Situacao; SoElencoAtual tira).
+      Conferido no banco em 24/11: Hulk (Fluminense), J. Alonso (Atlanta United) e I. Román (fora desde 31/05) saem; os outros 30 ficam.
+      O card do atleta mostra a Situacao em cor de aviso. Falta: confirmar pela transferência (Bzzoiro) quando houver.
     - **O problema:** a prancheta e o elenco do time (/api/times/{id}/prancheta) listam quem tem estatística pelo clube na
       temporada. Por isso o Hulk, que foi para o Fluminense, aparecia no Galo com nota 83, a 2ª maior do elenco. Também
       apareciam o Junior Alonso e o Iván Román, sem jogo pelo Galo desde 15/09.
@@ -204,6 +211,11 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
          mostrar sempre "nota na liga dele" e "nota ajustada à Série A".
       3. **Busca "perfil de mercado":** função, idade máxima, minutos mínimos, liga e contrato/valor (Bzzoiro tem contrato e
          valor de mercado), ordenada pela nota ajustada.
+         **FEITO em 24/11/2026 (menos contrato e valor):** BuscarPorPerfil ganhou `Mercado` (sem liga pedida: Série A + todas as
+         ligas de fora na régua da Série A; Série B e C saem por não terem conversão), `MinutosMinimos`, `ExcluirClubeId` (o próprio
+         Galo) e `SoElencoAtual`; cada resultado traz `Situacao` (item 21). POST /api/busca e a ferramenta buscar_atletas do chat
+         (mercado, minutosMinimos, excluirClube, soElencoAtual). Falta: contrato e valor de mercado (o Scout não guarda; Bzzoiro tem)
+         e o modo mercado na tela de busca.
       4. **Cartão "lado a lado" para vídeo:** candidato x Cassierra, com gols por 90, finalização, duelos aéreos e participação.
     - **Depois (internacional):** Portugal, México, MLS e ligas de onde o Brasil costuma comprar (Bzzoiro e PitchAPI cobrem várias).
       Avaliar custo antes.

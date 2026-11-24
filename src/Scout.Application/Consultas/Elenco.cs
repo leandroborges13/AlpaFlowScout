@@ -56,10 +56,16 @@ public class ObterFichaAtletaHandler(IScoutDb db) : IQueryHandler<ObterFichaAtle
 // ---------- Elenco do time ----------
 
 /// <summary>`TitularComo`: em quais funções começou jogando e quantas vezes (ex.: Lateral esquerdo: 4, Ala esquerdo: 2).</summary>
+/// <remarks>`Situacao`: preenchida para quem não está mais no elenco (ver <see cref="VinculoAtual"/>).</remarks>
 public record AtletaNoElenco(int Id, string Nome, int Idade, string? Funcao, int Jogos, int Titular, int Minutos, int Gols, int Assistencias, double? Nota,
-    IReadOnlyDictionary<string, int> TitularComo);
+    IReadOnlyDictionary<string, int> TitularComo, string? Situacao = null);
 
-public record ElencoDoTime(string Time, string Competicao, int Temporada, IReadOnlyList<AtletaNoElenco> Atletas, int MenoresOmitidos);
+/// <summary>
+/// `Atletas`: o elenco atual. `ForaDoElenco`: quem jogou na temporada mas saiu do clube ou não joga há mais de 60 dias
+/// (só na temporada atual, sem temporada pedida; temporada antiga mostra todo mundo em `Atletas`).
+/// </summary>
+public record ElencoDoTime(string Time, string Competicao, int Temporada, IReadOnlyList<AtletaNoElenco> Atletas, int MenoresOmitidos,
+    IReadOnlyList<AtletaNoElenco>? ForaDoElenco = null);
 
 /// <summary>Todos que jogaram pelo time na competição, do mais usado ao menos usado: é aqui que aparecem os reservas.</summary>
 /// <remarks>Com `Funcao`, só quem já foi titular nela (o mais usado é o titular; os demais, reservas) e quem é do mesmo setor e ainda não foi titular.</remarks>
@@ -101,7 +107,15 @@ public class ObterElencoHandler(IScoutDb db, MotorDeAnalise motor) : IQueryHandl
             .Where(a => q.Funcao is null || NaFuncao(a, q.Funcao))
             .OrderByDescending(a => q.Funcao is null ? a.Minutos : TitularidadesNa(a, q.Funcao)).ThenByDescending(a => a.Minutos)
             .ToList();
-        return new ElencoDoTime(alvo.Clube, alvo.Competicao, alvo.Temporada, atletas, registros.Count - adultos.Count);
+        if (q.Temporada is not null)
+            return new ElencoDoTime(alvo.Clube, alvo.Competicao, alvo.Temporada, atletas, registros.Count - adultos.Count);
+
+        var vinculos = await ElencoAtual.Avaliar(db, atletas.ToDictionary(a => a.Id, _ => new[] { q.ClubeId }), ct);
+        var fora = atletas.Where(a => vinculos.GetValueOrDefault(a.Id) is { NoElenco: false })
+            .Select(a => a with { Situacao = vinculos[a.Id].Situacao }).ToList();
+        var foraIds = fora.Select(a => a.Id).ToHashSet();
+        return new ElencoDoTime(alvo.Clube, alvo.Competicao, alvo.Temporada, atletas.Where(a => !foraIds.Contains(a.Id)).ToList(),
+            registros.Count - adultos.Count, fora);
     }
 
     static bool Combina(string funcaoDoAtleta, string pedida) =>

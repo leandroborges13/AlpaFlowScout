@@ -20,7 +20,9 @@ public record ResumoAtleta(
     // Atleta de liga de fora: a nota convertida para a escala da Série A pela força da liga (ForcaDasLigas). Nulo para liga brasileira.
     double? NotaSerieA = null,
     // A liga tem pouco confronto direto com a Série A: a nota convertida é ordem de grandeza (a tela mostra "≈")
-    bool NotaSerieAEstimada = false);
+    bool NotaSerieAEstimada = false,
+    // Saiu do clube ou não joga há mais de 60 dias (ElencoAtual): a frase pronta. Nulo = segue no clube (ou não se sabe).
+    string? Situacao = null);
 
 public static class Resumir
 {

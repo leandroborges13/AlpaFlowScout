@@ -74,7 +74,11 @@ public class AssistenteScout(
                        [Description("Chaves dos atributos importantes (peso 1), ex.: jogo_aereo, saida_de_bola, marcacao")] string[]? atributos = null,
                        [Description("Chaves dos atributos muito importantes (peso 2)")] string[]? atributosMuitoImportantes = null,
                        [Description("IDs de competição para restringir; omita para todas")] int[]? competicoes = null,
-                       int? limite = null) =>
+                       int? limite = null,
+                       [Description("true para mapa de mercado / reforço: junta a Série A e as ligas de fora (Argentina, Colômbia, Portugal...) na régua da Série A")] bool? mercado = null,
+                       [Description("Minutos mínimos jogados na liga (ex.: 900)")] int? minutosMinimos = null,
+                       [Description("ID do clube a excluir (ex.: o próprio time que procura reforço)")] int? excluirClube = null,
+                       [Description("true para listar só quem continua no clube (tira quem saiu ou não joga há 60 dias)")] bool? soElencoAtual = null) =>
                 {
                     log.LogInformation("buscar_atletas setor={Setor} funcao={Funcao} lado={Lado} esquema={Esquema} idade={Min}-{Max} part={Part} atributos={A} fortes={F} comp={C} temporada={T}",
                         setor, funcao, lado, esquema, idadeMinima, idadeMaxima, participacaoMinima, string.Join(",", atributos ?? []), string.Join(",", atributosMuitoImportantes ?? []), string.Join(",", competicoes ?? []), temporada);
@@ -85,12 +89,16 @@ public class AssistenteScout(
                         temporada, competicoes,
                         Enum.TryParse<Setor>(setor, true, out var s) ? s : null, funcao,
                         Enum.TryParse<Lado>(lado, true, out var l) ? l : null, esquema,
-                        idadeMinima, idadeMaxima, participacaoMinima, pesos, limite ?? 5), ct);
+                        idadeMinima, idadeMaxima, participacaoMinima, pesos, limite ?? 5,
+                        mercado ?? false, minutosMinimos, excluirClube, soElencoAtual ?? false), ct);
                     Citar(r.Atletas);
                     return r;
                 },
                 "buscar_atletas",
-                "Busca atletas por perfil (função, lado, idade, atributos) e devolve os mais aderentes com nota de encaixe 0–100."),
+                "Busca atletas por perfil (função, lado, idade, atributos) e devolve os mais aderentes com nota de encaixe 0–100. " +
+                "Para reforço ou mapa de mercado (\"quem o Galo deveria contratar\"), use mercado=true e excluirClube com o ID do time: a nota de liga de fora vem em NotaSerieA " +
+                "(fale \"por volta de\", é estimativa). Atleta com Situacao preenchida saiu do clube ou não joga há 60 dias: diga isso. " +
+                "Nunca diga que um clube vai contratar alguém: é sugestão pelos números."),
             AIFunctionFactory.Create(
                 async (int atletaId, int? temporada = null) =>
                 {
@@ -146,10 +154,13 @@ public class AssistenteScout(
                     // Por função: titular e reservas separados, para a resposta citar os reservas pelo nome
                     object Atleta(AtletaNoElenco a) => new { a.Nome, a.Idade, a.Jogos, a.Titular, TitularNaFuncao = a.TitularComo, a.Minutos, a.Gols, Nota = a.Nota?.ToString() ?? "sem nota: menos de 450 minutos" };
                     return new { e.Time, e.Competicao, e.Temporada, Funcao = funcao, Titular = e.Atletas.Take(1).Select(Atleta), Reservas = e.Atletas.Skip(1).Select(Atleta),
+                        ForaDoElenco = (e.ForaDoElenco ?? []).Select(a => new { a.Nome, a.Situacao }),
                         Observacao = "Reserva = quem já foi titular na função ou é do mesmo setor sem titularidade. Quem só entrou no segundo tempo nessa posição não aparece: o provedor não informa a posição de quem sai do banco." };
                 },
                 "elenco_do_time",
-                "Todos os atletas que jogaram pelo time na competição, do mais usado ao menos usado, com função, jogos, titularidades, minutos e nota (quando tem). Use para reservas, quem joga pouco e o elenco completo."),
+                "Os atletas do elenco atual que jogaram pelo time na competição, do mais usado ao menos usado, com função, jogos, titularidades, minutos e nota (quando tem). " +
+                "Use para reservas, quem joga pouco e o elenco completo. Quem saiu do clube ou não joga há mais de 60 dias vem à parte em ForaDoElenco, com a Situacao: " +
+                "nunca cite essa pessoa como jogador atual do time."),
             AIFunctionFactory.Create(
                 async ([Description("ID da competição; omita para todas")] int? competicao = null,
                        [Description("Parte do nome do time, para encontrar o ID")] string? nome = null,

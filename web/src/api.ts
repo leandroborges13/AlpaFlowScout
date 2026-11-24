@@ -27,6 +27,8 @@ export type ResumoAtleta = {
   /** Atleta de liga de fora: a nota convertida para a escala da Série A pela força da liga */
   notaSerieA?: number | null
   notaSerieAEstimada?: boolean
+  /** Saiu do clube ou não joga há mais de 60 dias ("saiu: joga pelo Fluminense desde 09/2026") */
+  situacao?: string | null
   destaques: Destaque[]
   experienciaNoEsquema?: string | null
 }

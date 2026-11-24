@@ -46,7 +46,15 @@ public record BuscarPorPerfil(
     int? IdadeMax = null,
     int? ParticipacaoMinimaPercentual = null,
     Dictionary<string, double>? Atributos = null,
-    int Limite = 10) : IQuery<ResultadoBusca>;
+    int Limite = 10,
+    // Mapa de mercado: sem competição pedida, junta a Série A e as ligas de fora (na régua da Série A); Série B e C ficam de fora
+    // porque não têm conversão para a Série A
+    bool Mercado = false,
+    int? MinutosMinimos = null,
+    // Tira os atletas desse clube (ex.: o próprio Galo, ao procurar reforço)
+    int? ExcluirClubeId = null,
+    // Só quem continua no clube da linha (ver ElencoAtual); sem isso, quem saiu aparece com a Situacao preenchida
+    bool SoElencoAtual = false) : IQuery<ResultadoBusca>;
 
 public record ResultadoBusca(int Encontrados, IReadOnlyList<ResumoAtleta> Atletas, IReadOnlyList<string> Observacoes);
 
@@ -54,7 +62,14 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
 {
     public async Task<ResultadoBusca> Handle(BuscarPorPerfil q, CancellationToken ct)
     {
-        var linhas = await CarregarLinhas(db, motor, q.Temporada, q.Competicoes, ct);
+        var linhas = await CarregarLinhas(db, motor, q.Temporada, q.Competicoes, ct, incluirExterior: q.Mercado);
+        if (q.Mercado && q.Competicoes is not { Length: > 0 })
+        {
+            var ids = linhas.Select(l => l.CompeticaoId).Distinct().ToList();
+            var brasileiras = await db.Competicoes.AsNoTracking().Where(c => ids.Contains(c.Id) && (c.Pais == "Brazil" || c.Pais == "") && c.Id != ForcaDasLigas.Referencia)
+                .Select(c => c.Id).ToListAsync(ct);
+            linhas = linhas.Where(l => !brasileiras.Contains(l.CompeticaoId)).ToList();
+        }
         var atributos = (q.Atributos ?? [])
             .Where(a => Catalogo.AtributoPorChave.ContainsKey(a.Key) && a.Value > 0)
             .Select(a => (atributo: Catalogo.AtributoPorChave[a.Key], peso: a.Value))
@@ -66,7 +81,9 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
             (q.Lado is null || l.Lado == q.Lado || l.Funcoes.Keys.Any(f => f.Contains(NomeLado(q.Lado.Value), StringComparison.OrdinalIgnoreCase))) &&
             (q.IdadeMin is null || l.Idade >= q.IdadeMin) &&
             (q.IdadeMax is null || l.Idade <= q.IdadeMax) &&
-            (q.ParticipacaoMinimaPercentual is null || l.ParticipacaoMinutos * 100 >= q.ParticipacaoMinimaPercentual));
+            (q.ParticipacaoMinimaPercentual is null || l.ParticipacaoMinutos * 100 >= q.ParticipacaoMinimaPercentual) &&
+            (q.MinutosMinimos is null || l.Minutos >= q.MinutosMinimos) &&
+            (q.ExcluirClubeId is null || !l.ClubeIds.Contains(q.ExcluirClubeId.Value)));
 
         double? Pontuar(LinhaAnalise l) => atributos.Count == 0 ? l.Nota : NotaPonderada(l, atributos);
         // Com liga de fora na busca, a ordem é pela pontuação convertida para a Série A (as notas de ligas diferentes não se comparam)
@@ -93,10 +110,22 @@ public class BuscarPorPerfilHandler(IScoutDb db, MotorDeAnalise motor, ForcaDasL
         if (q.Esquema is not null)
             observacoes.Add($"Esquema {q.Esquema}: a busca considera a função em campo; cada atleta traz quantos jogos fez com a mesma linha de defesa.");
 
-        var resultado = pontuados.Take(Math.Clamp(q.Limite, 1, 30))
+        // Vínculo atual só de quem pode entrar na lista (a janela cobre os que saem com SoElencoAtual)
+        var limite = Math.Clamp(q.Limite, 1, 30);
+        var janela = pontuados.Take(limite * 4).ToList();
+        var vinculos = await ElencoAtual.Avaliar(db, janela.GroupBy(x => x.linha.AtletaId).ToDictionary(g => g.Key, g => g.First().linha.ClubeIds), ct);
+        var foraDoElenco = janela.Count(x => vinculos.GetValueOrDefault(x.linha.AtletaId) is { NoElenco: false });
+        if (q.SoElencoAtual && foraDoElenco > 0)
+            observacoes.Add($"{foraDoElenco} atleta(s) que saíram do clube ou não jogam há mais de {ElencoAtual.DiasSemJogar} dias ficaram de fora.");
+        else if (foraDoElenco > 0)
+            observacoes.Add("Quem saiu do clube ou não joga há mais de 60 dias vem com a Situacao preenchida: conferir antes de citar.");
+
+        var resultado = janela
+            .Where(x => !q.SoElencoAtual || vinculos.GetValueOrDefault(x.linha.AtletaId) is not { NoElenco: false })
+            .Take(limite)
             .Select(x => Resumir.De(x.linha, x.nota, atributos.Count == 0 ? null : atributos.Select(a => a.atributo), q.Esquema,
                 x.serieA is { } s && s != x.nota ? s : null,
-                forcas?.GetValueOrDefault(x.linha.CompeticaoId)?.Estimativa ?? false))
+                forcas?.GetValueOrDefault(x.linha.CompeticaoId)?.Estimativa ?? false) with { Situacao = vinculos.GetValueOrDefault(x.linha.AtletaId)?.Situacao })
             .ToList();
         return new ResultadoBusca(pontuados.Count, resultado, observacoes);
     }
