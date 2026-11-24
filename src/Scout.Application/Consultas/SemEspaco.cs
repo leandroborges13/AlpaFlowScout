@@ -22,7 +22,9 @@ public record ResultadoSemEspaco(IReadOnlyList<AtletaSemEspaco> Atletas, IReadOn
 /// </summary>
 /// `RealidadeBrasileira` (padrão sim): só quem vale até os 10% mais caros da Série A no setor; `ValorMaximo`: teto em euros.
 public record BuscarSemEspaco(int[]? Ligas = null, string[]? Nacionalidades = null, int ParticipacaoMaxima = 30, int? IdadeMax = null,
-    Setor? Posicao = null, int Limite = 20, bool RealidadeBrasileira = true, long? ValorMaximo = null) : IQuery<ResultadoSemEspaco>;
+    Setor? Posicao = null, int Limite = 20, bool RealidadeBrasileira = true, long? ValorMaximo = null,
+    // Só quem já mostrou nível: nota mínima na liga de referência (sem referência = nunca jogou 450 min numa liga da base: fica fora)
+    double NotaMinima = 55) : IQuery<ResultadoSemEspaco>;
 
 public class BuscarSemEspacoHandler(IScoutDb db, MotorDeAnalise motor) : IQueryHandler<BuscarSemEspaco, ResultadoSemEspaco>
 {
@@ -121,13 +123,17 @@ public class BuscarSemEspacoHandler(IScoutDb db, MotorDeAnalise motor) : IQueryH
         }
 
         // Primeiro quem já mostrou nível (maior nota na referência), depois quem nunca teve 450 min
-        var ordenados = lista.OrderByDescending(x => x.Referencia?.Nota ?? -1).ThenBy(x => x.Idade).Take(Math.Clamp(q.Limite, 1, 50)).ToList();
+        var abaixo = lista.Count(x => x.Referencia?.Nota is not { } n || n < q.NotaMinima);
+        var ordenados = lista.Where(x => x.Referencia?.Nota >= q.NotaMinima)
+            .OrderByDescending(x => x.Referencia!.Nota).ThenBy(x => x.Idade).Take(Math.Clamp(q.Limite, 1, 50)).ToList();
         var observacoes = new List<string>
         {
             $"Encostado = menos de {q.ParticipacaoMaxima}% dos minutos do clube na temporada atual (clubes com 5+ jogos). " +
             "A nota é da última liga em que ele jogou 450+ min, comparado com o setor daquela liga; não é nota na Série A.",
             "Pouco minuto pode ser lesão ou chegada recente: conferir antes de citar em vídeo.",
         };
+        if (abaixo > 0)
+            observacoes.Add($"{abaixo} encostado(s) sem referência ou com nota abaixo de {q.NotaMinima:0} na última liga em que jogaram ficaram de fora.");
         if (foraDaEuropa > 0)
             observacoes.Add($"{foraDaEuropa} atleta(s) listados num clube europeu, mas com jogo recente por outro clube, ficaram de fora (elenco do provedor desatualizado).");
         if (tetos is { Count: > 0 })

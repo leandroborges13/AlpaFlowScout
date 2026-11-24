@@ -175,17 +175,19 @@ public class AssistenteScout(
                        [Description("Nacionalidades em inglês, ex.: ['Brazil']; omita para todos os sul-americanos")] string[]? nacionalidades = null,
                        int? limite = null,
                        [Description("Teto de valor de mercado em milhões de euros (ex.: 8)")] double? valorMaximoMilhoes = null,
-                       [Description("false para incluir quem vale mais que os 10% mais caros da Série A (padrão: só quem cabe no futebol brasileiro)")] bool? realidadeBrasileira = null) =>
+                       [Description("false para incluir quem vale mais que os 10% mais caros da Série A (padrão: só quem cabe no futebol brasileiro)")] bool? realidadeBrasileira = null,
+                       [Description("Nota mínima na liga de referência (padrão 55); omita sempre, salvo pedido para ver mais nomes")] double? notaMinima = null) =>
                 {
                     var r = await semEspaco.Handle(new BuscarSemEspaco(ligas, nacionalidades, participacaoMaxima ?? 30, idadeMaxima,
                         Enum.TryParse<Setor>(posicao, true, out var s) ? s : null, limite ?? 10, realidadeBrasileira ?? true,
-                        valorMaximoMilhoes is { } vm ? (long)(vm * 1_000_000) : null), ct);
+                        valorMaximoMilhoes is { } vm ? (long)(vm * 1_000_000) : null, notaMinima ?? 55), ct);
                     Citar(r.Atletas.Select(a => a.Referencia).OfType<ResumoAtleta>().ToList());
                     return r;
                 },
                 "sul_americanos_sem_espaco",
                 "Sul-americanos (ou a nacionalidade pedida) que jogam pouco na Europa na temporada atual, com a nota da última liga em que jogaram 450+ min. " +
-                "Use para \"brasileiros sem espaço na Europa que caberiam no Galo\". A nota é da liga de referência, não da Série A; pouco minuto pode ser lesão: avise."),
+                "Use para \"brasileiros sem espaço na Europa que caberiam no Galo\". Só passe posicao se o usuário pedir uma posição; sem pedido, traga todas. " +
+                "Diga a nota como \"nota X na <liga> <temporada>\" (é da liga de referência, não da Série A). Pouco minuto pode ser lesão: avise. Cite valor e contrato quando vierem."),
             AIFunctionFactory.Create(
                 async (int timeId, [Description("ID da competição; omita para a liga do time")] int? competicao = null, int? temporada = null,
                        [Description("Função para filtrar, ex.: 'Lateral esquerdo': o primeiro da lista é o titular, os demais são reservas")] string? funcao = null) =>
