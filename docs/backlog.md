@@ -288,6 +288,33 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
       - cartão "Trajetória em gols" para vídeo (barras por clube), no visual do canal.
     - **Cuidado:** seleção (Argentina 2022) aparece na trajetória: separar seleção de clube nos totais.
 
+26. **Scout visual: dashboards de comparação e de garimpagem** — pedido do Leandro em 24/11/2026
+    - **Por quê:** é o produto que a lista de espera vai receber (degrau 3: Scout aberto, torcedor e pro). Hoje o Scout é bom em
+      dado e em cartão de vídeo (canvas), mas a tela de análise é texto e tabela. Quem paga quer explorar sozinho.
+    - **Referências para estudar antes de desenhar:**
+      - o conteúdo do Simonetti (pedir o @ ao Leandro): que gráficos ele usa, que dados de atleta mostra, o que engaja;
+      - o que os clubes usam para garimpar: Wyscout, Hudl StatsBomb, SkillCorner (físico), TransferRoom (mercado),
+        SciSports e Scout7. O fluxo deles: filtro por dado → vídeo → observação ao vivo → lista curta → "time sombra"
+        (shadow team) por posição → relatório.
+    - **Telas (ordem sugerida):**
+      1. Painel do atleta com radar de percentis por função (contra a liga dele e na régua da Série A), barras de percentil por
+         grupo (finalização, criação, defesa, posse) e linha do tempo da nota por jogo.
+      2. Comparação de 2 a 4 atletas: radares sobrepostos, tabela por 90 com destaque de quem ganha cada linha (evolução do
+         "⚖️ Lado a lado").
+      3. Garimpagem: dispersão (ex.: gols/90 x xG/90, idade x nota, valor x nota), com filtros de liga, idade, valor, contrato e
+         minutos; clicar no ponto abre o atleta. Quadrante "barato e bom" em destaque.
+      4. Lista curta e time sombra: salvar alvos por posição, notas do usuário, alerta quando o alvo joga ou o contrato entra no
+         último ano.
+      5. Relatório do atleta em PDF (para empresário e jornalista: faixa pro).
+    - **Tecnologia:** gráficos no próprio front, com uma biblioteca (ECharts ou Recharts; D3 só para o que elas não fizerem),
+      no visual da marca, modo claro e escuro. Um MCP não desenha gráfico dentro do Scout: ele ajuda no desenho (Figma, se
+      houver) e não substitui a biblioteca.
+    - **Dados que faltam para ficar no nível dos clubes:** métricas por 90 de passe progressivo, condução e ações defensivas
+      (a PitchAPI /advanced/players cobre parte, item 9), físico (não temos: deixar de fora) e vídeo (não temos direito: link
+      para o lance, nunca a imagem).
+    - **Quando:** desenhar e prototipar no ritmo do canal; investir pesado na interface aberta só quando a lista de espera tiver
+      algumas dezenas de pessoas.
+
 ## Mapa de calor e finalizações no campo (levantamento de 03/11/2026)
 
 FEITO em 03/11/2026 com a PitchAPI (Série A 2023-2026 confirmada): 4º cartão do "Para vídeo" e contagens de finalização no roteiro.
