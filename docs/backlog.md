@@ -188,7 +188,7 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
          (Belgrano) 63,3, R. Martínez (Talleres, 14 gols) 60,9, Módica (Gimnasia M., 14 gols) 58,6, Merentiel 58,6.
          **Colômbia (239) e Equador (242) FEITAS em 23/11/2026** (815 e 564 atletas; PitchAPI l_1xXulJ e l_1dmt9H). Centroavantes:
          Bustos (Santa Fe) 81,5, Morelos (Nacional, 16 gols) 79,8, Sandoval (Tolima) 79,2, Muriel (Junior, 16 gols) 75,9;
-         Equador: Reasco (IDV) 66,7, Fajardo (U. Católica, 13 gols) 64,3. **Uruguai (268) fora:** a API-Football não traz
+         Equador: Reasco (IDV) 66,7, Fajardo (U. Católica, 13 gols) 64,3. **Uruguai pelas copas (24/11/2026):** a liga segue sem estatística por atleta (API-Football 2026 só traz 8 atletas sem minutos; 2025 só minutos e gols), mas os clubes uruguaios, paraguaios, chilenos, peruanos, bolivianos e venezuelanos têm Libertadores e Sul-Americana completas na base. Consulta BuscarRevelacoesDeCopa (ferramenta revelacoes_de_copa do chat): atletas de clubes sem liga na base, pela nota na copa contra todos do torneio (o caminho do Arrascaeta). **Uruguai (268) fora da importação de liga:** a API-Football não traz
          estatística de temporada por atleta da liga uruguaia (só da Libertadores), e nem a Bzzoiro nem a PitchAPI têm a liga.
          Uruguaio que joga em outra liga aparece por ela. Chile: a Bzzoiro tem (liga 111); conferir na API-Football antes.
          - Argentina (PitchAPI l_45VZuL, Bzzoiro 85, API-Football 128);

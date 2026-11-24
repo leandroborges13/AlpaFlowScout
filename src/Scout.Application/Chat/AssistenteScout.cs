@@ -43,6 +43,7 @@ public class AssistenteScout(
     IQueryHandler<ObterFichaAtleta, FichaAtleta?> fichaAtleta,
     IQueryHandler<ObterElenco, ElencoDoTime?> elenco,
     IQueryHandler<BuscarSemEspaco, ResultadoSemEspaco> semEspaco,
+    IQueryHandler<BuscarRevelacoesDeCopa, ResultadoBusca> revelacoes,
     IQueryHandler<ObterCopasDoTime, CopasDoTime?> copasDoTime,
     IQueryHandler<ObterChancesNaLiga, ChancesNaLiga?> chancesNaLiga,
     IQueryHandler<ObterArtilharia, Artilharia> artilharia,
@@ -205,6 +206,20 @@ public class AssistenteScout(
                 "Sul-americanos (ou a nacionalidade pedida) que jogam pouco na Europa na temporada atual, com a nota da última liga em que jogaram 450+ min. " +
                 "Use para \"brasileiros sem espaço na Europa que caberiam no Galo\". Só passe posicao se o usuário pedir uma posição; sem pedido, traga todas. " +
                 "Diga a nota como \"nota X na <liga> <temporada>\" (é da liga de referência, não da Série A). Pouco minuto pode ser lesão: avise. Cite valor e contrato quando vierem."),
+            AIFunctionFactory.Create(
+                async ([Description("Goleiro, Defesa, Meio ou Ataque")] string? posicao = null,
+                       [Description("Função, ex.: 'Centroavante', 'Meia central'")] string? funcao = null,
+                       int? idadeMaxima = null, int? temporada = null, int? limite = null) =>
+                {
+                    var r = await revelacoes.Handle(new BuscarRevelacoesDeCopa(temporada, Enum.TryParse<Setor>(posicao, true, out var s) ? s : null,
+                        funcao, idadeMaxima, limite ?? 10), ct);
+                    Citar(r.Atletas);
+                    return r;
+                },
+                "revelacoes_de_copa",
+                "Revelações da Libertadores e da Sul-Americana vindas de ligas que a base não cobre (Uruguai, Paraguai, Chile, Peru, Bolívia, Venezuela), " +
+                "pela nota na copa contra todos do torneio. Use para \"talentos do Uruguai\", \"quem se destacou na Libertadores\", o caminho do Arrascaeta. " +
+                "Diga a nota como \"nota X na Libertadores/Sul-Americana\" e avise que a amostra de copa é curta."),
             AIFunctionFactory.Create(
                 async (int timeId, [Description("ID da competição; omita para a liga do time")] int? competicao = null, int? temporada = null,
                        [Description("Função para filtrar, ex.: 'Lateral esquerdo': o primeiro da lista é o titular, os demais são reservas")] string? funcao = null) =>
