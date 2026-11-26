@@ -22,7 +22,10 @@ public class HistoricoDoAtleta(ApiFootballClient api, ILogger<HistoricoDoAtleta>
                 .Select(t => new ClubeNaCarreira(
                     t.GetProperty("team").GetProperty("name").GetString() ?? "?",
                     t.GetProperty("team").TryGetProperty("logo", out var logo) ? logo.GetString() : null,
-                    t.GetProperty("seasons").EnumerateArray().Select(s => s.GetInt32()).OrderDescending().ToList()))
+                    // o provedor às vezes manda o ano como texto ("2024"): aceita os dois e ignora o que não for ano
+                    t.GetProperty("seasons").EnumerateArray()
+                        .Select(s => s.ValueKind == JsonValueKind.Number ? s.GetInt32() : int.TryParse(s.GetString(), out var a) ? a : 0)
+                        .Where(a => a > 0).Distinct().OrderDescending().ToList()))
                 .OrderByDescending(c => c.Temporadas.FirstOrDefault())
                 .ToList();
 
