@@ -28,7 +28,7 @@ public class ColetaPitch(HttpClient http, ScoutDbContext db, IConfiguration conf
         var chave = config["PITCHAPI_KEY"];
         if (string.IsNullOrWhiteSpace(chave) || !PitchApi.Ligas.TryGetValue(competicaoId, out var liga)) return new(0, 0, 0, 0);
 
-        var lista = await Buscar($"/v1/leagues/{liga}/matches?season={temporada}", chave, ct);
+        var lista = await Buscar($"/v1/leagues/{liga}/matches?season={Uri.EscapeDataString(PitchApi.Temporada(competicaoId, temporada))}", chave, ct);
         if (lista is null) return new(0, 0, 0, 0);
         var partidas = await db.Partidas.Where(p => p.CompeticaoId == competicaoId && p.Temporada == temporada).ToListAsync(ct);
         var clubes = await db.Clubes.ToDictionaryAsync(c => c.Id, c => PitchApi.Nome(c.Nome), ct);
@@ -84,7 +84,7 @@ public class ColetaPitch(HttpClient http, ScoutDbContext db, IConfiguration conf
     {
         var chave = config["PITCHAPI_KEY"];
         if (string.IsNullOrWhiteSpace(chave) || !PitchApi.Ligas.TryGetValue(competicaoId, out var liga)) return 0;
-        var lista = await Buscar($"/v1/leagues/{liga}/matches?season={temporada}", chave, ct);
+        var lista = await Buscar($"/v1/leagues/{liga}/matches?season={Uri.EscapeDataString(PitchApi.Temporada(competicaoId, temporada))}", chave, ct);
         if (lista is null) return 0;
         var partidas = await db.Partidas.Where(p => p.CompeticaoId == competicaoId && p.Temporada == temporada).ToListAsync(ct);
         var clubes = await db.Clubes.ToDictionaryAsync(c => c.Id, c => PitchApi.Nome(c.Nome), ct);

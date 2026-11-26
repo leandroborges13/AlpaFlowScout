@@ -17,8 +17,24 @@ namespace Scout.Infrastructure.Provedor;
 public class PitchApi(HttpClient http, IConfiguration config, IMemoryCache cache, ILogger<PitchApi> log) : IMapaDaPartida, IEstiloDaPartida
 {
     /// <summary>Nossas competições (ids da API-Football) e as ligas correspondentes na PitchAPI.</summary>
-    public static readonly IReadOnlyDictionary<int, string> Ligas = new Dictionary<int, string> { [71] = "l_1D8Xrl", [72] = "l_3qUkB8", [128] = "l_45VZuL", [239] = "l_1xXulJ", [242] = "l_1dmt9H" };
-    // 128 Argentina, 239 Colômbia, 242 Equador (grátis). O Uruguai não está na PitchAPI.
+    public static readonly IReadOnlyDictionary<int, string> Ligas = new Dictionary<int, string>
+    {
+        [71] = "l_1D8Xrl", [72] = "l_3qUkB8", [128] = "l_45VZuL", [239] = "l_1xXulJ", [242] = "l_1dmt9H",
+        // 26/11/2026: as ligas de fora que o Scout já importa e que a PitchAPI tem de graça
+        [262] = "l_3v84VE", [94] = "l_4QexZg", [253] = "l_0eg6C9", [235] = "l_2Mh0jT", [301] = "l_0aEfof", [305] = "l_3wr44B",
+    };
+    // 128 Argentina, 239 Colômbia, 242 Equador, 262 México, 94 Portugal, 253 MLS, 235 Rússia, 301 Emirados, 305 Catar (grátis).
+    // O Uruguai e a Arábia Saudita não estão na PitchAPI.
+
+    /// <summary>Ligas em que a PitchAPI usa a temporada de dois anos ("2026/2027"): calendário europeu e o México (Apertura + Clausura).</summary>
+    static readonly HashSet<int> TemporadaDividida = [262, 94, 235, 301, 305];
+
+    /// <summary>
+    /// A temporada como a PitchAPI pede: "2026" nas ligas de ano civil e "2026/2027" nas divididas (a temporada 2026 da API-Football
+    /// nessas ligas é a que começa em 2026). Sem isso, o México dava 0 jogos.
+    /// </summary>
+    public static string Temporada(int competicaoId, int temporada) =>
+        TemporadaDividida.Contains(competicaoId) ? $"{temporada}/{temporada + 1}" : temporada.ToString();
 
     public async Task<MapaDaPartida?> Obter(ResumoPartida p, CancellationToken ct)
     {
@@ -26,7 +42,7 @@ public class PitchApi(HttpClient http, IConfiguration config, IMemoryCache cache
         if (string.IsNullOrWhiteSpace(chave) || !Ligas.TryGetValue(p.CompeticaoId, out var liga) || p.GolsMandante is null) return null;
         try
         {
-            var jogos = await Buscar($"/v1/leagues/{liga}/matches?season={p.Temporada}", chave, TimeSpan.FromMinutes(30), ct);
+            var jogos = await Buscar($"/v1/leagues/{liga}/matches?season={Uri.EscapeDataString(Temporada(p.CompeticaoId, p.Temporada))}", chave, TimeSpan.FromMinutes(30), ct);
             var jogo = Achar(jogos.GetProperty("matches"), p);
             if (jogo is null) return null;
             var (id, casaId, foraId) = jogo.Value;
@@ -75,7 +91,7 @@ public class PitchApi(HttpClient http, IConfiguration config, IMemoryCache cache
         if (string.IsNullOrWhiteSpace(chave) || !Ligas.TryGetValue(p.CompeticaoId, out var liga) || p.GolsMandante is null) return null;
         try
         {
-            var jogos = await Buscar($"/v1/leagues/{liga}/matches?season={p.Temporada}", chave, TimeSpan.FromMinutes(30), ct);
+            var jogos = await Buscar($"/v1/leagues/{liga}/matches?season={Uri.EscapeDataString(Temporada(p.CompeticaoId, p.Temporada))}", chave, TimeSpan.FromMinutes(30), ct);
             var jogo = Achar(jogos.GetProperty("matches"), p);
             if (jogo is null) return null;
             var (id, casaId, foraId) = jogo.Value;

@@ -27,7 +27,8 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
 
 5. **Página pública de cada análise** (link da bio) — FEITO em 09/11/2026: scout.alpaflow.tec.br/jogo/<id> sem login (placar, gols,
    onde o jogo foi decidido, destaques e palpite; sem foto de atleta nem menor de 18; nunca consulta o provedor), botão
-   "🔗 Link público" no painel da partida. Falta: prévia bonita ao compartilhar no WhatsApp (meta tags do servidor).
+   "🔗 Link público" no painel da partida. Prévia no WhatsApp e no X FEITA em 26/11 (meta tags montadas no servidor em
+   /jogo/<id>: título com o placar ou "o palpite do modelo", descrição com gols e se o modelo acertou, imagem og-galonalupa.png).
    - scout.alpaflow.tec.br/a/<id> com a resposta e os cartões, sem login, e um botão "pergunte você também" (cadastro).
    - Transforma quem vem do vídeo em usuário da plataforma.
 
@@ -221,7 +222,7 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
          **FEITO em 24/11/2026 (menos contrato e valor):** BuscarPorPerfil ganhou `Mercado` (sem liga pedida: Série A + todas as
          ligas de fora na régua da Série A; Série B e C saem por não terem conversão), `MinutosMinimos`, `ExcluirClubeId` (o próprio
          Galo) e `SoElencoAtual`; cada resultado traz `Situacao` (item 21). POST /api/busca e a ferramenta buscar_atletas do chat
-         (mercado, minutosMinimos, excluirClube, soElencoAtual). Falta: o modo mercado na tela de busca.
+         (mercado, minutosMinimos, excluirClube, soElencoAtual). Tela FEITA em 26/11: botão "🔎 Mercado" (PainelMercado.tsx).
          **Valor de mercado e contrato FEITO em 24/11/2026** (pedido do Leandro: "não dá pra propor um Mbappé; o valor tem que ser
          equiparado ao de quem atua no Brasil"): colunas valor_mercado (euros), contrato_ate e valor_lido_em em atletas;
          ColetaBzzoiro.PreencherValores (elenco /api/players/?team=, ligado por nome; LigasDeValor mapeia 17 ligas, sem Rússia,
@@ -243,7 +244,9 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
 24. **Mercado além da América do Sul: Leste Europeu, Oriente Médio e sul-americanos sem espaço na Europa** — combinado em 23/11/2026
     - **Prazo:** antes do fim do API-Football Pro (~09/12/2026). A cota é de 7.500 consultas por dia e zera às 21h (meia-noite UTC).
     - **TUDO FEITO em 24/11/2026 (adiantado; ~2.560 consultas no dia), rodando no alpaflow-casa (`coleta-fila.sh`):**
-      - Portugal completo; pontes 15/772/16 importadas. `pitch 262 2026` deu 0 jogos (México não ligado na PitchAPI: falta).
+      - Portugal completo; pontes 15/772/16 importadas. `pitch 262 2026` dava 0 jogos: **resolvido em 26/11** (a PitchAPI usa
+        "2026/2027" no México e no calendário europeu; PitchApi.Temporada converte). Ligadas também: Portugal 94, MLS 253, Rússia 235,
+        Emirados 301 e Catar 305. Arábia Saudita e Uruguai não estão na PitchAPI.
       - Rússia 235, Arábia 307, Ucrânia 333, Emirados 301 e Catar 305, temporada 2026 completa com escalação (120, 105, 96, 56 e 60
         jogos; 223, 218, 164, 83 e 114 atletas com 450+ min), já na SCOUT_ATUALIZAR. Sem ponte com a Série A: nota só na liga.
       - Europa (39, 140, 135, 78, 61, 203, 88, 144) temporadas 2026 e 2025 com `--sem-escalacoes` (~740 consultas, ~10 mil atletas).
