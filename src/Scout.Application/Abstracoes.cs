@@ -21,6 +21,12 @@ public interface IScoutDb
     DbSet<RoteiroPosJogo> RoteirosPosJogo { get; }
     DbSet<PalpiteDaPartida> Palpites { get; }
     Task<int> SaveChangesAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Respostas do provedor já guardadas (o JSON, pela chave "endpoint?query"), sem consultar o provedor: para usar o que já
+    /// veio (ex.: as transferências do atleta) sem gastar cota.
+    /// </summary>
+    Task<IReadOnlyDictionary<string, string>> RespostasGuardadas(IReadOnlyCollection<string> chaves, CancellationToken ct);
 }
 
 // CQRS enxuto: consultas e comandos com handlers próprios, sem biblioteca de mediador.

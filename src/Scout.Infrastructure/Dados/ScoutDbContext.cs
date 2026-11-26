@@ -49,6 +49,10 @@ public class ScoutDbContext(DbContextOptions<ScoutDbContext> options) : DbContex
     public DbSet<ConsultaDiaria> ConsultasDiarias => Set<ConsultaDiaria>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
 
+    public async Task<IReadOnlyDictionary<string, string>> RespostasGuardadas(IReadOnlyCollection<string> chaves, CancellationToken ct) =>
+        chaves.Count == 0 ? new Dictionary<string, string>()
+            : await RespostasProvedor.AsNoTracking().Where(r => chaves.Contains(r.Chave)).ToDictionaryAsync(r => r.Chave, r => r.Json, ct);
+
     protected override void OnModelCreating(ModelBuilder b)
     {
         // Ids de competição, clube, atleta e partida são os do provedor

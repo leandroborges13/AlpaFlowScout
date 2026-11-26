@@ -82,4 +82,36 @@ public class ElencoAtualTests
         var v = ElencoAtual.Decidir(7, [Flu, Galo], [(Flu, D(5, 1)), (Galo, D(11, 20))], D(11, 21), Nome);
         Assert.True(v.NoElenco);
     }
+
+    static VinculoAtual Fora() => new(2, false, D(9, 15), null, "fora dos jogos do Atletico-MG desde 15/09/2026 (saída, empréstimo ou lesão)");
+
+    [Fact]
+    public void Transferencia_guardada_confirma_o_emprestimo()
+    {
+        var json = """
+            {"response":[{"transfers":[
+            {"date":"2026-09-30","type":"Loan","teams":{"in":{"name":"Clube Fictício"},"out":{"name":"Atletico-MG"}}},
+            {"date":"2024-01-10","type":"€ 2M","teams":{"in":{"name":"Atletico-MG"},"out":{"name":"Outro Fictício"}}}]}]}
+            """;
+        var v = ElencoAtual.ConfirmarPelaTransferencia(Fora(), ElencoAtual.LerTransferencias(json), ["Atlético-MG"]);
+        Assert.Equal("Clube Fictício", v.SaiuPara);
+        Assert.Equal("emprestado ao Clube Fictício desde 09/2026", v.Situacao);
+    }
+
+    [Fact]
+    public void Sem_saida_registrada_diz_que_pode_ser_lesao()
+    {
+        // a única transferência é a de chegada, antiga: não explica a ausência
+        var json = """{"response":[{"transfers":[{"date":"2024-01-10","type":"€ 2M","teams":{"in":{"name":"Atletico-MG"},"out":{"name":"Outro Fictício"}}}]}]}""";
+        var v = ElencoAtual.ConfirmarPelaTransferencia(Fora(), ElencoAtual.LerTransferencias(json), ["Atletico-MG"]);
+        Assert.Null(v.SaiuPara);
+        Assert.Equal("fora dos jogos do Atletico-MG desde 15/09/2026 (sem transferência registrada: lesão ou fora dos planos)", v.Situacao);
+    }
+
+    [Fact]
+    public void Json_estranho_nao_derruba()
+    {
+        Assert.Empty(ElencoAtual.LerTransferencias("{}"));
+        Assert.Empty(ElencoAtual.LerTransferencias("não é json"));
+    }
 }
