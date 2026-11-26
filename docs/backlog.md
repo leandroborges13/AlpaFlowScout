@@ -276,7 +276,12 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
       Sempre como sugestão pelos números, sem dizer que o clube vai contratar.
 
 25. **Trajetória com gols e assistências por clube** — pedido do Leandro em 24/11/2026 (no painel do Boyé)
-    - **Hoje:** a seção "Trajetória" do painel do atleta lista só clube e temporadas (HistoricoDoAtleta: /players/teams e
+    - **FEITO em 26/11/2026 (menos o cartão):** HistoricoDoAtleta.NumerosPorTemporada busca /players?id=&season= das últimas 8
+      temporadas da trajetória (1 consulta por temporada; temporada passada guardada para sempre, a atual por 1 dia; a que falhar
+      fica de fora). Cada clube traz Numeros (jogos, minutos, gols, assistências por temporada, liga + copas somadas) e Selecao
+      (time com o nome do país, fora dos totais de clube). O painel mostra o total por clube, gol por 90 min e a linha por
+      temporada. Falta: o cartão "Trajetória em gols" para vídeo.
+    - **Antes:** a seção "Trajetória" do painel do atleta lista só clube e temporadas (HistoricoDoAtleta: /players/teams e
       /transfers da API-Football). Não diz o que ele fez em cada passagem.
     - **Por quê:** é o argumento de mercado: "fez 11 gols no Alavés, 9 no Oviedo, 15 no Elche". Mostra se o atleta repete o
       desempenho de clube em clube ou se teve um ano fora da curva (caso do Arce: 5 gols em 2025, 9+9 em 2026).

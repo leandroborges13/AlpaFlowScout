@@ -60,10 +60,13 @@ export type DetalheAtleta = {
   estilo?: { indice: number; rotulo: string; ofensivo: number; defensivo: number; explicacao: string } | null
   copas?: { competicaoId: number; competicao: string; temporada: number; jogos: number; minutos: number; gols: number; assistencias: number; nota?: number | null; destaques: Destaque[] }[]
   trajetoria?: {
-    clubes: { clube: string; escudo?: string | null; temporadas: number[] }[]
+    clubes: { clube: string; escudo?: string | null; temporadas: number[]; numeros?: NumerosNaTemporada[] | null; selecao?: boolean }[]
     transferencias: { data?: string | null; de?: string | null; para?: string | null; tipo?: string | null }[]
   } | null
 }
+
+/** O que o atleta fez por um clube numa temporada (liga + copas). */
+export type NumerosNaTemporada = { temporada: number; jogos: number; minutos: number; gols: number; assistencias: number }
 
 export type ItemDoCartao = { chave: string; nome: string; valor: number | null; porcentagem: boolean; percentil: number | null; posicao: number | null; total: number }
 export type CartaoDoAtleta = {

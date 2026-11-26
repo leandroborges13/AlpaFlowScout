@@ -211,13 +211,28 @@ export function PainelAtleta({ atleta, gravacao, onFechar, onAbrir, onAbrirTime 
               <section>
                 <h3>Trajetória</h3>
                 <ol className="trajetoria">
-                  {detalhe.trajetoria.clubes.map((c) => (
-                    <li key={c.clube}>
-                      {c.escudo ? <img src={c.escudo} alt="" width={22} height={22} /> : <i aria-hidden className="ponto" />}
-                      <span className="t-clube">{c.clube}</span>
-                      <span className="card-sub">{Faixa(c.temporadas)}</span>
-                    </li>
-                  ))}
+                  {detalhe.trajetoria.clubes.map((c) => {
+                    const n = c.numeros ?? []
+                    const soma = n.reduce((s, x) => ({ jogos: s.jogos + x.jogos, minutos: s.minutos + x.minutos, gols: s.gols + x.gols, assistencias: s.assistencias + x.assistencias }), { jogos: 0, minutos: 0, gols: 0, assistencias: 0 })
+                    return (
+                      <li key={c.clube}>
+                        {c.escudo ? <img src={c.escudo} alt="" width={22} height={22} /> : <i aria-hidden className="ponto" />}
+                        <span className="t-clube">{c.clube}{c.selecao && <span className="card-sub"> · seleção</span>}</span>
+                        <span className="card-sub">{Faixa(c.temporadas)}</span>
+                        {n.length > 0 && (
+                          <span className="t-numeros">
+                            <b>{soma.jogos} jogos · {soma.gols} gols · {soma.assistencias} assist.</b>
+                            {soma.minutos > 0 && soma.gols > 0 && <span className="card-sub"> · {((soma.gols * 90) / soma.minutos).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} gol por 90 min</span>}
+                            {n.length > 1 && (
+                              <span className="card-sub t-temporadas">
+                                {n.map((x) => `${x.temporada}: ${x.jogos}j ${x.gols}g ${x.assistencias}a`).join(' · ')}
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </li>
+                    )
+                  })}
                 </ol>
                 {detalhe.trajetoria.transferencias.length > 0 && (
                   <details className="transferencias">

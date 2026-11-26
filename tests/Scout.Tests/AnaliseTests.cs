@@ -113,6 +113,31 @@ public class TrajetoriaTests
         Assert.Equal([2021, 2019], r.Single(c => c.Clube == "Clube Fictício B").Temporadas);
         Assert.Equal("Clube Fictício A", r[0].Clube);
     }
+
+    [Fact]
+    public void Numeros_da_temporada_somam_liga_e_copas_de_cada_clube()
+    {
+        // formato do /players?id=&season= da API-Football: uma linha por time e competição; null conta como zero
+        var json = System.Text.Json.JsonDocument.Parse("""
+            [
+              {"team":{"name":"Clube Fictício A"},"games":{"appearences":30,"minutes":2400},"goals":{"total":9,"assists":3}},
+              {"team":{"name":"Clube Fictício A"},"games":{"appearences":4,"minutes":300},"goals":{"total":2,"assists":null}},
+              {"team":{"name":"Clube Fictício B"},"games":{"appearences":0,"minutes":null},"goals":{"total":null,"assists":null}}
+            ]
+            """).RootElement;
+        var r = Scout.Infrastructure.Provedor.HistoricoDoAtleta.Somar(json, 2025).ToList();
+        var a = Assert.Single(r);   // quem não jogou (Clube B) fica de fora
+        Assert.Equal("Clube Fictício A", a.Clube);
+        Assert.Equal(new NumerosNaTemporada(2025, 34, 2700, 11, 3), a.Numeros);
+    }
+
+    [Theory]
+    [InlineData("Argentina", "Argentina", true)]
+    [InlineData("Argentina U20", "Argentina", true)]
+    [InlineData("Clube Fictício A", "Argentina", false)]
+    [InlineData("Argentina", null, false)]
+    public void Selecao_e_o_time_com_o_nome_do_pais(string clube, string? pais, bool esperado) =>
+        Assert.Equal(esperado, Scout.Infrastructure.Provedor.HistoricoDoAtleta.EhSelecao(clube, pais));
 }
 
 public class AtualizacaoDiariaTests

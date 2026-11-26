@@ -33,7 +33,11 @@ public class HistoricoDoAtleta(ApiFootballClient api, ILogger<HistoricoDoAtleta>
                         DateOnly.TryParse(Texto(t, "date"), CultureInfo.InvariantCulture, out var d) ? d : null,
                         Texto(t, "teams", "out", "name"), Texto(t, "teams", "in", "name"), Texto(t, "type")));
 
-            return new TrajetoriaAtleta(CompletarAnos(times, transferencias), transferencias.OrderByDescending(t => t.Data).ToList());
+            var clubes = CompletarAnos(times, transferencias);
+            var numeros = await NumerosPorTemporada(atletaId, clubes, ct);
+            clubes = clubes.Select(c => numeros.TryGetValue(c.Clube, out var n)
+                ? c with { Numeros = n.Linhas.OrderByDescending(x => x.Temporada).ToList(), Selecao = n.Selecao } : c).ToList();
+            return new TrajetoriaAtleta(clubes, transferencias.OrderByDescending(t => t.Data).ToList());
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
@@ -41,6 +45,65 @@ public class HistoricoDoAtleta(ApiFootballClient api, ILogger<HistoricoDoAtleta>
             log.LogWarning(e, "Trajetória do atleta {Atleta} indisponível", atletaId);
             return null;
         }
+    }
+
+    /// <summary>Quantas temporadas para trás buscar os números (1 consulta por temporada).</summary>
+    public const int TemporadasComNumeros = 8;
+
+    /// <summary>
+    /// Jogos, gols e assistências por clube e temporada (/players?id=&amp;season=, que traz cada time e competição da temporada).
+    /// Temporada passada fica guardada para sempre (não muda mais); a atual vale 1 dia. Temporada que falhar (cota, plano) fica
+    /// de fora sem derrubar a trajetória.
+    /// </summary>
+    async Task<Dictionary<string, (List<NumerosNaTemporada> Linhas, bool Selecao)>> NumerosPorTemporada(int atletaId, List<ClubeNaCarreira> clubes, CancellationToken ct)
+    {
+        var anoAtual = DateTime.UtcNow.Year;
+        var temporadas = clubes.SelectMany(c => c.Temporadas).Where(t => t > anoAtual - TemporadasComNumeros).Distinct().OrderDescending().ToList();
+        var porClube = new Dictionary<string, (List<NumerosNaTemporada> Linhas, bool Selecao)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var temporada in temporadas)
+        {
+            JsonElement raiz;
+            try
+            {
+                raiz = await api.Consultar("/players", new Dictionary<string, object> { ["id"] = atletaId, ["season"] = temporada },
+                    temporada >= anoAtual - 1 ? TimeSpan.FromDays(1) : null, ct);
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                log.LogInformation("Números de {Atleta} em {Temporada} indisponíveis: {Erro}", atletaId, temporada, e.Message);
+                continue;
+            }
+            foreach (var item in raiz.GetProperty("response").EnumerateArray())
+            {
+                var nacionalidade = Texto(item, "player", "nationality");
+                foreach (var (clube, n) in Somar(item.GetProperty("statistics"), temporada))
+                {
+                    if (!porClube.TryGetValue(clube, out var v)) porClube[clube] = v = ([], EhSelecao(clube, nacionalidade));
+                    v.Linhas.Add(n);
+                }
+            }
+        }
+        return porClube;
+    }
+
+    /// <summary>Soma as competições de cada time na temporada (liga + copas). Público para os testes.</summary>
+    public static IEnumerable<(string Clube, NumerosNaTemporada Numeros)> Somar(JsonElement estatisticas, int temporada) =>
+        estatisticas.EnumerateArray()
+            .GroupBy(s => Texto(s, "team", "name") ?? "?")
+            .Select(g => (g.Key, new NumerosNaTemporada(temporada,
+                g.Sum(s => Inteiro(s, "games", "appearences")), g.Sum(s => Inteiro(s, "games", "minutes")),
+                g.Sum(s => Inteiro(s, "goals", "total")), g.Sum(s => Inteiro(s, "goals", "assists")))))
+            .Where(x => x.Item2.Jogos > 0);
+
+    /// <summary>Seleção: o nome do time é o país do atleta (inclui as de base, "Argentina U20").</summary>
+    public static bool EhSelecao(string clube, string? nacionalidade) =>
+        !string.IsNullOrWhiteSpace(nacionalidade) && (Mesmo(clube, nacionalidade) || clube.StartsWith(nacionalidade + " U", StringComparison.OrdinalIgnoreCase));
+
+    static int Inteiro(JsonElement e, params string[] caminho)
+    {
+        foreach (var parte in caminho)
+            if (e.ValueKind != JsonValueKind.Object || !e.TryGetProperty(parte, out e)) return 0;
+        return e.ValueKind == JsonValueKind.Number ? e.GetInt32() : 0;
     }
 
     /// <summary>

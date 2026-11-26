@@ -145,6 +145,9 @@ button.lt-quad:hover, button.lt-quad:focus-visible { outline: 2px solid var(--in
 .trajetoria li { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; }
 .trajetoria img { object-fit: contain; }
 .trajetoria .ponto { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); justify-self: center; }
+.trajetoria .t-numeros { grid-column: 2 / -1; font-size: 13.5px; display: grid; gap: 2px; margin-top: -2px; }
+.trajetoria .t-numeros b { font-weight: 600; }
+.trajetoria .t-temporadas { font-size: 12.5px; }
 .t-clube { font-weight: 600; }
 .transferencias { margin-top: 10px; font-size: 13.5px; }
 .transferencias summary { cursor: pointer; color: var(--ink-2); }

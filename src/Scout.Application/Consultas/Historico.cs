@@ -1,6 +1,14 @@
 namespace Scout.Application.Consultas;
 
-public record ClubeNaCarreira(string Clube, string? Escudo, IReadOnlyList<int> Temporadas);
+/// <summary>O que o atleta fez por um clube numa temporada, somando liga e copas (seleção fica à parte, em ClubeNaCarreira.Selecao).</summary>
+public record NumerosNaTemporada(int Temporada, int Jogos, int Minutos, int Gols, int Assistencias);
+
+/// <summary>
+/// Um clube da carreira. `Numeros`: jogos, gols e assistências por temporada (das temporadas que o provedor tem); `Selecao` marca
+/// a seleção do país, que não entra nos totais de clube.
+/// </summary>
+public record ClubeNaCarreira(string Clube, string? Escudo, IReadOnlyList<int> Temporadas,
+    IReadOnlyList<NumerosNaTemporada>? Numeros = null, bool Selecao = false);
 
 public record Transferencia(DateOnly? Data, string? De, string? Para, string? Tipo);
 
