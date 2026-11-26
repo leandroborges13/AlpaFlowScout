@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { PranchetaTatica } from './Prancheta'
 import { api, type DetalheTime, type EstiloNaLiga, type NecessidadeNaFuncao, type ResumoAtleta, type ResumoTime, type ResumoTreinador } from './api'
 import { CartaoAtleta, Medidor } from './Componentes'
+import { GaleriaVideo } from './GaleriaVideo'
+import { cartaoEstiloNaLiga, coletar, type Cartao } from './ParaVideo'
 
 /** Escudo do time (pequeno, uso informativo: aparece também no modo gravação), ou as iniciais quando não há escudo. */
 export function Escudo({ time, grande = false }: { time: Pick<ResumoTime, 'nome' | 'escudo'>; grande?: boolean }) {
@@ -201,9 +203,14 @@ export function PainelTime({ time, gravacao, onFechar, onAbrirAtleta, onAbrirTre
 
 /** Métricas de time (PitchAPI) com a posição na liga; destaque para quem está entre os 3 de cima ou de baixo. */
 function EstiloDaLiga({ e }: { e: EstiloNaLiga }) {
+  const [galeria, setGaleria] = useState<Cartao[] | null>(null)
   return (
     <section className="estilo-liga">
-      <h3>Como joga, na {e.competicao} {e.temporada}</h3>
+      <h3>
+        Como joga, na {e.competicao} {e.temporada}
+        <button className="btn para-video" style={{ marginLeft: 12 }} onClick={async () => setGaleria(await coletar(() => cartaoEstiloNaLiga(e)))}>🎬 Para vídeo</button>
+      </h3>
+      {galeria && <GaleriaVideo titulo={`${e.time}: como joga`} cartoes={galeria} onFechar={() => setGaleria(null)} />}
       <p className="dica">Média por jogo em {e.jogos} jogos, contra os outros {e.metricas[0]?.total ?? 0} times · fonte: {e.fonte}</p>
       <div className="linhas">
         {e.metricas.map((m) => {

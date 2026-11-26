@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api, type AnalisePartida, type ResultadoPalpite, type DesempenhoNoJogo, type EventoDaPartida, type LadoDaPartida, type MapaDaPartida, type ResumoPartida, type RoteiroPosJogo } from './api'
 import { GaleriaVideo } from './GaleriaVideo'
 import { PranchetaTatica } from './Prancheta'
-import { cartaoDoJogador, cartaoDoPalpite, cartaoPlacarDoModelo, cartoesDaPartida, cartoesDoPlacar, coletar, textoDoPlacar, ligarJogador, recortesDoMapa, type Cartao } from './ParaVideo'
+import { cartaoDoJogador, cartaoDoPalpite, cartaoEstiloNaLiga, cartaoPlacarDoModelo, cartoesDaPartida, cartoesDoPlacar, coletar, textoDoPlacar, ligarJogador, recortesDoMapa, type Cartao } from './ParaVideo'
 import { coresDoJogo } from './Cores'
 import { Escudo } from './PainelTime'
 import { CampoDaPartida, DesempenhoNaPartida, Destaques, LinhaDoTempo } from './PartidaVisual'
@@ -372,6 +372,14 @@ function PalpiteDoJogo({ id, gravacao }: { id: number; gravacao: boolean }) {
               const proximo = x.acertou == null ? x : (await api.proximoPalpite('Galo').catch(() => null))?.palpite ?? null
               setGaleria(await coletar(() => cartaoPlacarDoModelo(h, proximo)))
             }}>🎯 Placar do modelo</button>
+          <button className="btn para-video" title="Posição de cada time no ranking da liga em pressão, perda de bola, ataque direto... (PitchAPI)"
+            onClick={async () => {
+              // a liga do jogo; em copa (sem métricas), a liga mais recente de cada time
+              const estilo = (id: number) => api.estiloNaLiga(id, p.competicaoId, p.temporada).then((e) => e ?? api.estiloNaLiga(id))
+              const [em, ev] = await Promise.all([estilo(p.mandanteId), estilo(p.visitanteId)])
+              if (em && ev) setGaleria(await coletar(() => cartaoEstiloNaLiga(em, ev)))
+              else alert('Um dos times ainda não tem as métricas de estilo na liga.')
+            }}>📊 Como joga cada um</button>
         </div>
       )}
       {galeria && <GaleriaVideo titulo={`Palpite: ${p.mandante} x ${p.visitante}`} cartoes={galeria} onFechar={() => setGaleria(null)} />}

@@ -81,7 +81,9 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
       - seção "Como joga, na <liga>" no painel do time;
       - no roteiro do pós-jogo: EstiloDoJogo (do banco ou direto da PitchAPI logo depois do apito, por IEstiloDaPartida) e as
         frases do ranking em que o time está entre os 3 de cima ou de baixo.
-    - Falta: o cartão "ranking do time na liga" no Para vídeo.
+    - **Cartão FEITO em 26/11/2026** (cartaoEstiloNaLiga no ParaVideo.ts): "🎬 Para vídeo" na seção "Como joga" do painel do time
+      (título = a métrica mais na ponta) e "📊 Como joga cada um" no palpite do painel da partida (posição dos dois times lado a
+      lado, para o pré-jogo). Dourado = 3 de cima ou de baixo.
     - O endpoint traz por jogo e por time:
       - pressão e recuperação: ppda, high_turnovers (recuperações no campo adversário), counterpress_regains_5s;
       - posição: avg_defensive_action_x (altura da defesa), field_tilt;

@@ -1,4 +1,4 @@
-import type { AnalisePartida, CartaoDoAtleta, LadoALado, HistoricoDePalpites, Palpite, PlacarAoVivo, CalorDoJogador, DesempenhoNoJogo, FinalizacaoNoMapa, MapaDaPartida } from './api'
+import type { AnalisePartida, CartaoDoAtleta, LadoALado, HistoricoDePalpites, Palpite, PlacarAoVivo, CalorDoJogador, DesempenhoNoJogo, FinalizacaoNoMapa, MapaDaPartida, EstiloNaLiga } from './api'
 import { comAlfa, coresDoClube, coresDoJogo } from './Cores'
 
 // "Para vídeo": cartões 1080x1920 (9:16) para os Shorts do canal Galo na Lupa (@galonalupa), desenhados em canvas e baixados como PNG.
@@ -819,6 +819,99 @@ export async function cartaoPlacarDoModelo(h: HistoricoDePalpites, proximo?: Pal
   }
   ctx.textAlign = 'left'
   await baixar(tela, `placar-do-modelo-${h.acertos}-de-${h.jogos}`)
+}
+
+// ---------- Estilo do time na liga (backlog item 18): o ranking de cada métrica de time da PitchAPI ----------
+
+/** A métrica mais na ponta do ranking (1º ou último), para o título: "o 2º time que mais perde a bola no próprio campo". */
+function maisNaPonta(e: EstiloNaLiga) {
+  return [...e.metricas].sort((x, y) => Math.min(x.posicao, x.total - x.posicao + 1) - Math.min(y.posicao, y.total - y.posicao + 1))[0]
+}
+
+const naPonta = (m: { posicao: number; total: number }) => m.posicao <= 3 || m.posicao > m.total - 3
+
+/**
+ * Cartão "como joga, na liga" (item 18): cada métrica de time com a posição no ranking da liga ("2º de 20"), o número por jogo e a
+ * média da liga. Com um time só, o título é a métrica mais na ponta; com dois (pré-jogo), as posições de cada um lado a lado.
+ * Dourado = entre os 3 de cima ou de baixo, que é onde está a frase de vídeo.
+ */
+export async function cartaoEstiloNaLiga(a: EstiloNaLiga, b?: EstiloNaLiga | null) {
+  await prontoParaDesenhar()
+  const nome = (e: EstiloNaLiga) => (e.clubeId === TIME_DO_CANAL ? 'Galo' : e.time)
+  const [tela, ctx] = novaTela()
+  const fmt = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+  const x0 = JANELA.x, y0 = JANELA.y, w = JANELA.w, h = A - 200 - JANELA.y
+  const rodape = 60
+
+  if (!b) {
+    const topo = maisNaPonta(a)
+    moldura(ctx, `Como joga · ${a.competicao} ${a.temporada}`, `${nome(a)}: ${topo.frase}`, 56)
+    caixa(ctx, x0, y0, w, h, 32, COR.painel)
+    caixa(ctx, x0, y0, 14, h, 7, coresDoClube(a.time).destaque)
+    const passo = (h - 40 - rodape) / a.metricas.length
+    a.metricas.forEach((m, k) => {
+      const y = y0 + 30 + k * passo, meio = y + passo / 2
+      const ponta = naPonta(m)
+      if (k) { ctx.fillStyle = COR.linha; ctx.fillRect(x0 + 40, y, w - 80, 2) }
+      ctx.textBaseline = 'middle'; ctx.textAlign = 'right'
+      fonte(ctx, 54, 900); ctx.fillStyle = ponta ? COR.destaque : COR.texto
+      ctx.fillText(`${m.posicao}º`, x0 + 170, meio - 6)
+      fonte(ctx, 18, 700); ctx.fillStyle = COR.suave
+      ctx.fillText(`de ${m.total}`, x0 + 170, meio + 30)
+      ctx.textAlign = 'left'
+      fonte(ctx, 28, 800); ctx.fillStyle = COR.texto
+      ctx.fillText(m.nome.replace(/ \(.*\)$/, ''), x0 + 200, meio - (ponta ? 20 : 0), 560)
+      if (ponta) { fonte(ctx, 22, 700); ctx.fillStyle = COR.destaque; ctx.fillText(m.frase, x0 + 200, meio + 20, 560) }
+      ctx.textAlign = 'right'
+      fonte(ctx, 40, 900); ctx.fillStyle = COR.texto
+      ctx.fillText(fmt(m.valor), x0 + w - 40, meio - 12)
+      fonte(ctx, 19, 700); ctx.fillStyle = COR.suave
+      ctx.fillText(`média ${fmt(m.mediaDaLiga)}`, x0 + w - 40, meio + 24)
+    })
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top'
+    fonte(ctx, 19, 600); ctx.fillStyle = COR.suave
+    ctx.fillText(`Por jogo, em ${a.jogos} jogos · 1º = quem mais faz · dourado = 3 de cima ou de baixo · fonte: ${a.fonte}`, x0 + 40, y0 + h - rodape + 14, w - 80)
+    await baixar(tela, `estilo-${nomeDeArquivo(nome(a))}-${a.temporada}`)
+    return
+  }
+
+  // dois times: rótulo no meio e a posição de cada um nos lados, com a cor do clube
+  const cores = [coresDoClube(a.time).destaque, coresDoClube(b.time).destaque]
+  moldura(ctx, `Como joga cada um · ${a.competicao} ${a.temporada}`, `${nome(a)} x ${nome(b)}`, 64)
+  caixa(ctx, x0, y0, w, h, 32, COR.painel)
+  const lados = [a, b]
+  lados.forEach((e, i) => {
+    ctx.textBaseline = 'top'; ctx.textAlign = i ? 'right' : 'left'
+    caixa(ctx, i ? x0 + w - 14 : x0, y0 + 26, 14, 70, 7, cores[i])
+    fonte(ctx, 40, 900); ctx.fillStyle = COR.texto
+    ctx.fillText(nome(e), i ? x0 + w - 40 : x0 + 40, y0 + 30, w / 2 - 60)
+    fonte(ctx, 20, 700); ctx.fillStyle = COR.suave
+    ctx.fillText(`${e.jogos} jogos`, i ? x0 + w - 40 : x0 + 40, y0 + 80)
+  })
+  const chaves = a.metricas.map((m) => m.chave).filter((c) => b.metricas.some((m) => m.chave === c))
+  const topo = y0 + 130
+  const passo = (h - (topo - y0) - rodape) / chaves.length
+  chaves.forEach((c, k) => {
+    const ma = a.metricas.find((m) => m.chave === c)!, mb = b.metricas.find((m) => m.chave === c)!
+    const y = topo + k * passo, meio = y + passo / 2
+    ctx.fillStyle = COR.linha; ctx.fillRect(x0 + 40, y, w - 80, 2)
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    fonte(ctx, 24, 800); ctx.fillStyle = COR.suave
+    const rot = linhas(ctx, ma.nome.replace(/ \(.*\)$/, ''), 440).slice(0, 2)
+    rot.forEach((l, i) => ctx.fillText(l, L / 2, meio + (i - (rot.length - 1) / 2) * 30))
+    ;([[ma, 0], [mb, 1]] as const).forEach(([m, i]) => {
+      ctx.textAlign = i ? 'right' : 'left'
+      const xx = i ? x0 + w - 40 : x0 + 40
+      fonte(ctx, 52, 900); ctx.fillStyle = naPonta(m) ? COR.destaque : COR.texto
+      ctx.fillText(`${m.posicao}º`, xx, meio - 10)
+      fonte(ctx, 18, 700); ctx.fillStyle = COR.suave
+      ctx.fillText(`${fmt(m.valor)} por jogo`, xx, meio + 28)
+    })
+  })
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top'
+  fonte(ctx, 19, 600); ctx.fillStyle = COR.suave
+  ctx.fillText(`Posição entre os ${a.metricas[0]?.total ?? 20} times · 1º = quem mais faz · dourado = 3 de cima ou de baixo · fonte: ${a.fonte}`, x0 + 40, y0 + h - rodape + 14, w - 80)
+  await baixar(tela, `estilo-${nomeDeArquivo(nome(a))}-x-${nomeDeArquivo(nome(b))}`)
 }
 
 // ---------- Intervalo e fim de jogo (backlog item 16): 1600x900 para o X e 1080x1920 para os Shorts ----------
