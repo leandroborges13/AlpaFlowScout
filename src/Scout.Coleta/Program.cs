@@ -28,6 +28,7 @@ using Scout.Infrastructure.Provedor;
 ArquivoEnv.Carregar();
 var builder = Host.CreateApplicationBuilder();
 builder.Logging.AddFilter("Microsoft", LogLevel.Warning).AddFilter("System.Net.Http", LogLevel.Warning).AddFilter("Polly", LogLevel.Warning);
+builder.Services.AddScoutApplication(); // consultas usadas pelos comandos (ex.: comentar); o chat não é resolvido aqui
 builder.Services.AddScoutInfrastructure(builder.Configuration);
 using var host = builder.Build();
 using var escopo = host.Services.CreateScope();
@@ -94,15 +95,11 @@ try
 
         case "comentar" when args.Length >= 2 && int.TryParse(args[1], out var partidaCom):
             // os pontos do "Comentar o jogo" (o mesmo do botão do painel), sem login: para o pós-jogo pelo terminal
-            using (var escopoApp = new ServiceCollection().AddLogging().AddScoutApplication()
-                       .AddScoutInfrastructure(builder.Configuration).BuildServiceProvider().CreateScope())
-            {
-                var com = await escopoApp.ServiceProvider.GetRequiredService<Scout.Application.Chat.PontosParaComentar>()
-                    .Gerar(partidaCom, args.Length >= 3 && int.TryParse(args[2], out var tc) ? tc : null, cts.Token);
-                if (com is null) { Console.WriteLine("Jogo sem placar ou não encontrado."); break; }
-                Console.WriteLine($"{com.Partida.Mandante} x {com.Partida.Visitante} · do ponto de vista do {com.Time}");
-                foreach (var pt in com.Pontos) Console.WriteLine($"- [{pt.Tema}] {pt.Frase}");
-            }
+            var com = await sp.GetRequiredService<Scout.Application.Chat.PontosParaComentar>()
+                .Gerar(partidaCom, args.Length >= 3 && int.TryParse(args[2], out var tc) ? tc : null, cts.Token);
+            if (com is null) { Console.WriteLine("Jogo sem placar ou não encontrado."); break; }
+            Console.WriteLine($"{com.Partida.Mandante} x {com.Partida.Visitante} · do ponto de vista do {com.Time}");
+            foreach (var pt in com.Pontos) Console.WriteLine($"- [{pt.Tema}] {pt.Frase}");
             break;
 
         case "estilo" when args.Length >= 2 && int.TryParse(args[1], out var clubeEst):
