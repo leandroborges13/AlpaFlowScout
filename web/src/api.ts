@@ -183,6 +183,9 @@ export const api = {
   parecidos: (id: number, temporada: number) => pedir<Parecidos>(`/api/atletas/${id}/parecidos?temporada=${temporada}`),
   ladoALado: (id: number, outro: number) => pedir<LadoALado>(`/api/atletas/${id}/lado-a-lado/${outro}`),
   procurarAtleta: (nome: string) => pedir<{ id: number; nome: string; onde?: string | null }[]>(`/api/atletas/procurar?nome=${encodeURIComponent(nome)}`),
+  /** Busca por perfil (a mesma do chat); com mercado=true junta a Série A e as ligas de fora na régua da Série A. */
+  busca: (filtros: Record<string, unknown>) =>
+    pedir<{ encontrados: number; atletas: ResumoAtleta[]; observacoes: string[] }>('/api/busca', { method: 'POST', body: JSON.stringify(filtros) }),
   resumoIa: (id: number, temporada: number) => pedir<{ texto: string }>(`/api/atletas/${id}/resumo-ia?temporada=${temporada}`),
   time: (id: number, competicao: number, temporada: number) =>
     pedir<DetalheTime>(`/api/times/${id}?competicao=${competicao}&temporada=${temporada}`),

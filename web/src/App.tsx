@@ -3,6 +3,7 @@ import { api, EVENTO_SESSAO_EXPIRADA, lerModoGravacao, salvarModoGravacao, type 
 import { CartaoAtleta } from './Componentes'
 import { Login } from './Login'
 import { PainelAtleta } from './PainelAtleta'
+import { PainelMercado } from './PainelMercado'
 import { CartaoPartida, PainelPartida } from './PainelPartida'
 import { CartaoTime, PainelTime } from './PainelTime'
 import { CartaoTreinador, PainelTreinador } from './PainelTreinador'
@@ -47,6 +48,7 @@ function Plataforma({ usuario, onSair }: { usuario: string; onSair: () => void }
   const [partidaAberta, setPartidaAberta] = useState<ResumoPartida | null>(null)
   const [gravacao, setGravacao] = useState(lerModoGravacao)
   const [galeria, setGaleria] = useState<{ titulo: string; cartoes: Cartao[] } | null>(null)
+  const [mercado, setMercado] = useState(false)
   const fim = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -88,6 +90,7 @@ function Plataforma({ usuario, onSair }: { usuario: string; onSair: () => void }
               Limpar conversa
             </button>
           )}
+          <button className="btn" onClick={() => setMercado(true)} title="Mapa de mercado com filtros: Série A e ligas de fora na mesma régua">🔎 Mercado</button>
           <label className="alternar" title="Esconde fotos e escudos para gravar vídeos públicos">
             <input type="checkbox" checked={gravacao} onChange={(e) => { setGravacao(e.target.checked); salvarModoGravacao(e.target.checked) }} />
             Modo gravação
@@ -159,6 +162,8 @@ function Plataforma({ usuario, onSair }: { usuario: string; onSair: () => void }
         <p className="rodape">Notas e percentis calculados pela AlpaFlow Scout. Uso interno.</p>
       </footer>
 
+      {/* o mercado fica aberto embaixo: fechar o atleta volta para a lista */}
+      {mercado && <PainelMercado gravacao={gravacao} onFechar={() => setMercado(false)} onAbrirAtleta={setAberto} />}
       {aberto && <PainelAtleta atleta={aberto} gravacao={gravacao} onFechar={() => setAberto(null)} onAbrir={setAberto} onAbrirTime={(t) => { setAberto(null); setTimeAberto(t) }} />}
       {timeAberto && (
         <PainelTime time={timeAberto} gravacao={gravacao} onFechar={() => setTimeAberto(null)} onAbrirAtleta={(a) => { setTimeAberto(null); setAberto(a) }}

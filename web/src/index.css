@@ -281,6 +281,13 @@ button.lt-quad:hover, button.lt-quad:focus-visible { outline: 2px solid var(--in
 :root { --casa: #0f9d58; --fora: #2f6fd6; }
 @media (prefers-color-scheme: dark) { :root { --casa: #2fc27b; --fora: #6ea2ff; } }
 .painel.largo { width: min(900px, 100%); }
+/* Mapa de mercado: filtros em grade, opções em duas colunas */
+.mercado-filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; align-items: end; min-width: 0; }
+.mercado-filtros > label { display: grid; gap: 4px; font-size: 13px; color: var(--ink-2); }
+.mercado-filtros > label input, .mercado-filtros select { width: 100%; min-width: 0; box-sizing: border-box; font: inherit; font-size: 15px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.mercado-opcoes { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 6px 16px; font-size: 14px; }
+.mercado-opcoes label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+.mercado-filtros .acoes { grid-column: 1 / -1; }
 .campo-partida, .linha-tempo-bloco { display: grid; gap: 6px; }
 .campo-partida-times { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 600; }
 .time-casa { color: var(--casa); }
