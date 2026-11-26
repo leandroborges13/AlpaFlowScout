@@ -261,15 +261,18 @@ app.MapGet("/jogo/{id:int}", async (int id, IWebHostEnvironment env, IQueryHandl
     if (pagina is not null)
     {
         var (titulo, descricao) = PreviaDoLink.De(pagina);
-        string A(string s) => System.Net.WebUtility.HtmlEncode(s);
+        // acentos como estão (só <, >, & e aspas viram código): alguns leitores de link mostravam "&#225;" no lugar do "á"
+        string A(string s) => System.Text.Encodings.Web.HtmlEncoder.Create(System.Text.Unicode.UnicodeRanges.All).Encode(s);
         var url = $"{http.Request.Scheme}://{http.Request.Host}";
+        // a versão muda quando sai o placar: o WhatsApp guarda a imagem pelo endereço e, assim, pega a nova depois do jogo
+        var versao = pagina.Partida.GolsMandante is null ? "antes" : $"{pagina.Partida.GolsMandante}-{pagina.Partida.GolsVisitante}";
         var meta = $"""
             <meta property="og:type" content="website" />
             <meta property="og:site_name" content="Galo na Lupa" />
             <meta property="og:title" content="{A(titulo)}" />
             <meta property="og:description" content="{A(descricao)}" />
             <meta property="og:url" content="{url}/jogo/{id}" />
-            <meta property="og:image" content="{url}/og-galonalupa.png" />
+            <meta property="og:image" content="{url}/jogo/{id}/imagem.png?v={versao}" />
             <meta property="og:image:width" content="1200" />
             <meta property="og:image:height" content="630" />
             <meta name="twitter:card" content="summary_large_image" />
@@ -280,6 +283,22 @@ app.MapGet("/jogo/{id:int}", async (int id, IWebHostEnvironment env, IQueryHandl
     }
     http.Response.Headers.CacheControl = "public, max-age=300";
     return Results.Content(html, "text/html; charset=utf-8");
+}).RequireRateLimiting("publico");
+
+// A imagem da prévia do jogo (1200x630): palpite antes, placar e gols depois. Sem jogo, a imagem fixa do canal.
+app.MapGet("/jogo/{id:int}/imagem.png", async (int id, IQueryHandler<ObterPaginaPublica, PaginaPublica?> h,
+    Microsoft.Extensions.Caching.Memory.IMemoryCache cache, HttpContext http, CancellationToken ct) =>
+{
+    var pagina = await Microsoft.Extensions.Caching.Memory.CacheExtensions.GetOrCreateAsync(cache, $"publico:jogo:{id}", e => { e.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10); return h.Handle(new ObterPaginaPublica(id), ct); });
+    if (pagina is null) return Results.Redirect("/og-galonalupa.png");
+    var chave = $"publico:imagem:{id}:{pagina.Partida.GolsMandante}-{pagina.Partida.GolsVisitante}:{pagina.Palpite?.ChanceMandante}";
+    var png = await Microsoft.Extensions.Caching.Memory.CacheExtensions.GetOrCreateAsync(cache, chave, e =>
+    {
+        e.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
+        return Task.FromResult(Scout.Api.ImagemDoLink.Desenhar(pagina));
+    });
+    http.Response.Headers.CacheControl = "public, max-age=600";
+    return Results.File(png!, "image/png");
 }).RequireRateLimiting("publico");
 
 // O site (React) é servido pela própria API; qualquer rota que não seja /api cai no index.html
