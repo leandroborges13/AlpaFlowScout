@@ -4,7 +4,7 @@ import { BarraDeEstilo, CampoDePosicoes } from './Campo'
 import { CartaoAtleta, Medidor, Retrato, euros } from './Componentes'
 import { GaleriaVideo } from './GaleriaVideo'
 import { CartaoTime } from './PainelTime'
-import { cartaoDoAtleta, cartaoLadoALado, coletar, type Cartao } from './ParaVideo'
+import { cartaoDoAtleta, cartaoLadoALado, cartaoTrajetoria, coletar, type Cartao } from './ParaVideo'
 
 type Props = {
   atleta: ResumoAtleta
@@ -209,7 +209,13 @@ export function PainelAtleta({ atleta, gravacao, onFechar, onAbrir, onAbrirTime 
 
             {detalhe.trajetoria && detalhe.trajetoria.clubes.length > 0 && (
               <section>
-                <h3>Trajetória</h3>
+                <h3>
+                  Trajetória
+                  {!gravacao && detalhe.trajetoria.clubes.some((c) => !c.selecao && (c.numeros?.length ?? 0) > 0) && (
+                    <button className="btn para-video" style={{ marginLeft: 12 }} title="Cartão com os gols e as assistências por clube e temporada"
+                      onClick={async () => setGaleria(await coletar(() => cartaoTrajetoria(detalhe.resumo.nome, detalhe.trajetoria!.clubes)))}>🎬 Trajetória em gols</button>
+                  )}
+                </h3>
                 <ol className="trajetoria">
                   {detalhe.trajetoria.clubes.map((c) => {
                     const n = c.numeros ?? []

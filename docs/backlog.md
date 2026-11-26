@@ -285,7 +285,9 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
       temporadas da trajetória (1 consulta por temporada; temporada passada guardada para sempre, a atual por 1 dia; a que falhar
       fica de fora). Cada clube traz Numeros (jogos, minutos, gols, assistências por temporada, liga + copas somadas) e Selecao
       (time com o nome do país, fora dos totais de clube). O painel mostra o total por clube, gol por 90 min e a linha por
-      temporada. Falta: o cartão "Trajetória em gols" para vídeo.
+      temporada. **Cartão FEITO em 26/11** (cartaoTrajetoria: "🎬 Trajetória em gols" na seção Trajetória do painel do atleta, até 9
+      linhas clube x temporada com barras de gols e assistências). Comando `trajetorias [max]` da coleta guarda a trajetória dos
+      candidatos de mercado (G+A por 90 nas ligas de fora + sem espaço) antes do fim do Pro.
     - **Antes:** a seção "Trajetória" do painel do atleta lista só clube e temporadas (HistoricoDoAtleta: /players/teams e
       /transfers da API-Football). Não diz o que ele fez em cada passagem.
     - **Por quê:** é o argumento de mercado: "fez 11 gols no Alavés, 9 no Oviedo, 15 no Elche". Mostra se o atleta repete o

@@ -13,6 +13,7 @@
 //   dotnet run --project src/Scout.Coleta -- pitch-estilos <liga> <temporada> [max]   (métricas de time jogo a jogo: pressão, recuperações altas)
 //   dotnet run --project src/Scout.Coleta -- estilo <clube>   (estilo do time na liga: pressão, recuperações altas, com o ranking)
 //   dotnet run --project src/Scout.Coleta -- comentar <partida> [time]   (os pontos do "Comentar o jogo", com a frase pronta)
+//   dotnet run --project src/Scout.Coleta -- trajetorias [max]   (guarda a trajetória com números dos candidatos de mercado; antes do fim do Pro)
 //   dotnet run --project src/Scout.Coleta -- nascimentos-bzzoiro <temporada>   (data de nascimento de quem está sem, pela Bzzoiro)
 //   dotnet run --project src/Scout.Coleta -- copas-bzzoiro <temporada> [max]   (desempenho dos atletas nos jogos de copa, pela Bzzoiro)
 //   dotnet run --project src/Scout.Coleta -- valores-bzzoiro [max-clubes]   (valor de mercado e fim de contrato, pela Bzzoiro)
@@ -92,6 +93,37 @@ try
             var rc = await sp.GetRequiredService<ColetaBzzoiro>().ColetarCopas(temporadaC, maxC, cts.Token);
             Console.WriteLine($"Bzzoiro copas: {rc.Jogos} jogos, {rc.Ligados}/{rc.Atletas} atletas ligados ao cadastro, {rc.SemPar} jogos sem par na base");
             break;
+
+        case "trajetorias":
+        {
+            // Guarda a trajetória com números (item 25) dos candidatos de mercado enquanto o API-Football Pro existe (~09/12/2026):
+            // temporada passada fica guardada para sempre. Candidatos: os que mais fazem gol + assistência por 90 min nas ligas de
+            // fora (900+ min em 2025 ou 2026) e os sul-americanos sem espaço na Europa. Para na cota do dia sem perder o que veio.
+            var maxT = args.Length >= 2 && int.TryParse(args[1], out var mt0) ? mt0 : 250;
+            var dbT = sp.GetRequiredService<ScoutDbContext>();
+            int[] doBrasil = [71, 72, 75, 76];
+            var deFora = await dbT.Estatisticas
+                .Where(e => e.Temporada >= 2025 && e.Minutos >= 900 && !doBrasil.Contains(e.CompeticaoId))
+                .GroupBy(e => e.AtletaId)
+                .Select(g => new { Id = g.Key, Porc90 = g.Max(e => (e.Gols + e.Assistencias) * 90.0 / e.Minutos) })
+                .OrderByDescending(x => x.Porc90).Take(maxT).Select(x => x.Id).ToListAsync(cts.Token);
+            var semEspaco = (await sp.GetRequiredService<Scout.Application.IQueryHandler<Scout.Application.Consultas.BuscarSemEspaco, Scout.Application.Consultas.ResultadoSemEspaco>>()
+                .Handle(new Scout.Application.Consultas.BuscarSemEspaco(Limite: 60), cts.Token)).Atletas.Select(a => a.Id);
+            var ids = semEspaco.Concat(deFora).Distinct().ToList();
+            var historico = sp.GetRequiredService<Scout.Application.Consultas.IHistoricoDoAtleta>();
+            var api = sp.GetRequiredService<ApiFootballClient>();
+            Console.WriteLine($"{ids.Count} atletas. Consultas hoje antes: {await api.UsadasHoje(cts.Token)}");
+            int feitos = 0, comNumeros = 0;
+            foreach (var idT in ids)
+            {
+                var tr = await historico.Obter(idT, cts.Token);
+                feitos++;
+                if (tr?.Clubes.Any(c => c.Numeros is { Count: > 0 }) == true) comNumeros++;
+                if (feitos % 25 == 0) Console.WriteLine($"  {feitos}/{ids.Count} ({comNumeros} com números) · consultas hoje: {await api.UsadasHoje(cts.Token)}");
+            }
+            Console.WriteLine($"Pronto: {feitos} trajetórias, {comNumeros} com números. Consultas hoje: {await api.UsadasHoje(cts.Token)}");
+            break;
+        }
 
         case "comentar" when args.Length >= 2 && int.TryParse(args[1], out var partidaCom):
             // os pontos do "Comentar o jogo" (o mesmo do botão do painel), sem login: para o pós-jogo pelo terminal

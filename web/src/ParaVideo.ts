@@ -1,4 +1,4 @@
-import type { AnalisePartida, CartaoDoAtleta, LadoALado, HistoricoDePalpites, Palpite, PlacarAoVivo, CalorDoJogador, DesempenhoNoJogo, FinalizacaoNoMapa, MapaDaPartida, EstiloNaLiga } from './api'
+import type { AnalisePartida, CartaoDoAtleta, LadoALado, HistoricoDePalpites, Palpite, PlacarAoVivo, CalorDoJogador, DesempenhoNoJogo, FinalizacaoNoMapa, MapaDaPartida, EstiloNaLiga, DetalheAtleta } from './api'
 import { comAlfa, coresDoClube, coresDoJogo } from './Cores'
 
 // "Para vídeo": cartões 1080x1920 (9:16) para os Shorts do canal Galo na Lupa (@galonalupa), desenhados em canvas e baixados como PNG.
@@ -912,6 +912,56 @@ export async function cartaoEstiloNaLiga(a: EstiloNaLiga, b?: EstiloNaLiga | nul
   fonte(ctx, 19, 600); ctx.fillStyle = COR.suave
   ctx.fillText(`Posição entre os ${a.metricas[0]?.total ?? 20} times · 1º = quem mais faz · dourado = 3 de cima ou de baixo · fonte: ${a.fonte}`, x0 + 40, y0 + h - rodape + 14, w - 80)
   await baixar(tela, `estilo-${nomeDeArquivo(nome(a))}-x-${nomeDeArquivo(nome(b))}`)
+}
+
+// ---------- Trajetória em gols (backlog item 25): o que o atleta fez em cada clube e temporada ----------
+
+/**
+ * Cartão "trajetória em gols": uma linha por clube e temporada (a mais recente em cima), com a barra dos gols (dourada) e das
+ * assistências (cinza) na mesma escala, e os jogos. Seleção fica de fora. Mostra se o atleta repete o desempenho de clube em
+ * clube ou se teve um ano fora da curva. Liga + copas somadas, como o provedor informa.
+ */
+export async function cartaoTrajetoria(nome: string, clubes: NonNullable<DetalheAtleta['trajetoria']>['clubes']) {
+  await prontoParaDesenhar()
+  const linhasT = clubes.filter((c) => !c.selecao).flatMap((c) => (c.numeros ?? []).map((n) => ({ clube: c.clube, ...n })))
+    .sort((a, b) => b.temporada - a.temporada || b.minutos - a.minutos).slice(0, 9)
+  if (!linhasT.length) return
+  const [tela, ctx] = novaTela()
+  const total = linhasT.reduce((s, x) => ({ gols: s.gols + x.gols, jogos: s.jogos + x.jogos, assistencias: s.assistencias + x.assistencias }), { gols: 0, jogos: 0, assistencias: 0 })
+  moldura(ctx, 'Trajetória em gols', `${nome}: o que fez em cada clube`, 56)
+  const x0 = JANELA.x, y0 = JANELA.y, w = JANELA.w, h = A - 200 - JANELA.y
+  caixa(ctx, x0, y0, w, h, 32, COR.painel)
+  const rodape = 110
+  const passo = Math.min(118, (h - 40 - rodape) / linhasT.length)
+  const maximo = Math.max(1, ...linhasT.map((x) => Math.max(x.gols, x.assistencias)))
+  const barraX = x0 + 40, barraW = w - 80
+  linhasT.forEach((x, k) => {
+    const y = y0 + 34 + k * passo
+    if (k) { ctx.fillStyle = COR.linha; ctx.fillRect(x0 + 40, y - 10, w - 80, 2) }
+    ctx.textBaseline = 'top'; ctx.textAlign = 'left'
+    fonte(ctx, 30, 900); ctx.fillStyle = COR.destaque
+    ctx.fillText(`${x.temporada}`, x0 + 40, y)
+    fonte(ctx, 30, 800); ctx.fillStyle = COR.texto
+    ctx.fillText(x.clube, x0 + 140, y, w - 520)
+    ctx.textAlign = 'right'
+    fonte(ctx, 26, 800); ctx.fillStyle = COR.texto
+    ctx.fillText(`${x.gols} ${x.gols === 1 ? 'gol' : 'gols'} · ${x.assistencias} assist.`, x0 + w - 40, y + 2)
+    fonte(ctx, 20, 700); ctx.fillStyle = COR.suave
+    ctx.fillText(`${x.jogos} jogos${x.minutos > 0 ? ` · ${((x.gols * 90) / x.minutos).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gol/90` : ''}`, x0 + w - 40, y + 36)
+    // as duas barras na mesma escala: gols (dourado) e assistências (cinza), embaixo do nome
+    const by = y + 46
+    caixa(ctx, barraX, by, barraW * 0.6, 14, 7, COR.linha)
+    if (x.gols) caixa(ctx, barraX, by, Math.max(14, (barraW * 0.6 * x.gols) / maximo), 14, 7, COR.destaque)
+    caixa(ctx, barraX, by + 20, barraW * 0.6, 10, 5, COR.linha)
+    if (x.assistencias) caixa(ctx, barraX, by + 20, Math.max(10, (barraW * 0.6 * x.assistencias) / maximo), 10, 5, COR.suave)
+  })
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top'
+  fonte(ctx, 34, 900); ctx.fillStyle = COR.texto
+  ctx.fillText(`${total.gols} gols e ${total.assistencias} assistências em ${total.jogos} jogos`, L / 2, y0 + h - rodape + 10)
+  fonte(ctx, 20, 600); ctx.fillStyle = COR.suave
+  ctx.fillText('Liga e copas somadas, por temporada · seleção fora · dourado = gols, cinza = assistências', L / 2, y0 + h - rodape + 60)
+  ctx.textAlign = 'left'
+  await baixar(tela, `trajetoria-${nomeDeArquivo(nome)}`)
 }
 
 // ---------- Intervalo e fim de jogo (backlog item 16): 1600x900 para o X e 1080x1920 para os Shorts ----------
