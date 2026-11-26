@@ -12,6 +12,7 @@
 //   dotnet run --project src/Scout.Coleta -- pitch <liga> <temporada> [max]   (desempenho avançado jogo a jogo pela PitchAPI)
 //   dotnet run --project src/Scout.Coleta -- pitch-estilos <liga> <temporada> [max]   (métricas de time jogo a jogo: pressão, recuperações altas)
 //   dotnet run --project src/Scout.Coleta -- estilo <clube>   (estilo do time na liga: pressão, recuperações altas, com o ranking)
+//   dotnet run --project src/Scout.Coleta -- comentar <partida> [time]   (os pontos do "Comentar o jogo", com a frase pronta)
 //   dotnet run --project src/Scout.Coleta -- nascimentos-bzzoiro <temporada>   (data de nascimento de quem está sem, pela Bzzoiro)
 //   dotnet run --project src/Scout.Coleta -- copas-bzzoiro <temporada> [max]   (desempenho dos atletas nos jogos de copa, pela Bzzoiro)
 //   dotnet run --project src/Scout.Coleta -- valores-bzzoiro [max-clubes]   (valor de mercado e fim de contrato, pela Bzzoiro)
@@ -19,6 +20,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Scout.Application;
 using Scout.Infrastructure;
 using Scout.Infrastructure.Dados;
 using Scout.Infrastructure.Provedor;
@@ -88,6 +90,19 @@ try
             var maxC = args.Length >= 3 && int.TryParse(args[2], out var mc) ? mc : 200;
             var rc = await sp.GetRequiredService<ColetaBzzoiro>().ColetarCopas(temporadaC, maxC, cts.Token);
             Console.WriteLine($"Bzzoiro copas: {rc.Jogos} jogos, {rc.Ligados}/{rc.Atletas} atletas ligados ao cadastro, {rc.SemPar} jogos sem par na base");
+            break;
+
+        case "comentar" when args.Length >= 2 && int.TryParse(args[1], out var partidaCom):
+            // os pontos do "Comentar o jogo" (o mesmo do botão do painel), sem login: para o pós-jogo pelo terminal
+            using (var escopoApp = new ServiceCollection().AddLogging().AddScoutApplication()
+                       .AddScoutInfrastructure(builder.Configuration).BuildServiceProvider().CreateScope())
+            {
+                var com = await escopoApp.ServiceProvider.GetRequiredService<Scout.Application.Chat.PontosParaComentar>()
+                    .Gerar(partidaCom, args.Length >= 3 && int.TryParse(args[2], out var tc) ? tc : null, cts.Token);
+                if (com is null) { Console.WriteLine("Jogo sem placar ou não encontrado."); break; }
+                Console.WriteLine($"{com.Partida.Mandante} x {com.Partida.Visitante} · do ponto de vista do {com.Time}");
+                foreach (var pt in com.Pontos) Console.WriteLine($"- [{pt.Tema}] {pt.Frase}");
+            }
             break;
 
         case "estilo" when args.Length >= 2 && int.TryParse(args[1], out var clubeEst):

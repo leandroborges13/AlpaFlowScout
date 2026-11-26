@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { api, type AnalisePartida, type ResultadoPalpite, type DesempenhoNoJogo, type EventoDaPartida, type LadoDaPartida, type MapaDaPartida, type ResumoPartida, type RoteiroPosJogo } from './api'
+import { api, type AnalisePartida, type ComentarioDoJogo, type ResultadoPalpite, type DesempenhoNoJogo, type EventoDaPartida, type LadoDaPartida, type MapaDaPartida, type ResumoPartida, type RoteiroPosJogo } from './api'
 import { GaleriaVideo } from './GaleriaVideo'
 import { PranchetaTatica } from './Prancheta'
 import { cartaoDoJogador, cartaoDoPalpite, cartaoEstiloNaLiga, cartaoPlacarDoModelo, cartoesDaPartida, cartoesDoPlacar, coletar, textoDoPlacar, ligarJogador, recortesDoMapa, type Cartao } from './ParaVideo'
@@ -218,6 +218,17 @@ function PosJogo({ a }: { a: AnalisePartida }) {
     if (!roteiro) return
     try { await navigator.clipboard.writeText(roteiro.texto); setEstado('copiado'); setTimeout(() => setEstado(''), 1500) } catch { /* sem permissão: o texto continua na tela */ }
   }
+  // "Comentar o jogo": os números com a frase pronta, para gravar com o rosto (sem IA, os números são os da base)
+  const [comentario, setComentario] = useState<ComentarioDoJogo | null>(null)
+  const [comentando, setComentando] = useState<'' | 'buscando' | 'copiado'>('')
+  async function comentar() {
+    setComentando('buscando'); setErro(null)
+    try { setComentario(await api.comentar(id)) } catch (e) { setErro((e as Error).message) } finally { setComentando('') }
+  }
+  async function copiarComentario() {
+    if (!comentario) return
+    try { await navigator.clipboard.writeText(comentario.pontos.map((p) => `• ${p.frase}`).join('\n')); setComentando('copiado'); setTimeout(() => setComentando(''), 1500) } catch { /* fica na tela */ }
+  }
 
   return (
     <section className="pos-jogo">
@@ -230,8 +241,22 @@ function PosJogo({ a }: { a: AnalisePartida }) {
           {estado === 'baixando' ? 'Gerando…' : '🎬 Para vídeo'}
         </button>
         {roteiro && <button className="btn" onClick={copiar}>{estado === 'copiado' ? 'Copiado!' : 'Copiar roteiro'}</button>}
+        <button className="btn" onClick={comentar} disabled={comentando === 'buscando'} title="Os números do jogo com a frase pronta, para comentar com o rosto logo depois do apito">
+          {comentando === 'buscando' ? 'Buscando…' : '🗣️ Comentar o jogo'}
+        </button>
       </div>
       {erro && <p className="erro">{erro}</p>}
+      {comentario && (
+        <div className="comentar">
+          <div className="comentar-topo">
+            <b>Pontos para comentar · {comentario.time}</b>
+            <button className="btn" onClick={copiarComentario}>{comentando === 'copiado' ? 'Copiado!' : '📋 Copiar'}</button>
+          </div>
+          <ol>
+            {comentario.pontos.map((p) => <li key={p.tema}><span className="comentar-tema">{p.tema}</span>{p.frase}</li>)}
+          </ol>
+        </div>
+      )}
       {roteiro && <pre className="roteiro">{roteiro.texto}</pre>}
       {galeria && <GaleriaVideo titulo={`${a.partida.mandante} x ${a.partida.visitante}: para vídeo`} cartoes={galeria} onFechar={() => setGaleria(null)} />}
     </section>

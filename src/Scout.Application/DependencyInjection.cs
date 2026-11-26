@@ -47,6 +47,7 @@ public static class DependencyInjection
         services.AddScoped<IQueryHandler<ObterRankingPenaltis, RankingPenaltis>, ObterRankingPenaltisHandler>();
         services.AddScoped<AssistenteScout>();
         services.AddScoped<RoteiristaPosJogo>();
+        services.AddScoped<PontosParaComentar>();
         return services;
     }
 }

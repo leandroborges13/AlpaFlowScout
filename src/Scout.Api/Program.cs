@@ -218,6 +218,14 @@ api.MapGet("/partidas/{id:int}/mapa", async (int id, IScoutDb db, IMapaDaPartida
     var resumo = (await ProcurarPartidasHandler.Resumir(db, [p], ct))[0];
     return await mapas.Obter(resumo, ct) is { } m ? Results.Ok(m) : Results.NoContent();
 });
+// "Comentar o jogo" (item 19): os números do jogo com a frase pronta, sem IA. Jogo dos últimos 3 dias é atualizado antes.
+api.MapPost("/partidas/{id:int}/comentar", async (int id, int? time, IScoutDb db, Importador importador, PontosParaComentar pontos, CancellationToken ct) =>
+{
+    var partida = await db.Partidas.FirstOrDefaultAsync(p => p.Id == id, ct);
+    if (partida is null) return Results.NotFound();
+    if (partida.Data > DateTime.UtcNow.AddDays(-3)) await importador.AtualizarPartida(id, ct);
+    return await pontos.Gerar(id, time, ct) is { } c ? Results.Ok(c) : Results.Problem("O jogo ainda não terminou ou não tem placar.", statusCode: 409);
+});
 api.MapGet("/partidas/{id:int}/pos-jogo", async (int id, IScoutDb db, CancellationToken ct) =>
     await db.RoteirosPosJogo.FirstOrDefaultAsync(r => r.PartidaId == id, ct) is { } r ? Results.Ok(r) : Results.NoContent());
 api.MapPost("/partidas/{id:int}/pos-jogo", async (int id, IScoutDb db, Importador importador, RoteiristaPosJogo roteirista, CancellationToken ct) =>

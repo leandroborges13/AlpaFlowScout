@@ -65,6 +65,8 @@ export type DetalheAtleta = {
   } | null
 }
 
+export type ComentarioDoJogo = { partida: ResumoPartida; time: string; pontos: { tema: string; frase: string }[] }
+
 /** O que o atleta fez por um clube numa temporada (liga + copas). */
 export type NumerosNaTemporada = { temporada: number; jogos: number; minutos: number; gols: number; assistencias: number }
 
@@ -204,6 +206,8 @@ export const api = {
     return r.status === 204 ? null : (r.ok ? (r.json() as Promise<RoteiroPosJogo>) : Promise.reject(new Error(`Erro ${r.status}`)))
   },
   gerarPosJogo: (id: number) => pedir<RoteiroPosJogo>(`/api/partidas/${id}/pos-jogo`, { method: 'POST' }),
+  /** "Comentar o jogo" (item 19): os números do jogo com a frase pronta, do ponto de vista do Galo (ou do time pedido). */
+  comentar: (id: number, time?: number) => pedir<ComentarioDoJogo>(`/api/partidas/${id}/comentar${time ? `?time=${time}` : ''}`, { method: 'POST' }),
   /** Palpite do modelo (feito/atualizado até o apito; depois, o guardado e se acertou). */
   palpite: (id: number) => pedir<ResultadoPalpite>(`/api/partidas/${id}/palpite`),
   palpites: (time?: string) => pedir<HistoricoDePalpites>(`/api/palpites${time ? `?time=${encodeURIComponent(time)}` : ''}`),

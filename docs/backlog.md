@@ -103,6 +103,11 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
 
 19. **"Leandro Borges comenta": opinião com o rosto e os números, depois de cada jogo** — ideia de 18/11/2026, a partir do vidIQ
     - **Fazer:** a partir do pós-jogo da final (21/11) ou na semana seguinte.
+    - **"Pontos para comentar" FEITO em 26/11/2026** (PontosParaComentar, sem IA): botão "🗣️ Comentar o jogo" no pós-jogo do
+      painel da partida (POST /api/partidas/{id}/comentar, atualiza o jogo dos últimos 3 dias antes) e o comando
+      `comentar <partida> [time]` na coleta (sem login, pelo ssh). Pontos: placar com gols e expulsão, finalizações do mapa,
+      melhor do time pela nota (com os chutes no alvo dele), de que lado saiu o passe de cada gol sofrido (X da escalação do
+      rival), perdas de bola no próprio campo x média na liga, o que o modelo disse e o próximo jogo.
     - **Por quê:**
       - Nos Shorts do Galo que mais estouraram no mês, o formato "torcedor comenta" se destaca. O "HG Comenta empate do Galo contra
         o Mirassol" (GALO SEMPRE) fez 118 mil views em 3 dias, com 2 a 3 minutos de opinião com o rosto.

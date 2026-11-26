@@ -363,6 +363,11 @@ button.lt-quad:hover, button.lt-quad:focus-visible { outline: 2px solid var(--in
 .galeria-topo { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .galeria-topo h3 { margin: 0; }
 .galeria-texto { margin: 10px 0 14px; display: grid; gap: 6px; }
+/* "Comentar o jogo": os pontos com a frase pronta */
+.comentar { margin-top: 12px; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--surface); }
+.comentar-topo { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.comentar ol { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 8px; font-size: 14.5px; line-height: 1.45; }
+.comentar-tema { display: inline-block; margin-right: 8px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; color: var(--ink-2); }
 .galeria-texto textarea { width: 100%; font: inherit; font-size: 14px; line-height: 1.4; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); resize: vertical; }
 .galeria-texto .pos-jogo-acoes { align-items: center; justify-content: space-between; }
 .galeria-texto .legenda { margin: 0; }
