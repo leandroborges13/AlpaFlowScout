@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { baixarCartao, type Cartao } from './ParaVideo'
+import { baixarCartao, paraCarrossel, type Cartao } from './ParaVideo'
 
 /**
  * Os cartões do "Para vídeo" na tela, em vez de baixar um por um: a galeria mostra todos lado a lado (a análise junta) e, ao
@@ -14,7 +14,10 @@ export function GaleriaVideo(props: Props) {
   return createPortal(<Galeria {...props} />, document.body)
 }
 
-function Galeria({ cartoes, titulo, onFechar, texto }: Props) {
+function Galeria({ cartoes: originais, titulo, onFechar, texto }: Props) {
+  // 📸 Carrossel: os mesmos cartões em 4:5 (1080x1350) para o feed do Instagram; ver, gravar e baixar passam a usar essa versão
+  const [carrossel, setCarrossel] = useState(false)
+  const cartoes = useMemo(() => (carrossel ? originais.map(paraCarrossel) : originais), [originais, carrossel])
   const urls = useMemo(() => cartoes.map((c) => c.canvas.toDataURL('image/png')), [cartoes])
   const [aberto, setAberto] = useState<number | null>(cartoes.length === 1 && !texto ? 0 : null)
   const [post, setPost] = useState(texto ?? '')
@@ -73,7 +76,11 @@ function Galeria({ cartoes, titulo, onFechar, texto }: Props) {
         <div className="galeria-topo">
           <h3>🎬 {titulo}</h3>
           <div className="pos-jogo-acoes">
-            <button className="btn" onClick={baixarTodas}>Baixar todas</button>
+            <button className="btn" onClick={() => setCarrossel((v) => !v)}
+              title="Alterna entre o vertical dos Shorts (9:16) e o carrossel do feed do Instagram (4:5, 1080x1350)">
+              {carrossel ? '🎬 Voltar ao vertical' : '📸 Carrossel (4:5)'}
+            </button>
+            <button className="btn" onClick={baixarTodas}>{carrossel ? 'Baixar o carrossel' : 'Baixar todas'}</button>
             <button className="btn" onClick={onFechar}>Fechar</button>
           </div>
         </div>

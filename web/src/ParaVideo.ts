@@ -12,20 +12,47 @@ const FONTE = 'Inter, system-ui, sans-serif'
 
 type Ctx = CanvasRenderingContext2D
 
-function novaTela(): [HTMLCanvasElement, Ctx] {
+function novaTela(largura = L, altura = A): [HTMLCanvasElement, Ctx] {
   const c = document.createElement('canvas')
-  c.width = L
-  c.height = A
+  c.width = largura
+  c.height = altura
   const ctx = c.getContext('2d')!
-  const g = ctx.createRadialGradient(L / 2, 700, 100, L / 2, 700, 1300)
+  const g = ctx.createRadialGradient(largura / 2, altura * 0.36, 100, largura / 2, altura * 0.36, altura * 0.68)
   g.addColorStop(0, '#1c1c1c')
   g.addColorStop(1, COR.fundo)
   ctx.fillStyle = g
-  ctx.fillRect(0, 0, L, A)
+  ctx.fillRect(0, 0, largura, altura)
   // o listrado da camisa, bem apagado
   ctx.fillStyle = 'rgba(255,255,255,.035)'
-  for (let x = 0; x < L; x += 140) ctx.fillRect(x, 0, 70, A)
+  for (let x = 0; x < largura; x += 140) ctx.fillRect(x, 0, 70, altura)
   return [c, ctx]
+}
+
+/**
+ * O mesmo cartão no formato do feed do Instagram (1080x1350, 4:5), para carrossel. Do cartão vertical (1080x1920) entra do selo
+ * até a marca do rodapé, reduzido para caber na altura; do cartão do X (1600x900), a imagem inteira na largura. O que sobra
+ * vira o fundo listrado do canal.
+ */
+export function paraCarrossel({ nome, canvas }: Cartao): Cartao {
+  const c = document.createElement('canvas')
+  c.width = 1080; c.height = 1350
+  const ctx = c.getContext('2d')!
+  // fundo liso: o listrado reduzido do cartão não alinharia com um listrado novo
+  ctx.fillStyle = COR.fundo; ctx.fillRect(0, 0, 1080, 1350)
+  const vertical = canvas.height > canvas.width
+  // recorte: no vertical, do topo do selo (y 70) até abaixo do @ do rodapé; o resto do cartão é só fundo
+  const [sx, sy, sw, sh] = vertical ? [0, 70, canvas.width, A - 70 - 70] : [0, 0, canvas.width, canvas.height]
+  const margem = 36
+  const escala = Math.min((1080 - 2 * margem) / sw, (1350 - 2 * margem) / sh)
+  const w = sw * escala, h = sh * escala, x = (1080 - w) / 2, y = (1350 - h) / 2
+  ctx.save()
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, 28); ctx.clip()
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(canvas, sx, sy, sw, sh, x, y, w, h)
+  ctx.restore()
+  ctx.lineWidth = 3; ctx.strokeStyle = COR.linha
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, 28); ctx.stroke()
+  return { nome: `${nome}-carrossel`, canvas: c }
 }
 
 function fonte(ctx: Ctx, tamanho: number, peso = 700) {
