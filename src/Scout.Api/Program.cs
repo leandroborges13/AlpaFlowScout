@@ -249,6 +249,39 @@ api.MapPost("/chat", async (PedidoChat pedido, AssistenteScout assistente, Cance
         ? Results.BadRequest("Envie ao menos uma mensagem")
         : Results.Ok(await assistente.Responder(pedido.Mensagens, ct)));
 
+// Página pública do jogo com a prévia do link: WhatsApp, X e Instagram leem só o HTML (sem rodar o React), então o título, a
+// descrição e a imagem do jogo entram nas meta tags do index.html aqui. Sem jogo ou sem o arquivo, segue como o resto do site.
+app.MapGet("/jogo/{id:int}", async (int id, IWebHostEnvironment env, IQueryHandler<ObterPaginaPublica, PaginaPublica?> h,
+    Microsoft.Extensions.Caching.Memory.IMemoryCache cache, HttpContext http, CancellationToken ct) =>
+{
+    var arquivo = Path.Combine(env.WebRootPath ?? "", "index.html");
+    if (!File.Exists(arquivo)) return Results.NotFound();
+    var html = await File.ReadAllTextAsync(arquivo, ct);
+    var pagina = await Microsoft.Extensions.Caching.Memory.CacheExtensions.GetOrCreateAsync(cache, $"publico:jogo:{id}", e => { e.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10); return h.Handle(new ObterPaginaPublica(id), ct); });
+    if (pagina is not null)
+    {
+        var (titulo, descricao) = PreviaDoLink.De(pagina);
+        string A(string s) => System.Net.WebUtility.HtmlEncode(s);
+        var url = $"{http.Request.Scheme}://{http.Request.Host}";
+        var meta = $"""
+            <meta property="og:type" content="website" />
+            <meta property="og:site_name" content="Galo na Lupa" />
+            <meta property="og:title" content="{A(titulo)}" />
+            <meta property="og:description" content="{A(descricao)}" />
+            <meta property="og:url" content="{url}/jogo/{id}" />
+            <meta property="og:image" content="{url}/og-galonalupa.png" />
+            <meta property="og:image:width" content="1200" />
+            <meta property="og:image:height" content="630" />
+            <meta name="twitter:card" content="summary_large_image" />
+            """;
+        html = System.Text.RegularExpressions.Regex.Replace(html, "<title>.*?</title>", $"<title>{A(titulo)}</title>")
+            .Replace("</head>", meta + "\n</head>");
+        html = System.Text.RegularExpressions.Regex.Replace(html, "<meta name=\"description\" content=\"[^\"]*\"", $"<meta name=\"description\" content=\"{A(descricao)}\"");
+    }
+    http.Response.Headers.CacheControl = "public, max-age=300";
+    return Results.Content(html, "text/html; charset=utf-8");
+}).RequireRateLimiting("publico");
+
 // O site (React) é servido pela própria API; qualquer rota que não seja /api cai no index.html
 app.MapFallbackToFile("index.html");
 

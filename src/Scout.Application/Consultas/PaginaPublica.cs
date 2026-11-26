@@ -17,6 +17,31 @@ public record PaginaPublica(ResumoPartida Partida, string? Desfecho, IReadOnlyLi
 
 public record ObterPaginaPublica(int PartidaId) : IQuery<PaginaPublica?>;
 
+/// <summary>
+/// Título e descrição da prévia do link (WhatsApp, X, Instagram): o servidor põe nas meta tags de /jogo/&lt;id&gt;, porque essas
+/// prévias não rodam o JavaScript da página. O Atlético-MG aparece como "Galo", como no canal.
+/// </summary>
+public static class PreviaDoLink
+{
+    const int Galo = 1062;
+
+    public static (string Titulo, string Descricao) De(PaginaPublica pg)
+    {
+        var p = pg.Partida;
+        string N(int id) => id == Galo ? "Galo" : id == p.MandanteId ? p.Mandante : p.Visitante;
+        string Modelo(Palpite x) => $"O modelo dá {N(p.MandanteId)} {Math.Round(x.ChanceMandante)}%, empate {Math.Round(x.ChanceEmpate)}%, " +
+            $"{N(p.VisitanteId)} {Math.Round(x.ChanceVisitante)}%. Placar mais provável: {x.PlacarProvavel}.";
+        if (p.GolsMandante is null)
+            return ($"{N(p.MandanteId)} x {N(p.VisitanteId)}: o palpite do modelo | Galo na Lupa",
+                pg.Palpite is { } pal ? Modelo(pal) : "O palpite do modelo e os números do jogo, no Galo na Lupa.");
+        var partes = new List<string>();
+        if (pg.Gols.Count > 0) partes.Add("Gols: " + string.Join(", ", pg.Gols.Select(g => $"{g.Jogador} {g.Minuto}")) + ".");
+        if (pg.Palpite is { Acertou: { } acertou }) partes.Add(acertou ? "O modelo acertou." : "O modelo errou.");
+        partes.Add("Onde o jogo foi decidido e os destaques pela nota da IA.");
+        return ($"{N(p.MandanteId)} {p.GolsMandante} x {p.GolsVisitante} {N(p.VisitanteId)}: os números do jogo | Galo na Lupa", string.Join(" ", partes));
+    }
+}
+
 public class ObterPaginaPublicaHandler(IScoutDb db, IQueryHandler<AnalisarPartida, AnalisePartida?> analisar, IQueryHandler<ObterPalpite, ResultadoPalpite?> palpite)
     : IQueryHandler<ObterPaginaPublica, PaginaPublica?>
 {
