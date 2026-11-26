@@ -14,6 +14,7 @@
 //   dotnet run --project src/Scout.Coleta -- estilo <clube>   (estilo do time na liga: pressão, recuperações altas, com o ranking)
 //   dotnet run --project src/Scout.Coleta -- comentar <partida> [time]   (os pontos do "Comentar o jogo", com a frase pronta)
 //   dotnet run --project src/Scout.Coleta -- trajetorias [max]   (guarda a trajetória com números dos candidatos de mercado; antes do fim do Pro)
+//   dotnet run --project src/Scout.Coleta -- cartao <atleta>   (o cartão do atleta em texto, com o bloco avançado da PitchAPI)
 //   dotnet run --project src/Scout.Coleta -- nascimentos-bzzoiro <temporada>   (data de nascimento de quem está sem, pela Bzzoiro)
 //   dotnet run --project src/Scout.Coleta -- copas-bzzoiro <temporada> [max]   (desempenho dos atletas nos jogos de copa, pela Bzzoiro)
 //   dotnet run --project src/Scout.Coleta -- valores-bzzoiro [max-clubes]   (valor de mercado e fim de contrato, pela Bzzoiro)
@@ -93,6 +94,21 @@ try
             var rc = await sp.GetRequiredService<ColetaBzzoiro>().ColetarCopas(temporadaC, maxC, cts.Token);
             Console.WriteLine($"Bzzoiro copas: {rc.Jogos} jogos, {rc.Ligados}/{rc.Atletas} atletas ligados ao cadastro, {rc.SemPar} jogos sem par na base");
             break;
+
+        case "cartao" when args.Length >= 2 && int.TryParse(args[1], out var atletaCa):
+        {
+            // o cartão do atleta em texto (os mesmos blocos da imagem), para conferir pelo terminal
+            var ca = await sp.GetRequiredService<Scout.Application.IQueryHandler<Scout.Application.Consultas.ObterCartaoDoAtleta, Scout.Application.Consultas.CartaoDoAtleta?>>()
+                .Handle(new Scout.Application.Consultas.ObterCartaoDoAtleta(atletaCa), cts.Token);
+            if (ca is null) { Console.WriteLine("Sem cartão (atleta sem 450 min na liga)."); break; }
+            Console.WriteLine($"{ca.Resumo.Nome} · {ca.Competicao} · contra {ca.Comparados} {ca.Comparacao} · nota {ca.Nota}");
+            foreach (var bl in ca.Blocos)
+            {
+                Console.WriteLine($"  {bl.Nome}");
+                foreach (var it in bl.Itens) Console.WriteLine($"    {it.Nome}: {it.Valor} · percentil {it.Percentil} · {it.Posicao}º de {it.Total}");
+            }
+            break;
+        }
 
         case "trajetorias":
         {

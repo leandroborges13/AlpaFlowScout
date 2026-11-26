@@ -411,6 +411,10 @@ A API-Football (a nossa) não tem coordenadas de lance. Opções vistas:
 ## Cartões de atleta
 
 10. **Cartão do atleta para vídeo (por 90 min, percentil e ranking)** — ideia de 06/11/2026, a partir de um "playercard" de outro perfil.
+    - **Bloco avançado FEITO em 26/11/2026:** "Avançado (PitchAPI)" no cartão, com 4 métricas por 90 min por setor (ataque: xG, xA,
+      toques na área, conduções progressivas; meio: passes progressivos, xA, chances criadas, recuperações; defesa: passes
+      progressivos, recuperações, aéreos ganhos, cortes), percentil e "Nº de N" contra o mesmo setor da liga com 450+ min na fonte
+      (soma jogo a jogo da tabela desempenhos_avancados). Com o bloco, a "Disciplina" sai do cartão. Comando `cartao <atleta>` na coleta.
     - **v1 feita em 08/11/2026** (só API-Football): GET /api/atletas/{id}/cartao e botão "Cartão para vídeo" no painel do
       atleta; ranking contra o mesmo setor na liga. Falta: comparação com todos os de linha e as métricas da PitchAPI.
     - No "Para vídeo" do painel do atleta, no visual do canal (Galo na Lupa), 1080x1920.

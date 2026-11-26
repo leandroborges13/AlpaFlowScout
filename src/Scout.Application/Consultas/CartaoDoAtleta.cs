@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Scout.Application.Analise;
 using Scout.Domain;
 
@@ -35,7 +36,68 @@ public class ObterCartaoDoAtletaHandler(IScoutDb db, MotorDeAnalise motor) : IQu
             .Select(g => (Nome: g.Key, Jogos: g.Sum(x => x.Jogos), Gols: g.Sum(x => x.Gols), Assistencias: g.Sum(x => x.Assistencias)))
             .OrderByDescending(x => x.Jogos)
             .Select(x => DescreverOutra(x.Nome, x.Jogos, x.Gols, x.Assistencias)).ToList();
-        return Montar(l, setor) with { OutrasCompeticoes = outras };
+        var cartao = Montar(l, setor) with { OutrasCompeticoes = outras };
+
+        // Bloco avançado (item 10): métricas da PitchAPI somadas jogo a jogo na mesma liga e temporada, contra o mesmo setor
+        var idsDoSetor = setor.Select(x => x.AtletaId).ToHashSet();
+        var somas = await (from d in db.DesempenhosAvancados
+                           join p in db.Partidas on d.PartidaId equals p.Id
+                           where d.Fonte == "PitchAPI" && d.AtletaId != null && p.CompeticaoId == l.CompeticaoId && p.Temporada == l.Temporada
+                           group d by d.AtletaId!.Value into g
+                           select new SomaAvancada(g.Key, g.Sum(x => x.Minutos), g.Sum(x => x.Xg ?? 0), g.Sum(x => x.Xa ?? 0),
+                               g.Sum(x => x.PassesProgressivos), g.Sum(x => x.ConducoesProgressivas), g.Sum(x => x.ToquesNaArea),
+                               g.Sum(x => x.ChancesCriadas), g.Sum(x => x.Recuperacoes), g.Sum(x => x.PassesTercoFinal),
+                               g.Sum(x => x.AereosGanhos), g.Sum(x => x.Cortes))).ToListAsync(ct);
+        var avancado = BlocoAvancado(l.Setor, somas.Where(s => idsDoSetor.Contains(s.AtletaId)).ToList(), l.AtletaId);
+        if (avancado is null) return cartao;
+        // com o bloco avançado, a disciplina sai (o cartão tem altura fixa e o avançado diz mais)
+        return cartao with { Blocos = [.. cartao.Blocos.Where(b => b.Nome != "Disciplina"), avancado] };
+    }
+
+    /// <summary>Soma das métricas avançadas (PitchAPI) de um atleta numa liga e temporada.</summary>
+    public record SomaAvancada(int AtletaId, int Minutos, double Xg, double Xa, int PassesProgressivos, int ConducoesProgressivas,
+        int ToquesNaArea, int ChancesCriadas, int Recuperacoes, int PassesTercoFinal, int AereosGanhos, int Cortes);
+
+    /// <summary>Minutos mínimos nas métricas avançadas para entrar no bloco (e na régua), como no resto do cartão.</summary>
+    public const int MinutosAvancado = 450;
+
+    static readonly (string Chave, string Nome, Func<SomaAvancada, double> Valor)[] Avancadas =
+    [
+        ("xg90", "xG (gols esperados)", s => s.Xg), ("xa90", "xA (assistências esperadas)", s => s.Xa),
+        ("toquesNaArea90", "Toques na área", s => s.ToquesNaArea), ("chancesCriadas90", "Chances criadas", s => s.ChancesCriadas),
+        ("conducoesProgressivas90", "Conduções progressivas", s => s.ConducoesProgressivas),
+        ("passesProgressivos90", "Passes progressivos", s => s.PassesProgressivos),
+        ("passesTercoFinal90", "Passes no terço final", s => s.PassesTercoFinal), ("recuperacoes90", "Recuperações", s => s.Recuperacoes),
+        ("aereosGanhos90", "Duelos aéreos ganhos", s => s.AereosGanhos), ("cortes90", "Cortes", s => s.Cortes),
+    ];
+
+    /// <summary>
+    /// Bloco "Avançado (PitchAPI)": 4 métricas por 90 min, as que mais dizem do setor, com percentil e posição contra o mesmo setor
+    /// da liga (só quem tem 450+ min na fonte). Nulo se o atleta não tem minutos suficientes na fonte ou é goleiro. Público para os testes.
+    /// </summary>
+    public static BlocoDoCartao? BlocoAvancado(Setor setor, IReadOnlyList<SomaAvancada> doSetor, int atletaId)
+    {
+        string[] chaves = setor switch
+        {
+            Setor.Ataque => ["xg90", "xa90", "toquesNaArea90", "conducoesProgressivas90"],
+            Setor.Meio => ["passesProgressivos90", "xa90", "chancesCriadas90", "recuperacoes90"],
+            Setor.Defesa => ["passesProgressivos90", "recuperacoes90", "aereosGanhos90", "cortes90"],
+            _ => [],
+        };
+        var validos = doSetor.Where(s => s.Minutos >= MinutosAvancado).ToList();
+        var eu = validos.FirstOrDefault(s => s.AtletaId == atletaId);
+        if (chaves.Length == 0 || eu is null || validos.Count < 5) return null;
+        var itens = chaves.Select(k =>
+        {
+            var m = Avancadas.First(a => a.Chave == k);
+            double Por90(SomaAvancada s) => m.Valor(s) * 90.0 / s.Minutos;
+            var v = Por90(eu);
+            var outros = validos.Select(Por90).ToList();
+            var abaixo = outros.Count(o => o < v - 1e-9) + 0.5 * (outros.Count(o => Math.Abs(o - v) <= 1e-9) - 1);
+            return new ItemDoCartao(k, m.Nome, Math.Round(v, 2), false, Math.Round(100 * abaixo / Math.Max(1, outros.Count - 1)),
+                1 + outros.Count(o => o > v + 1e-9), outros.Count);
+        }).ToList();
+        return new BlocoDoCartao("Avançado (PitchAPI)", itens);
     }
 
     public static string DescreverOutra(string competicao, int jogos, int gols, int assistencias)
