@@ -113,7 +113,7 @@ public class PontosParaComentar(IQueryHandler<AnalisarPartida, AnalisePartida?> 
             var doRival = noJogo.First(e => e.ClubeId != foco);
             var media = naLiga?.Metricas.FirstOrDefault(m => m.Chave == "perdasNoProprioCampo");
             r.Add(new("estilo", $"O {N(foco)} perdeu a bola {doRival.RecuperacoesAltas} vezes no próprio campo" +
-                (media is null ? "" : $" (na {naLiga!.Competicao} são {media.Valor.ToString("0.#", Pt)} por jogo, {media.Frase})") +
+                (media is null ? "" : $" (na {naLiga!.Competicao}, a média dele é {media.Valor.ToString("0.#", Pt)} por jogo: é {media.Frase})") +
                 $" e roubou {doFoco.RecuperacoesAltas} no campo de ataque."));
         }
 
@@ -134,7 +134,7 @@ public class PontosParaComentar(IQueryHandler<AnalisarPartida, AnalisePartida?> 
 
         // 7. o próximo jogo do time
         if (a.JogosSeguintes?.FirstOrDefault(j => j.MandanteId == foco || j.VisitanteId == foco) is { } prox)
-            r.Add(new("próximo", $"Próximo: {N(prox.MandanteId)} x {N(prox.VisitanteId)}, {prox.Data.ToString("dddd, dd/MM", Pt)} ({prox.Competicao})."));
+            r.Add(new("próximo", $"Próximo: {Nome(prox, prox.MandanteId)} x {Nome(prox, prox.VisitanteId)}, {prox.Data.ToString("dddd, dd/MM", Pt)} ({prox.Competicao})."));
         return r;
     }
 

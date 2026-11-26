@@ -29,7 +29,10 @@ public class ComentarTests
             new(11, "Atleta Galo Três", Galo, "Volante", "Meio", 90, 60, 0, 0, 0, 0, []),
             new(20, "Atleta Rival Lateral", Rival, "Lateral esquerdo", "Defesa", 90, 90, 0, 1, 0, 0, []),
         };
-        return new AnalisePartida(p, galo, rival, eventos, [], [], Desempenhos: desempenhos);
+        // o próximo jogo é contra outro time: o nome dele vem do próprio jogo, não do adversário de agora
+        var proximo = new ResumoPartida(2, new DateTime(2026, 11, 29, 22, 30, 0), "Regular Season - 37", 71, "Serie A", 2026, "NS",
+            Galo, "Atletico-MG", null, 9002, "Outro Clube Fictício", null, null, null);
+        return new AnalisePartida(p, galo, rival, eventos, [], [], Desempenhos: desempenhos, JogosSeguintes: [proximo]);
     }
 
     static MapaDaPartida Mapa() => new(
@@ -55,6 +58,7 @@ public class ComentarTests
         Assert.Equal("O melhor do Galo pela IA foi Atleta Galo Um, nota 82: 1 gol, 2 dos 3 chutes no alvo do Galo.", pontos["destaque"]);
         Assert.Contains("pela direita da defesa do Galo", pontos["gols sofridos"]);
         Assert.Equal("O modelo errou: deu Galo (56%), com 1 x 0 como placar mais provável.", pontos["modelo"]);
+        Assert.StartsWith("Próximo: Galo x Outro Clube Fictício, domingo, 29/11", pontos["próximo"]);
     }
 
     [Theory]
