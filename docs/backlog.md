@@ -146,7 +146,9 @@ o que faz o vídeo sair mais rápido, mais bonito ou com um gancho melhor. Cada 
       saída, empréstimo ou lesão). Sem jogo registrado (liga sem escalação), fica. Aplicado na prancheta (some), no elenco do time
       e no chat (lista à parte ForaDoElenco, só na temporada atual) e na busca (campo Situacao; SoElencoAtual tira).
       Conferido no banco em 24/11: Hulk (Fluminense), J. Alonso (Atlanta United) e I. Román (fora desde 31/05) saem; os outros 30 ficam.
-      O card do atleta mostra a Situacao em cor de aviso. Falta: confirmar pela transferência (Bzzoiro) quando houver.
+      O card do atleta mostra a Situacao em cor de aviso. **Confirmação pela transferência FEITA em 26/11** (ElencoAtual.
+      ConfirmarPelaTransferencia): o "fora dos jogos" vira "emprestado ao X"/"transferido para o X" pelas transferências da API-Football
+      já guardadas no banco (sem gastar consulta), ou "sem transferência registrada: lesão ou fora dos planos".
     - **O problema:** a prancheta e o elenco do time (/api/times/{id}/prancheta) listam quem tem estatística pelo clube na
       temporada. Por isso o Hulk, que foi para o Fluminense, aparecia no Galo com nota 83, a 2ª maior do elenco. Também
       apareciam o Junior Alonso e o Iván Román, sem jogo pelo Galo desde 15/09.
@@ -419,7 +421,8 @@ A API-Football (a nossa) não tem coordenadas de lance. Opções vistas:
       progressivos, recuperações, aéreos ganhos, cortes), percentil e "Nº de N" contra o mesmo setor da liga com 450+ min na fonte
       (soma jogo a jogo da tabela desempenhos_avancados). Com o bloco, a "Disciplina" sai do cartão. Comando `cartao <atleta>` na coleta.
     - **v1 feita em 08/11/2026** (só API-Football): GET /api/atletas/{id}/cartao e botão "Cartão para vídeo" no painel do
-      atleta; ranking contra o mesmo setor na liga. Falta: comparação com todos os de linha e as métricas da PitchAPI.
+      atleta; ranking contra o mesmo setor na liga. Comparação com todos os de linha FEITA em 26/11 (botão "🎬 Contra todos de
+      linha"; percentil recalculado na hora, sem a posição na nota) e as métricas da PitchAPI no bloco avançado.
     - No "Para vídeo" do painel do atleta, no visual do canal (Galo na Lupa), 1080x1920.
     - Blocos com o que a API-Football tem: Passe (passes certos, precisão, passes decisivos, assistências), Defesa (desarmes,
       interceptações, bloqueios), Duelos (ganhos e %, faltas sofridas), Ataque (finalizações, no alvo, gols, dribles certos e %),

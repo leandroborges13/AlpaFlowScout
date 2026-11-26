@@ -23,9 +23,10 @@ export function PainelAtleta({ atleta, gravacao, onFechar, onAbrir, onAbrirTime 
   const [galeria, setGaleria] = useState<Cartao[] | null>(null)
   const [gerando, setGerando] = useState(false)
 
-  async function paraVideo() {
+  // todos: compara com todos os jogadores de linha da liga (para quem joga entre setores), e não só com o setor
+  async function paraVideo(todos = false) {
     setGerando(true)
-    try { const c = await api.cartaoDoAtleta(atleta.id, atleta.temporada); setGaleria(await coletar(() => cartaoDoAtleta(c))) }
+    try { const c = await api.cartaoDoAtleta(atleta.id, atleta.temporada, todos); setGaleria(await coletar(() => cartaoDoAtleta(c))) }
     catch (e) { setErro(e instanceof Error ? e.message : 'Não deu para gerar o cartão.') }
     finally { setGerando(false) }
   }
@@ -101,7 +102,11 @@ export function PainelAtleta({ atleta, gravacao, onFechar, onAbrir, onAbrirTime 
         {a.situacao && <p className="card-sub" style={{ color: 'var(--aviso)' }}>⚠ {a.situacao}</p>}
         {a.nota != null && (
           <div className="prancheta-botoes">
-            <button className="botao-prancheta" onClick={paraVideo} disabled={gerando}>{gerando ? 'Gerando…' : '🎬 Cartão para vídeo'}</button>
+            <button className="botao-prancheta" onClick={() => paraVideo()} disabled={gerando}>{gerando ? 'Gerando…' : '🎬 Cartão para vídeo'}</button>
+            {a.setor !== 'Goleiro' && (
+              <button className="botao-prancheta" onClick={() => paraVideo(true)} disabled={gerando}
+                title="O mesmo cartão comparado com todos os jogadores de linha da liga, e não só com o setor (bom para quem joga entre setores)">🎬 Contra todos de linha</button>
+            )}
             <button className="botao-prancheta" onClick={() => { setComparar(comparar === null ? '' : null); setAchados([]) }} disabled={gerando}>⚖️ Lado a lado</button>
           </div>
         )}

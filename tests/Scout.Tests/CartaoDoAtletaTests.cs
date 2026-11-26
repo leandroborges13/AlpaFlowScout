@@ -71,4 +71,24 @@ public class CartaoDoAtletaTests
         Assert.Null(ObterCartaoDoAtletaHandler.BlocoAvancado(Setor.Goleiro, setor, 1));
         Assert.Null(ObterCartaoDoAtletaHandler.BlocoAvancado(Setor.Ataque, setor.Take(3).ToList(), 1));   // régua curta demais
     }
+
+    [Fact]
+    public void Contra_todos_de_linha_recalcula_percentil_e_tira_a_posicao_na_nota()
+    {
+        // 3 atacantes e 2 meias na mesma liga: o atacante 1 (8 gols) é o melhor entre os 5 de linha
+        var linha = new List<LinhaAnalise> { Atacante(1, 8, 10), Atacante(2, 4, 30), Atacante(3, 6, 20) };
+        foreach (var (id, g) in new[] { (11, 2), (12, 1) })
+            linha.Add(new LinhaAnalise
+            {
+                AtletaId = id, Nome = $"Atleta Teste {id}", Clube = "Clube Teste", Competicao = "Liga Teste", Setor = Setor.Meio,
+                Minutos = 900, Jogos = 10, Gols = g, FaltasCometidas = 10, Finalizacoes = 20, FinalizacoesNoAlvo = 10,
+            });
+        var c = ObterCartaoDoAtletaHandler.Montar(linha[0], linha, todosDeLinha: true);
+        Assert.Equal("jogadores de linha", c.Comparacao);
+        Assert.Equal(5, c.Comparados);
+        Assert.Null(c.PosicaoNaNota);
+        var gols = c.Blocos.SelectMany(b => b.Itens).Single(i => i.Chave == "gols90");
+        Assert.Equal(1, gols.Posicao);
+        Assert.Equal(100, gols.Percentil);
+    }
 }

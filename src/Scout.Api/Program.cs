@@ -153,8 +153,8 @@ api.MapGet("/palpites", (string? time, int? temporada, IQueryHandler<ObterHistor
 api.MapGet("/palpites/proximo", async (string time, IQueryHandler<ObterPalpite, ResultadoPalpite?> h, CancellationToken ct) =>
     await h.Handle(new ObterPalpite(Time: time), ct) is { } r ? Results.Ok(r) : Results.NotFound());
 
-api.MapGet("/atletas/{id:int}/cartao", async (int id, int? temporada, IQueryHandler<ObterCartaoDoAtleta, CartaoDoAtleta?> h, CancellationToken ct) =>
-    await h.Handle(new ObterCartaoDoAtleta(id, temporada), ct) is { } c ? Results.Ok(c) : Results.NotFound());
+api.MapGet("/atletas/{id:int}/cartao", async (int id, int? temporada, bool? todos, IQueryHandler<ObterCartaoDoAtleta, CartaoDoAtleta?> h, CancellationToken ct) =>
+    await h.Handle(new ObterCartaoDoAtleta(id, temporada, todos == true), ct) is { } c ? Results.Ok(c) : Results.NotFound());
 
 // Cartão "lado a lado": candidato (id) x outro atleta (outro), cada um no setor da própria liga; nota na régua da Série A
 api.MapGet("/atletas/{id:int}/lado-a-lado/{outro:int}", async (int id, int outro, int? temporada, IQueryHandler<ObterLadoALado, LadoALado?> h, CancellationToken ct) =>

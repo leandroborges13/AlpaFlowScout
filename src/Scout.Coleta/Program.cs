@@ -99,7 +99,7 @@ try
         {
             // o cartão do atleta em texto (os mesmos blocos da imagem), para conferir pelo terminal
             var ca = await sp.GetRequiredService<Scout.Application.IQueryHandler<Scout.Application.Consultas.ObterCartaoDoAtleta, Scout.Application.Consultas.CartaoDoAtleta?>>()
-                .Handle(new Scout.Application.Consultas.ObterCartaoDoAtleta(atletaCa), cts.Token);
+                .Handle(new Scout.Application.Consultas.ObterCartaoDoAtleta(atletaCa, TodosDeLinha: args.Contains("todos")), cts.Token);
             if (ca is null) { Console.WriteLine("Sem cartão (atleta sem 450 min na liga)."); break; }
             Console.WriteLine($"{ca.Resumo.Nome} · {ca.Competicao} · contra {ca.Comparados} {ca.Comparacao} · nota {ca.Nota}");
             foreach (var bl in ca.Blocos)

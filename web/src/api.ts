@@ -179,7 +179,8 @@ export const api = {
       body: JSON.stringify({ mensagens: mensagens.map(({ papel, texto }) => ({ papel, texto })) }),
     }),
   atleta: (id: number, temporada: number) => pedir<DetalheAtleta>(`/api/atletas/${id}?temporada=${temporada}`),
-  cartaoDoAtleta: (id: number, temporada: number) => pedir<CartaoDoAtleta>(`/api/atletas/${id}/cartao?temporada=${temporada}`),
+  /** `todos`: compara com todos os jogadores de linha da liga, e não só com o setor. */
+  cartaoDoAtleta: (id: number, temporada: number, todos = false) => pedir<CartaoDoAtleta>(`/api/atletas/${id}/cartao?temporada=${temporada}${todos ? '&todos=true' : ''}`),
   parecidos: (id: number, temporada: number) => pedir<Parecidos>(`/api/atletas/${id}/parecidos?temporada=${temporada}`),
   ladoALado: (id: number, outro: number) => pedir<LadoALado>(`/api/atletas/${id}/lado-a-lado/${outro}`),
   procurarAtleta: (nome: string) => pedir<{ id: number; nome: string; onde?: string | null }[]>(`/api/atletas/procurar?nome=${encodeURIComponent(nome)}`),

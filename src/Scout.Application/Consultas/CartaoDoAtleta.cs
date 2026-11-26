@@ -16,7 +16,9 @@ public record BlocoDoCartao(string Nome, IReadOnlyList<ItemDoCartao> Itens);
 public record CartaoDoAtleta(ResumoAtleta Resumo, string Competicao, string Comparacao, int Comparados, double? Nota, int? PosicaoNaNota,
     IReadOnlyList<BlocoDoCartao> Blocos, IReadOnlyList<string>? OutrasCompeticoes = null);
 
-public record ObterCartaoDoAtleta(int AtletaId, int? Temporada = null) : IQuery<CartaoDoAtleta?>;
+/// <summary>`TodosDeLinha`: compara com todos os jogadores de linha da liga, e não só com o setor (bom para quem joga entre
+/// setores, como o meia que o provedor marca e joga de ponta). Os blocos continuam os do setor dele.</summary>
+public record ObterCartaoDoAtleta(int AtletaId, int? Temporada = null, bool TodosDeLinha = false) : IQuery<CartaoDoAtleta?>;
 
 public class ObterCartaoDoAtletaHandler(IScoutDb db, MotorDeAnalise motor) : IQueryHandler<ObterCartaoDoAtleta, CartaoDoAtleta?>
 {
@@ -26,7 +28,8 @@ public class ObterCartaoDoAtletaHandler(IScoutDb db, MotorDeAnalise motor) : IQu
         // Se jogou mais de uma liga na temporada, fica a de mais minutos (como no painel do atleta)
         var l = linhas.Where(x => x.AtletaId == q.AtletaId).OrderByDescending(x => x.Minutos).FirstOrDefault();
         if (l is null) return null;
-        var setor = linhas.Where(x => x.CompeticaoId == l.CompeticaoId && x.Temporada == l.Temporada && x.Setor == l.Setor).ToList();
+        var setor = linhas.Where(x => x.CompeticaoId == l.CompeticaoId && x.Temporada == l.Temporada
+            && (q.TodosDeLinha ? x.Setor != Setor.Goleiro && l.Setor != Setor.Goleiro : x.Setor == l.Setor)).ToList();
         // O cartão compara só a liga; o que ele fez nas outras competições da temporada (gol de copa, por exemplo) vai numa linha à parte
         var outras = (from t in db.Estatisticas
                       join c in db.Competicoes on t.CompeticaoId equals c.Id
@@ -36,7 +39,7 @@ public class ObterCartaoDoAtletaHandler(IScoutDb db, MotorDeAnalise motor) : IQu
             .Select(g => (Nome: g.Key, Jogos: g.Sum(x => x.Jogos), Gols: g.Sum(x => x.Gols), Assistencias: g.Sum(x => x.Assistencias)))
             .OrderByDescending(x => x.Jogos)
             .Select(x => DescreverOutra(x.Nome, x.Jogos, x.Gols, x.Assistencias)).ToList();
-        var cartao = Montar(l, setor) with { OutrasCompeticoes = outras };
+        var cartao = Montar(l, setor, q.TodosDeLinha && l.Setor != Setor.Goleiro) with { OutrasCompeticoes = outras };
 
         // Bloco avançado (item 10): métricas da PitchAPI somadas jogo a jogo na mesma liga e temporada, contra o mesmo setor
         var idsDoSetor = setor.Select(x => x.AtletaId).ToHashSet();
@@ -109,25 +112,31 @@ public class ObterCartaoDoAtletaHandler(IScoutDb db, MotorDeAnalise motor) : IQu
         return $"{nome}: {string.Join(", ", partes)}";
     }
 
-    public static CartaoDoAtleta Montar(LinhaAnalise l, IReadOnlyList<LinhaAnalise> setor)
+    public static CartaoDoAtleta Montar(LinhaAnalise l, IReadOnlyList<LinhaAnalise> setor, bool todosDeLinha = false)
     {
         var blocos = Blocos(l.Setor)
-            .Select(b => new BlocoDoCartao(b.Nome, b.Chaves.Select(k => Item(l, setor, Catalogo.PorChave[k])).ToList()))
+            .Select(b => new BlocoDoCartao(b.Nome, b.Chaves.Select(k => Item(l, setor, Catalogo.PorChave[k], todosDeLinha)).ToList()))
             .ToList();
-        var notas = setor.Where(x => x.Nota is not null).ToList();
-        int? posicaoNaNota = l.Nota is { } n ? 1 + notas.Count(x => x.AtletaId != l.AtletaId && x.Nota > n) : null;
-        return new CartaoDoAtleta(Resumir.De(l), l.Competicao, NomeDoSetor(l.Setor), setor.Count,
+        // a nota é do setor (o motor mede cada setor com os indicadores dele): contra todos de linha, a posição na nota não se compara
+        var notas = setor.Where(x => x.Nota is not null && x.Setor == l.Setor).ToList();
+        int? posicaoNaNota = l.Nota is { } n && !todosDeLinha ? 1 + notas.Count(x => x.AtletaId != l.AtletaId && x.Nota > n) : null;
+        return new CartaoDoAtleta(Resumir.De(l), l.Competicao, todosDeLinha ? "jogadores de linha" : NomeDoSetor(l.Setor), setor.Count,
             l.Nota is { } nota ? Math.Round(nota) : null, posicaoNaNota, blocos);
     }
 
-    static ItemDoCartao Item(LinhaAnalise l, IReadOnlyList<LinhaAnalise> setor, Indicador ind)
+    static ItemDoCartao Item(LinhaAnalise l, IReadOnlyList<LinhaAnalise> setor, Indicador ind, bool todosDeLinha)
     {
         var valor = l.Valores.GetValueOrDefault(ind.Chave) ?? ind.Valor(l);
         var outros = setor.Select(x => x.Valores.GetValueOrDefault(ind.Chave) ?? ind.Valor(x)).OfType<double>().ToList();
         int? posicao = valor is { } v
             ? 1 + outros.Count(o => ind.Inverso ? o < v - 1e-9 : o > v + 1e-9) // empate divide a posição
             : null;
-        var percentil = l.Percentis.GetValueOrDefault(ind.Chave);
+        // o percentil guardado é contra o setor; contra todos de linha, calcula na hora com a mesma régua (empate conta metade)
+        var percentil = todosDeLinha
+            ? valor is { } w && outros.Count > 1
+                ? 100.0 * (outros.Count(o => ind.Inverso ? o > w + 1e-9 : o < w - 1e-9) + 0.5 * (outros.Count(o => Math.Abs(o - w) <= 1e-9) - 1)) / (outros.Count - 1)
+                : (double?)null
+            : l.Percentis.GetValueOrDefault(ind.Chave);
         var porcentagem = ind.Chave.StartsWith("aproveitamento") || ind.Chave == "precisaoPasses";
         return new ItemDoCartao(ind.Chave, Rotulo(ind.Chave), valor is { } x ? Math.Round(x, porcentagem ? 0 : 2) : null, porcentagem,
             percentil is { } p ? Math.Round(p) : null, posicao, outros.Count);

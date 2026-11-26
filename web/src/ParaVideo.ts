@@ -674,7 +674,7 @@ export async function cartaoDoAtleta(c: CartaoDoAtleta) {
     y += 6
   }
   fonte(ctx, 20, 600); ctx.fillStyle = COR.suave; ctx.textBaseline = 'top'
-  ctx.fillText('Barra = percentil no setor: azul elite · verde bom · amarelo regular · laranja abaixo', x0 + 50, y0 + h - 44)
+  ctx.fillText(`Barra = percentil ${c.comparacao === 'jogadores de linha' ? 'entre os jogadores de linha' : 'no setor'}: azul elite · verde bom · amarelo regular · laranja abaixo`, x0 + 50, y0 + h - 44)
   await baixar(tela, `cartao-${nomeDeArquivo(a.nome)}`)
 }
 
