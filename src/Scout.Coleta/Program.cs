@@ -15,6 +15,7 @@
 //   dotnet run --project src/Scout.Coleta -- comentar <partida> [time]   (os pontos do "Comentar o jogo", com a frase pronta)
 //   dotnet run --project src/Scout.Coleta -- trajetorias [max]   (guarda a trajetória com números dos candidatos de mercado; antes do fim do Pro)
 //   dotnet run --project src/Scout.Coleta -- cartao <atleta>   (o cartão do atleta em texto, com o bloco avançado da PitchAPI)
+//   dotnet run --project src/Scout.Coleta -- json cartao|estilo|atleta <id>   (o JSON da API, sem login, para gerar cartões fora do site)
 //   dotnet run --project src/Scout.Coleta -- nascimentos-bzzoiro <temporada>   (data de nascimento de quem está sem, pela Bzzoiro)
 //   dotnet run --project src/Scout.Coleta -- copas-bzzoiro <temporada> [max]   (desempenho dos atletas nos jogos de copa, pela Bzzoiro)
 //   dotnet run --project src/Scout.Coleta -- valores-bzzoiro [max-clubes]   (valor de mercado e fim de contrato, pela Bzzoiro)
@@ -94,6 +95,26 @@ try
             var rc = await sp.GetRequiredService<ColetaBzzoiro>().ColetarCopas(temporadaC, maxC, cts.Token);
             Console.WriteLine($"Bzzoiro copas: {rc.Jogos} jogos, {rc.Ligados}/{rc.Atletas} atletas ligados ao cadastro, {rc.SemPar} jogos sem par na base");
             break;
+
+        case "json" when args.Length >= 3 && int.TryParse(args[2], out var idJson):
+        {
+            // o mesmo JSON que a API devolve, sem login: para gerar cartões fora do site (ex.: para material de divulgação)
+            //   json cartao <atleta> [todos] · json estilo <clube> · json atleta <atleta>
+            var opcoes = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web);
+            opcoes.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+            object? resultadoJson = args[1] switch
+            {
+                "cartao" => await sp.GetRequiredService<Scout.Application.IQueryHandler<Scout.Application.Consultas.ObterCartaoDoAtleta, Scout.Application.Consultas.CartaoDoAtleta?>>()
+                    .Handle(new Scout.Application.Consultas.ObterCartaoDoAtleta(idJson, TodosDeLinha: args.Contains("todos")), cts.Token),
+                "estilo" => await sp.GetRequiredService<Scout.Application.IQueryHandler<Scout.Application.Consultas.ObterEstiloNaLiga, Scout.Application.Consultas.EstiloNaLiga?>>()
+                    .Handle(new Scout.Application.Consultas.ObterEstiloNaLiga(idJson), cts.Token),
+                "atleta" => await sp.GetRequiredService<Scout.Application.IQueryHandler<Scout.Application.Consultas.ObterAtleta, Scout.Application.Consultas.DetalheAtleta?>>()
+                    .Handle(new Scout.Application.Consultas.ObterAtleta(idJson), cts.Token),
+                _ => null,
+            };
+            Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(resultadoJson, opcoes));
+            break;
+        }
 
         case "cartao" when args.Length >= 2 && int.TryParse(args[1], out var atletaCa):
         {
